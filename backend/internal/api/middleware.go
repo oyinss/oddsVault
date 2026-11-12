@@ -89,11 +89,22 @@ func (s *Server) accessLog(next http.Handler) http.Handler {
 // The tunnel URL is public, so the Pages proxy cannot be the only gate: it
 // adds the bearer token to its journal request, and a direct call without it
 // is refused here.
+//
+// `next dev` has no proxy, so an explicitly configured browser origin
+// (CORS_ALLOWED_ORIGINS, normally http://localhost:3000) may read the journal
+// directly. Production configures no origins, so this never applies remotely.
 func (s *Server) journalAuth(next http.HandlerFunc) http.HandlerFunc {
 	if s.journalToken == "" {
 		return next
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		if origin := r.Header.Get("Origin"); origin != "" {
+			if _, allowed := s.corsOrigins[origin]; allowed {
+				next(w, r)
+				return
+			}
+		}
+
 		const prefix = "Bearer "
 		header := r.Header.Get("Authorization")
 		if !strings.HasPrefix(header, prefix) ||

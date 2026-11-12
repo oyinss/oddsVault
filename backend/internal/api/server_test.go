@@ -187,3 +187,42 @@ func TestJournalOpenWhenTokenNotConfigured(t *testing.T) {
 		t.Fatalf("expected 503 without a token requirement, got %d", rec.Code)
 	}
 }
+
+func TestJournalAllowsConfiguredDevOrigin(t *testing.T) {
+	server := New(Options{
+		Logger:             slog.New(slog.DiscardHandler),
+		Env:                "development",
+		ServiceName:        "oddsvault-api",
+		JournalToken:       "test-token",
+		CORSAllowedOrigins: []string{"http://localhost:3000"},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/my-bets", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
+	rec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rec, req)
+
+	// No database: reaching the handler returns 503, proving auth passed.
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 for an allowed dev origin, got %d", rec.Code)
+	}
+}
+
+func TestJournalRejectsUnknownOriginWithoutToken(t *testing.T) {
+	server := New(Options{
+		Logger:             slog.New(slog.DiscardHandler),
+		Env:                "development",
+		ServiceName:        "oddsvault-api",
+		JournalToken:       "test-token",
+		CORSAllowedOrigins: []string{"http://localhost:3000"},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/my-bets", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for an unknown origin, got %d", rec.Code)
+	}
+}
