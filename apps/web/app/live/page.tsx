@@ -92,11 +92,26 @@ export default function LivePage() {
 
 function LiveCard({ event }: { event: EventItem }) {
   const when = kickoff(event);
+  const isLive = event.status === "live" || event.live?.status === "live";
+  const finished = event.status === "finished" || Boolean(event.result);
   const score = event.result
     ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
-    : event.live
+    : isLive && event.live
       ? `${event.live.home_score ?? "—"} – ${event.live.away_score ?? "—"}`
       : null;
+  const statusLabel = isLive
+    ? (event.live?.detail ?? "LIVE")
+    : finished
+      ? "FT"
+      : "SCHEDULED";
+  const footer =
+    finished || isLive
+      ? `${event.live?.provider ?? "provider"} · ${formatAge(
+          event.live?.captured_at ?? event.result?.captured_at ?? null,
+        )}`
+      : `${when.date} · ${when.time}${
+          when.zone ? ` ${when.zone}` : event.start_time_local ? " local" : ""
+        }`;
 
   return (
     <li>
@@ -110,12 +125,12 @@ function LiveCard({ event }: { event: EventItem }) {
           </p>
           <span
             className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase ${
-              event.status === "live"
+              isLive
                 ? "border-flag-400/30 bg-flag-400/10 text-flag-400"
                 : "border-line-strong text-mist-400"
             }`}
           >
-            {event.live?.detail ?? event.status}
+            {statusLabel}
           </span>
         </div>
 
@@ -131,16 +146,15 @@ function LiveCard({ event }: { event: EventItem }) {
             </div>
           </div>
           <p className="font-mono text-xl font-semibold">
-            {score ?? when.date}
+            {score ?? when.time}
           </p>
         </div>
 
-        <p className="mt-4 font-mono text-[10px] text-mist-500" title={when.title}>
-          {event.live
-            ? `${event.live.provider} · ${formatAge(event.live.captured_at)}`
-            : `${when.date} · ${when.time}${
-                when.zone ? ` ${when.zone}` : event.start_time_local ? " local" : ""
-              }`}
+        <p
+          className="mt-4 font-mono text-[10px] text-mist-500"
+          title={finished || isLive ? undefined : when.title}
+        >
+          {footer}
         </p>
       </Link>
     </li>

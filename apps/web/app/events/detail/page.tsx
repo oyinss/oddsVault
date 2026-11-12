@@ -262,11 +262,26 @@ function EventHeader({ detail }: { detail: EventDetail }) {
       </dl>
 
       {event.live && (
-        <p className="mt-4 rounded-lg border border-flag-400/25 bg-flag-400/[0.06] px-3 py-2 text-xs text-flag-400">
-          Live state from {event.live.provider}: {event.live.status}
-          {event.live.detail ? ` (${event.live.detail})` : ""} ·{" "}
-          {event.live.home_score ?? "—"}–{event.live.away_score ?? "—"} ·{" "}
-          {formatAge(event.live.captured_at)}
+        <p
+          className={`mt-4 rounded-lg border px-3 py-2 text-xs ${
+            event.live.status === "live"
+              ? "border-flag-400/25 bg-flag-400/[0.06] text-flag-400"
+              : "border-line bg-raised text-mist-400"
+          }`}
+        >
+          {event.live.status === "live" ? (
+            <>
+              Live from {event.live.provider}:{" "}
+              {event.live.home_score ?? "—"}–{event.live.away_score ?? "—"}
+              {event.live.detail ? ` · ${event.live.detail}` : ""} ·{" "}
+              {formatAge(event.live.captured_at)}
+            </>
+          ) : (
+            <>
+              Last provider check: {event.live.provider} ·{" "}
+              {formatAge(event.live.captured_at)}
+            </>
+          )}
         </p>
       )}
     </div>
