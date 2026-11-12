@@ -9,8 +9,8 @@ import { TeamCrest } from "@/components/team-crest";
 import {
   absoluteAsset,
   formatAge,
-  formatDate,
   getLive,
+  kickoff,
   type EventItem,
   type EventList,
 } from "@/lib/api";
@@ -91,6 +91,7 @@ export default function LivePage() {
 }
 
 function LiveCard({ event }: { event: EventItem }) {
+  const when = kickoff(event);
   const score = event.result
     ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
     : event.live
@@ -130,14 +131,16 @@ function LiveCard({ event }: { event: EventItem }) {
             </div>
           </div>
           <p className="font-mono text-xl font-semibold">
-            {score ?? formatDate(event.start_date)}
+            {score ?? when.date}
           </p>
         </div>
 
-        <p className="mt-4 font-mono text-[10px] text-mist-500">
+        <p className="mt-4 font-mono text-[10px] text-mist-500" title={when.title}>
           {event.live
             ? `${event.live.provider} · ${formatAge(event.live.captured_at)}`
-            : `${formatDate(event.start_date)} · ${event.start_time_local ?? "time unknown"}`}
+            : `${when.date} · ${when.time}${
+                when.zone ? ` ${when.zone}` : event.start_time_local ? " local" : ""
+              }`}
         </p>
       </Link>
     </li>

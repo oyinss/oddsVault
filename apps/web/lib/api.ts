@@ -52,6 +52,7 @@ export type EventItem = {
   competition_name: string;
   season: string | null;
   start_date: string | null;
+  start_time: string | null;
   start_time_local: string | null;
   status: string;
   round: string | null;
@@ -459,4 +460,66 @@ export function todayInLagos(): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+export type Kickoff = {
+  date: string;
+  time: string;
+  /** Viewer-timezone abbreviation, e.g. "GMT+1"; null when unavailable. */
+  zone: string | null;
+  /** Competition-local time when the provider publishes one. */
+  venueTime: string | null;
+  /** Explanation for a tooltip: never present a converted time as the venue's. */
+  title: string;
+};
+
+/**
+ * Kickoff in the viewer's timezone when the provider publishes a UTC instant.
+ * Falls back to the competition-local clock (labelled as such) when it does
+ * not, rather than guessing a timezone.
+ */
+export function kickoff(event: {
+  start_date: string | null;
+  start_time: string | null;
+  start_time_local: string | null;
+}): Kickoff {
+  if (event.start_time) {
+    const instant = new Date(event.start_time);
+    if (!Number.isNaN(instant.valueOf())) {
+      const zone =
+        new Intl.DateTimeFormat("en-GB", { timeZoneName: "short" })
+          .formatToParts(instant)
+          .find((part) => part.type === "timeZoneName")?.value ?? null;
+
+      return {
+        date: instant.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        }),
+        time: instant.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
+        zone,
+        venueTime: event.start_time_local,
+        title: `Kickoff in your timezone${zone ? ` (${zone})` : ""}.${
+          event.start_time_local
+            ? ` Competition-local: ${event.start_time_local}.`
+            : ""
+        }`,
+      };
+    }
+  }
+
+  return {
+    date: formatDate(event.start_date),
+    time: event.start_time_local ?? "time unknown",
+    zone: null,
+    venueTime: null,
+    title: event.start_time_local
+      ? "Competition-local kickoff; the provider did not publish a UTC time."
+      : "Kickoff time unknown.",
+  };
 }

@@ -13,6 +13,7 @@ import {
   formatDate,
   getCompetitions,
   getEvents,
+  kickoff,
   todayInLagos,
   type EventItem,
   type EventList,
@@ -92,8 +93,9 @@ function EventsView() {
               {isToday ? "Today's fixtures" : "Fixtures & results"}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist-400">
-              Imported football fixtures and results. Kickoff times are local to
-              the competition; no UTC conversion is invented.
+              Imported football fixtures and results. Kickoff times are shown in
+              your timezone when the provider publishes a UTC time; otherwise
+              the competition-local time is labelled local.
             </p>
           </div>
 
@@ -195,9 +197,11 @@ function EventsView() {
         )}
 
         <p className="mt-6 max-w-3xl text-[11px] leading-relaxed text-mist-500">
-          Missing scores are shown as “—”, never as 0. Events matched only by
-          competition, participants and date are marked provisional until a
-          provider with real ids confirms them.
+          Kickoff times are converted from the provider&apos;s UTC instant to
+          your device timezone; venue-local time is labelled local when no UTC
+          time exists. Missing scores are shown as “—”, never as 0. Events
+          matched only by competition, participants and date are marked
+          provisional until a provider with real ids confirms them.
         </p>
       </main>
     </>
@@ -208,6 +212,7 @@ function EventRow({ event }: { event: EventItem }) {
   const scoreline = event.result
     ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
     : null;
+  const when = kickoff(event);
   const today = new Date().toISOString().slice(0, 10);
   const awaitingResult =
     !scoreline && event.status === "scheduled" && (event.start_date ?? "") < today;
@@ -219,11 +224,17 @@ function EventRow({ event }: { event: EventItem }) {
         className="flex flex-col gap-3 px-4 py-4 transition hover:bg-hover sm:flex-row sm:items-center sm:gap-6 sm:px-5"
       >
       <div className="w-28 shrink-0">
-        <p className="text-sm font-medium text-mist-200">
-          {formatDate(event.start_date)}
-        </p>
-        <p className="font-mono text-[11px] text-mist-500">
-          {event.start_time_local ?? "time unknown"}
+        <p className="text-sm font-medium text-mist-200">{when.date}</p>
+        <p
+          className="font-mono text-[11px] text-mist-500"
+          title={when.title}
+        >
+          {when.time}
+          {when.zone ? (
+            <span className="ml-1 text-[9px]">{when.zone}</span>
+          ) : event.start_time_local ? (
+            <span className="ml-1 text-[9px]">local</span>
+          ) : null}
         </p>
       </div>
 

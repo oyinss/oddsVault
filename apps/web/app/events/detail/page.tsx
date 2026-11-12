@@ -10,10 +10,10 @@ import { TeamCrest } from "@/components/team-crest";
 import {
   absoluteAsset,
   formatAge,
-  formatDate,
   getEvent,
   getEventMovement,
   getEventPrices,
+  kickoff,
   type EventDetail,
   type EventPrices,
   type MarketView,
@@ -189,6 +189,7 @@ function FixtureMissing({ message }: { message: string }) {
 
 function EventHeader({ detail }: { detail: EventDetail }) {
   const { event } = detail;
+  const when = kickoff(event);
   const score = event.result
     ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
     : null;
@@ -223,14 +224,28 @@ function EventHeader({ detail }: { detail: EventDetail }) {
           <dt className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
             Date
           </dt>
-          <dd className="mt-1 text-mist-200">{formatDate(event.start_date)}</dd>
+          <dd className="mt-1 text-mist-200">{when.date}</dd>
         </div>
         <div>
           <dt className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
-            Local kickoff
+            Kickoff
           </dt>
-          <dd className="mt-1 text-mist-200">
-            {event.start_time_local ?? "not published"}
+          <dd className="mt-1 text-mist-200" title={when.title}>
+            {when.time}
+            {when.zone ? (
+              <span className="ml-1 font-mono text-[10px] text-mist-500">
+                {when.zone}
+              </span>
+            ) : (
+              <span className="ml-1 font-mono text-[10px] text-mist-500">
+                local
+              </span>
+            )}
+            {when.venueTime && when.zone ? (
+              <span className="mt-0.5 block font-mono text-[10px] text-mist-500">
+                venue {when.venueTime}
+              </span>
+            ) : null}
           </dd>
         </div>
         <div>
