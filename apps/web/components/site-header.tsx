@@ -10,6 +10,7 @@ import {
   faChartColumn,
   faChartLine,
   faClockRotateLeft,
+  faLock,
   faTicket,
   faTowerBroadcast,
   faXmark,
@@ -25,13 +26,14 @@ const NAV: {
   label: string;
   href: string | null;
   ready: boolean;
+  locked?: boolean;
   icon: IconDefinition;
 }[] = [
   { label: "Events", href: "/events", ready: true, icon: faCalendarDays },
   { label: "Live", href: "/live", ready: true, icon: faTowerBroadcast },
   { label: "Odds", href: null, ready: false, icon: faChartLine },
   { label: "Snapshots", href: "/snapshots", ready: true, icon: faClockRotateLeft },
-  { label: "My Bets", href: "/my-bets", ready: true, icon: faTicket },
+  { label: "My Bets", href: "/my-bets", ready: true, locked: true, icon: faTicket },
   { label: "Analytics", href: "/analytics", ready: true, icon: faChartColumn },
 ];
 
@@ -109,6 +111,13 @@ export function SiteHeader() {
                     className="shrink-0 opacity-80"
                   />
                   {item.label}
+                  {item.locked && (
+                    <FontAwesomeIcon
+                      icon={faLock}
+                      style={{ width: 9, height: 9 }}
+                      className="shrink-0 opacity-60"
+                    />
+                  )}
                   {isActive(item.href) && (
                     <span
                       aria-hidden
@@ -201,11 +210,19 @@ export function SiteHeader() {
                       >
                         {tile}
                         <span className="flex-1">{item.label}</span>
-                        {active && (
+                        {active ? (
                           <span className="font-mono text-[9px] tracking-widest text-turf-300 uppercase">
                             here
                           </span>
-                        )}
+                        ) : item.locked ? (
+                          <span className="flex items-center gap-1 font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+                            <FontAwesomeIcon
+                              icon={faLock}
+                              style={{ width: 8, height: 8 }}
+                            />
+                            private
+                          </span>
+                        ) : null}
                       </Link>
                     ) : (
                       <span
