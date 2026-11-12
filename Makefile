@@ -163,7 +163,7 @@ pages-create:
 	cd apps/web && npx wrangler pages project create oddsvault-web --production-branch=main
 
 pages-deploy:
-	cd apps/web && npm run build && npx wrangler pages deploy out --project-name=oddsvault-web --branch=main --commit-dirty=true
+	cd apps/web && NEXT_PUBLIC_API_BASE_URL=/svc npm run build && npx wrangler pages deploy out --project-name=oddsvault-web --branch=main --commit-dirty=true
 
 pages-origin:
 	@test -n "$(URL)" || (echo "usage: make pages-origin URL=https://<tunnel>.trycloudflare.com" && exit 2)

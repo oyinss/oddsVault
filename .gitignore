@@ -32,3 +32,6 @@ coverage/
 
 # Wrangler local state
 .wrangler/
+
+# Local dev overrides are still ignored; this one is shared on purpose.
+!apps/web/.env.development
