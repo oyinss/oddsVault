@@ -48,10 +48,13 @@ export default function EventsPage() {
 
 function EventsView() {
   const searchParams = useSearchParams();
+  const dayParam = searchParams.get("day");
   const requested = searchParams.get("status") ?? "";
   const status = VALID_STATUSES.has(requested) ? requested : "";
   const today = todayInLagos();
-  const isToday = searchParams.get("day") === "today";
+  // Today is the default: no parameters at all renders today's fixtures.
+  const isToday =
+    dayParam === "today" || (dayParam === null && status === "");
 
   const { data, loading } = useApiData(
     `events:${isToday ? `day:${today}` : status}`,
@@ -118,13 +121,15 @@ function EventsView() {
             const active =
               filter.value === "today"
                 ? isToday
-                : !isToday && status === filter.value;
+                : filter.value === ""
+                  ? !isToday && status === ""
+                  : !isToday && status === filter.value;
             const href =
               filter.value === "today"
-                ? "/events?day=today"
-                : filter.value
-                  ? `/events?status=${filter.value}`
-                  : "/events";
+                ? "/events"
+                : filter.value === ""
+                  ? "/events?day=all"
+                  : `/events?status=${filter.value}`;
             return (
               <Link
                 key={filter.label}
@@ -168,7 +173,7 @@ function EventsView() {
               competitions.
             </p>
             <Link
-              href="/events"
+              href="/events?day=all"
               className="mt-3 inline-block text-xs text-turf-300 underline decoration-turf-400/30 underline-offset-4"
             >
               Show all fixtures
