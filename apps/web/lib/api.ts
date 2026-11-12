@@ -116,12 +116,16 @@ export async function getCompetitions(): Promise<Competition[]> {
 export async function getEvents(options: {
   status?: string;
   competition?: string;
+  from?: string;
+  to?: string;
   limit?: number;
 } = {}): Promise<EventList> {
   const params = new URLSearchParams();
   params.set("limit", String(options.limit ?? 60));
   if (options.status) params.set("status", options.status);
   if (options.competition) params.set("competition", options.competition);
+  if (options.from) params.set("from", options.from);
+  if (options.to) params.set("to", options.to);
 
   try {
     const body = await getJSON<{ events: EventItem[] }>(
@@ -445,4 +449,14 @@ export function formatDate(iso: string | null): string {
     month: "short",
     timeZone: "UTC",
   });
+}
+
+/** Today's date in the app's timezone, as YYYY-MM-DD. */
+export function todayInLagos(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }

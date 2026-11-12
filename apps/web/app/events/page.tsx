@@ -13,6 +13,7 @@ import {
   formatDate,
   getCompetitions,
   getEvents,
+  todayInLagos,
   type EventItem,
   type EventList,
 } from "@/lib/api";
@@ -20,6 +21,7 @@ import { useApiData } from "@/lib/use-api";
 
 const FILTERS = [
   { label: "All", value: "" },
+  { label: "Today", value: "today" },
   { label: "Finished", value: "finished" },
   { label: "Scheduled", value: "scheduled" },
 ];
@@ -47,11 +49,18 @@ function EventsView() {
   const searchParams = useSearchParams();
   const requested = searchParams.get("status") ?? "";
   const status = VALID_STATUSES.has(requested) ? requested : "";
+  const today = todayInLagos();
+  const isToday = searchParams.get("day") === "today";
 
-  const { data, loading } = useApiData(`events:${status}`, () =>
-    Promise.all([getCompetitions(), getEvents({ status, limit: 80 })]).then(
-      ([competitions, list]) => ({ competitions, list }),
-    ),
+  const { data, loading } = useApiData(
+    `events:${isToday ? `day:${today}` : status}`,
+    () =>
+      Promise.all([
+        getCompetitions(),
+        isToday
+          ? getEvents({ from: today, to: today, limit: 200 })
+          : getEvents({ status, limit: 80 }),
+      ]).then(([competitions, list]) => ({ competitions, list })),
   );
 
   const competitions = data?.competitions ?? [];
@@ -61,6 +70,13 @@ function EventsView() {
   );
   const events = list.ok ? list.events : [];
   const finished = events.filter((event) => event.status === "finished").length;
+  const todayCount = isToday
+    ? events.length
+    : events.filter((event) => event.start_date === today).length;
+  // Only the unfiltered list reliably contains every fixture today (the API
+  // orders by proximity to today). On a status view the count would describe
+  // that slice, not the day.
+  const showTodayCount = isToday || status === "";
 
   return (
     <>
@@ -70,15 +86,14 @@ function EventsView() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
-              Phase 1A · Football
+              Phase 1A · Football{isToday ? ` · Today, ${formatDate(today)}` : ""}
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Fixtures &amp; results
+              {isToday ? "Today's fixtures" : "Fixtures & results"}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist-400">
-              Real Premier League schedule from OpenFootball, results from
-              football-data.co.uk. Kickoff times are local to the competition;
-              no UTC conversion is invented.
+              Imported football fixtures and results. Kickoff times are local to
+              the competition; no UTC conversion is invented.
             </p>
           </div>
 
@@ -98,10 +113,16 @@ function EventsView() {
 
         <div className="mt-8 flex flex-wrap items-center gap-2">
           {FILTERS.map((filter) => {
-            const active = status === filter.value;
-            const href = filter.value
-              ? `/events?status=${filter.value}`
-              : "/events";
+            const active =
+              filter.value === "today"
+                ? isToday
+                : !isToday && status === filter.value;
+            const href =
+              filter.value === "today"
+                ? "/events?day=today"
+                : filter.value
+                  ? `/events?status=${filter.value}`
+                  : "/events";
             return (
               <Link
                 key={filter.label}
@@ -112,7 +133,11 @@ function EventsView() {
                     : "border-line-strong text-mist-300 hover:border-line-strong hover:bg-raised"
                 }`}
               >
-                {filter.label}
+                {filter.value === "today"
+                  ? showTodayCount
+                    ? `Today (${todayCount})`
+                    : "Today"
+                  : filter.label}
               </Link>
             );
           })}
@@ -133,7 +158,23 @@ function EventsView() {
           </div>
         )}
 
-        {!loading && list.ok && events.length === 0 && (
+        {!loading && list.ok && events.length === 0 && isToday && (
+          <div className="panel mt-6 p-6">
+            <p className="text-sm font-medium">No fixtures today</p>
+            <p className="mt-1 text-xs leading-relaxed text-mist-400">
+              Nothing is scheduled for {formatDate(today)} in the imported
+              competitions.
+            </p>
+            <Link
+              href="/events"
+              className="mt-3 inline-block text-xs text-turf-300 underline decoration-turf-400/30 underline-offset-4"
+            >
+              Show all fixtures
+            </Link>
+          </div>
+        )}
+
+        {!loading && list.ok && events.length === 0 && !isToday && (
           <div className="panel mt-6 p-6">
             <p className="text-sm font-medium">No events stored yet</p>
             <p className="mt-1 text-xs leading-relaxed text-mist-400">
