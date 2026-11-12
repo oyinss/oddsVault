@@ -366,6 +366,76 @@ export async function getSnapshots(params: {
   }
 }
 
+export type BetInsights = {
+  min_sample: number;
+  overall: {
+    bets: number;
+    staked: number;
+    returned: number;
+    profit_loss: number;
+    roi: number;
+    settled_legs: number;
+    verified_legs: number;
+    disagreements: number;
+  };
+  lines: Array<{
+    family: string;
+    side: string;
+    line: number | null;
+    legs: number;
+    won: number;
+    lost: number;
+    rate: number;
+    verified: number;
+    disagreements: number;
+  }>;
+  competitions: Array<{
+    label: string;
+    legs: number;
+    won: number;
+    lost: number;
+    rate: number;
+    verified: number;
+  }>;
+  odds_buckets: Array<{
+    low: number;
+    high: number | null;
+    legs: number;
+    won: number;
+    lost: number;
+    rate: number;
+  }>;
+  stakes: Array<{
+    label: string;
+    bets: number;
+    staked: number;
+    returned: number;
+    profit_loss: number;
+  }>;
+  disagreements: Array<{
+    leg_id: number;
+    event_raw: string;
+    side: string;
+    line: number | null;
+    provider_status: string;
+    verified_status: string;
+    note: string;
+    event_id: number | null;
+  }>;
+};
+
+export async function getBetInsights(
+  minSample: number,
+): Promise<BetInsights | null> {
+  try {
+    return await getJSON<BetInsights>(
+      `/api/v1/my-bets/insights?min_sample=${minSample}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export type AdminHealth = {
   generated_at: string;
   database: { reachable: boolean; latency_ms: number };

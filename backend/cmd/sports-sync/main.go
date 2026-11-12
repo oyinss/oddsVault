@@ -75,7 +75,10 @@ func runOnce() error {
 	if err := football.RunCoverage(ctx); err != nil {
 		return err
 	}
-	return football.RunCrests(ctx)
+	if err := football.RunCrests(ctx); err != nil {
+		return err
+	}
+	return football.RunStats(ctx)
 }
 
 func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg config.Config) ([]worker.Job, error) {
@@ -107,6 +110,11 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Name:  "sync_team_crests",
 			Every: 24 * time.Hour,
 			Run:   football.RunCrests,
+		},
+		{
+			Name:  "sync_match_stats",
+			Every: 30 * time.Minute,
+			Run:   football.RunStats,
 		},
 	}, nil
 }

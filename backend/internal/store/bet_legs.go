@@ -80,7 +80,28 @@ func (im *Importer) ResolveBetLegs(ctx context.Context) (resolved, unresolved in
 	for _, leg := range legs {
 		home, away, market := ParseLegEvent(leg.raw)
 		homeKey, awayKey := normalize.Key(home), normalize.Key(away)
+
+		anchor := time.Now().UTC()
+		if leg.placedAt != nil {
+			anchor = *leg.placedAt
+		}
+
+		// Names that do not split cleanly (OCR wraps them) can still be
+		// matched when both team keys appear in the text.
 		if homeKey == "" || awayKey == "" {
+			eventID, matchErr := im.matchLegBySubstring(ctx, leg.raw, anchor)
+			if matchErr == nil {
+				if _, err := im.pool.Exec(ctx, `
+					UPDATE personal_bet_legs SET
+						event_id = $2, identity_status = 'provisional',
+						market_hint = NULLIF($3, ''),
+						resolution_note = 'text_match'
+					WHERE id = $1`, leg.id, eventID, market); err != nil {
+					return resolved, unresolved, err
+				}
+				resolved++
+				continue
+			}
 			if _, err := im.pool.Exec(ctx, `
 				UPDATE personal_bet_legs SET
 					home_raw = NULLIF($2, ''), away_raw = NULLIF($3, ''),
@@ -91,11 +112,6 @@ func (im *Importer) ResolveBetLegs(ctx context.Context) (resolved, unresolved in
 			}
 			unresolved++
 			continue
-		}
-
-		anchor := time.Now().UTC()
-		if leg.placedAt != nil {
-			anchor = *leg.placedAt
 		}
 
 		var eventID int64
@@ -111,6 +127,13 @@ func (im *Importer) ResolveBetLegs(ctx context.Context) (resolved, unresolved in
 			                        AND ($3::timestamptz AT TIME ZONE 'UTC')::date + 7
 			ORDER BY abs(e.start_date - ($3::timestamptz AT TIME ZONE 'UTC')::date)
 			LIMIT 1`, homeKey, awayKey, anchor).Scan(&eventID)
+
+		// OCR text often embeds the score inside the team names. Fall back to
+		// finding an event in the window whose two team keys both appear in the
+		// raw text; only a unique candidate is accepted.
+		if err == pgx.ErrNoRows {
+			eventID, err = im.matchLegBySubstring(ctx, leg.raw, anchor)
+		}
 
 		switch {
 		case err == nil:
@@ -139,4 +162,51 @@ func (im *Importer) ResolveBetLegs(ctx context.Context) (resolved, unresolved in
 
 	im.log.Info("bet legs resolved", "resolved", resolved, "unresolved", unresolved)
 	return resolved, unresolved, nil
+}
+
+// matchLegBySubstring finds a unique event in the window whose home and away
+// key both occur in the provider text. Ambiguity stays unresolved.
+func (im *Importer) matchLegBySubstring(ctx context.Context, raw string, anchor time.Time) (int64, error) {
+	text := normalize.Key(raw)
+	if text == "" {
+		return 0, pgx.ErrNoRows
+	}
+
+	rows, err := im.pool.Query(ctx, `
+		SELECT e.id, ht.name_key, at.name_key
+		FROM events e
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN teams ht ON ht.id = hp.team_id
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		JOIN teams at ON at.id = ap.team_id
+		WHERE e.start_date BETWEEN ($1::timestamptz AT TIME ZONE 'UTC')::date - 7
+		                        AND ($1::timestamptz AT TIME ZONE 'UTC')::date + 7
+		ORDER BY abs(e.start_date - ($1::timestamptz AT TIME ZONE 'UTC')::date)
+		LIMIT 200`, anchor)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	var matches []int64
+	for rows.Next() {
+		var id int64
+		var homeKey, awayKey string
+		if err := rows.Scan(&id, &homeKey, &awayKey); err != nil {
+			return 0, err
+		}
+		if strings.Contains(text, homeKey) && strings.Contains(text, awayKey) {
+			matches = append(matches, id)
+			if len(matches) > 1 {
+				break
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	return 0, pgx.ErrNoRows
 }

@@ -140,12 +140,20 @@ export default function MyBetsPage() {
                 and results are the provider&apos;s values; a later price never
                 replaces the price actually taken.
               </p>
-              <Link
-                href="/admin/journal"
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-mist-200 transition hover:border-white/25 hover:bg-white/5"
-              >
-                Import screenshots
-              </Link>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/my-bets/insights"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-mist-200 transition hover:border-white/25 hover:bg-white/5"
+                >
+                  Insights
+                </Link>
+                <Link
+                  href="/admin/journal"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-mist-200 transition hover:border-white/25 hover:bg-white/5"
+                >
+                  Import screenshots
+                </Link>
+              </div>
             </div>
 
             {day && <DayCard day={day} spark={spark} />}
