@@ -143,6 +143,7 @@ pages-deploy:
 pages-origin:
 	@test -n "$(URL)" || (echo "usage: make pages-origin URL=https://<tunnel>.trycloudflare.com" && exit 2)
 	cd apps/web && printf '%s' "$(URL)" | npx wrangler pages secret put API_ORIGIN --project-name=oddsvault-web
+	@echo "Pages binds env vars per deployment: run 'make pages-deploy' to activate this origin."
 
 journal-lock:
 	./scripts/set-journal-passphrase.sh

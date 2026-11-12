@@ -89,10 +89,13 @@ make tunnel          # terminal 2 — always refresh the secret after a restart
 ```
 
 A quick tunnel gets a new hostname every time it starts. `make tunnel` sets
-`API_ORIGIN` for you; if the tunnel is started some other way, update it with:
+`API_ORIGIN`, then rebuilds and redeploys the worker, because Pages binds
+environment variables per deployment. If you set the origin by hand, redeploy
+afterwards:
 
 ```bash
 make pages-origin URL=https://your-tunnel.trycloudflare.com
+make pages-deploy
 ```
 
 Nothing needs rebuilding: the worker reads the secret per request.

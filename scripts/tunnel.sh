@@ -75,6 +75,20 @@ if [ "$UPDATE_SECRET" = "1" ]; then
   ); then
     echo "Could not set API_ORIGIN automatically. Set it by hand:" >&2
     echo "  make pages-origin URL='$URL'" >&2
+  elif [ "${CF_REDEPLOY:-1}" = "1" ]; then
+    # Pages binds environment variables per deployment, so a new origin only
+    # takes effect after the worker is redeployed.
+    echo "Redeploying so the worker picks up the new origin …"
+    if ! (
+      cd apps/web &&
+        npm run build &&
+        npx wrangler pages deploy out --project-name "$PROJECT" \
+          --branch=main --commit-dirty=true
+    ); then
+      echo "Redeploy failed. Run 'make pages-deploy' once the error is clear." >&2
+    fi
+  else
+    echo "CF_REDEPLOY=0: run 'make pages-deploy' to activate this origin." >&2
   fi
 fi
 
