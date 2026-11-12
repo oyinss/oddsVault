@@ -2,16 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { config, type IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+  faCalendarDays,
+  faChartColumn,
+  faChartLine,
+  faClockRotateLeft,
+  faTicket,
+  faTowerBroadcast,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
-const NAV = [
-  { label: "Events", href: "/events", ready: true },
-  { label: "Live", href: "/live", ready: true },
-  { label: "Odds", href: null, ready: false },
-  { label: "Snapshots", href: "/snapshots", ready: true },
-  { label: "My Bets", href: "/my-bets", ready: true },
-  { label: "Analytics", href: "/analytics", ready: true },
+// The stylesheet is imported in the root layout; do not inject it twice.
+config.autoAddCss = false;
+
+const NAV: {
+  label: string;
+  href: string | null;
+  ready: boolean;
+  icon: IconDefinition;
+}[] = [
+  { label: "Events", href: "/events", ready: true, icon: faCalendarDays },
+  { label: "Live", href: "/live", ready: true, icon: faTowerBroadcast },
+  { label: "Odds", href: null, ready: false, icon: faChartLine },
+  { label: "Snapshots", href: "/snapshots", ready: true, icon: faClockRotateLeft },
+  { label: "My Bets", href: "/my-bets", ready: true, icon: faTicket },
+  { label: "Analytics", href: "/analytics", ready: true, icon: faChartColumn },
 ];
 
 export function SiteHeader() {
@@ -42,10 +60,15 @@ export function SiteHeader() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`relative rounded-md px-3 py-1.5 text-sm transition hover:bg-raised hover:text-mist-100 ${
+                className={`relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] transition hover:bg-raised hover:text-mist-100 xl:px-3 xl:text-sm ${
                   isActive(item.href) ? "text-mist-100" : "text-mist-200"
                 }`}
               >
+                <FontAwesomeIcon
+                  icon={item.icon}
+                  style={{ width: 12, height: 12 }}
+                  className="shrink-0 opacity-80"
+                />
                 {item.label}
                 {isActive(item.href) && (
                   <span
@@ -57,9 +80,14 @@ export function SiteHeader() {
             ) : (
               <span
                 key={item.label}
-                className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-mist-500"
+                className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] text-mist-500 xl:px-3 xl:text-sm"
                 title="Available in a later phase"
               >
+                <FontAwesomeIcon
+                  icon={item.icon}
+                  style={{ width: 12, height: 12 }}
+                  className="shrink-0 opacity-60"
+                />
                 {item.label}
               </span>
             ),
@@ -68,7 +96,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <span className="rounded-full border border-line-strong px-3 py-1 font-mono text-[11px] tracking-widest text-mist-400 uppercase">
+          <span className="hidden rounded-full border border-line-strong px-3 py-1 font-mono text-[11px] tracking-widest text-mist-400 uppercase lg:inline-flex">
             Phase 7
           </span>
         </div>
@@ -84,20 +112,30 @@ export function SiteHeader() {
               <Link
                 key={item.label}
                 href={item.href}
-                className={`shrink-0 rounded-md px-2.5 py-1 text-[12px] transition ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-[12px] transition ${
                   isActive(item.href)
                     ? "bg-turf-500/10 text-turf-300"
                     : "text-mist-300 hover:bg-raised"
                 }`}
               >
+                <FontAwesomeIcon
+                  icon={item.icon}
+                  style={{ width: 11, height: 11 }}
+                  className="shrink-0 opacity-80"
+                />
                 {item.label}
               </Link>
             ) : (
               <span
                 key={item.label}
-                className="shrink-0 cursor-not-allowed px-2.5 py-1 text-[12px] text-mist-500"
+                className="flex shrink-0 cursor-not-allowed items-center gap-1.5 px-2.5 py-1 text-[12px] text-mist-500"
                 title="Available in a later phase"
               >
+                <FontAwesomeIcon
+                  icon={item.icon}
+                  style={{ width: 11, height: 11 }}
+                  className="shrink-0 opacity-60"
+                />
                 {item.label}
               </span>
             ),

@@ -169,6 +169,12 @@ html.light .hero-glow {
   outline-offset: 2px;
 }
 
+/* Tailwind's preflight does not set this; every real button is clickable. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
