@@ -41,8 +41,9 @@ export default function LivePage() {
               Live &amp; today
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist-400">
-              Provider status and scores, polled by the worker and cached. The
-              browser talks only to our API.
+              Live matches and today&apos;s fixtures. Scores come from the
+              provider, polled by the worker and cached; the browser talks only
+              to our API.
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -68,13 +69,15 @@ export default function LivePage() {
           <div className="panel mt-8 p-6">
             <p className="text-sm font-medium">Nothing live right now</p>
             <p className="mt-1 text-xs leading-relaxed text-mist-400">
-              The live job syncs yesterday, today and tomorrow. Run{" "}
-              <code className="font-mono text-mist-200">make sync</code> then{" "}
-              <code className="font-mono text-mist-200">
-                JOB_RUN_ON_START=true make workers
-              </code>{" "}
-              to populate it.
+              No match is in progress and nothing else is scheduled today.
+              Results and upcoming days are on the fixtures page.
             </p>
+            <Link
+              href="/events?day=all"
+              className="mt-3 inline-block text-xs text-turf-300 underline decoration-turf-400/30 underline-offset-4"
+            >
+              Open all fixtures
+            </Link>
           </div>
         )}
 

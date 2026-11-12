@@ -196,7 +196,9 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	s.writeEventList(w, r, query, args, limit)
 }
 
-// handleLive returns events in progress or kicking off today.
+// handleLive returns events in progress plus today's scheduled fixtures.
+// Finished matches belong on the fixtures page, where the result is shown;
+// including them here made the live page look like it was calling FT games live.
 func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 	if s.pool == nil {
 		writeError(w, r, http.StatusServiceUnavailable, "not_ready", "database is not configured")
@@ -204,7 +206,7 @@ func (s *Server) handleLive(w http.ResponseWriter, r *http.Request) {
 	}
 	query := eventSelect + `
 		WHERE e.status = 'live'
-		   OR e.start_date BETWEEN CURRENT_DATE - 3 AND CURRENT_DATE + 7
+		   OR (e.status = 'scheduled' AND e.start_date = CURRENT_DATE)
 		ORDER BY (e.status = 'live') DESC,
 		         COALESCE(e.start_time, e.start_date::timestamptz) ASC
 		LIMIT 60`
