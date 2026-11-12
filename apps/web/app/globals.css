@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/*
+ * Theme palette.
+ *
+ * The default is dark. `html.light` overrides every token, so the same utility
+ * classes work in both modes. Components reference semantic tokens
+ * (`bg-ink-900`, `text-mist-300`, `border-line`) instead of literal colours.
+ */
+:root {
+  color-scheme: dark;
+
+  --ink-950: #05070d;
+  --ink-900: #090d16;
+  --ink-850: #0d1320;
+  --ink-800: #121a29;
+  --mist-100: #e9eff9;
+  --mist-200: #d5deeb;
+  --mist-300: #b9c4d4;
+  --mist-400: #93a1b5;
+  --mist-500: #6c7a90;
+  --turf-300: #7cf0bd;
+  --turf-400: #34d399;
+  --turf-500: #10b981;
+  --flag-400: #fbbf24;
+  --loss-300: #fca5a5;
+  --loss-400: #f87171;
+  --loss-500: #ef4444;
+
+  /* Text placed on a solid turf fill. Constant in both themes. */
+  --accent-ink: #03231a;
+
+  /* Surfaces and hairlines. */
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --raised: rgba(255, 255, 255, 0.05);
+  --hover: rgba(255, 255, 255, 0.03);
+  --pitch-line: rgba(255, 255, 255, 0.035);
+}
+
+html.light {
+  color-scheme: light;
+
+  --ink-950: #f6f8fc;
+  --ink-900: #ffffff;
+  --ink-850: #f1f5f9;
+  --ink-800: #e2e8f0;
+  --mist-100: #0f172a;
+  --mist-200: #1e293b;
+  --mist-300: #334155;
+  --mist-400: #475569;
+  --mist-500: #64748b;
+  --turf-300: #0b7a52;
+  --turf-400: #0f9d6b;
+  --turf-500: #10b981;
+  --flag-400: #b45309;
+  --loss-300: #b91c1c;
+  --loss-400: #dc2626;
+  --loss-500: #ef4444;
+
+  --line: rgba(15, 23, 42, 0.12);
+  --line-strong: rgba(15, 23, 42, 0.2);
+  --raised: rgba(15, 23, 42, 0.05);
+  --hover: rgba(15, 23, 42, 0.035);
+  --pitch-line: rgba(15, 23, 42, 0.05);
+}
+
+@theme {
+  --color-ink-950: var(--ink-950);
+  --color-ink-900: var(--ink-900);
+  --color-ink-850: var(--ink-850);
+  --color-ink-800: var(--ink-800);
+  --color-mist-100: var(--mist-100);
+  --color-mist-200: var(--mist-200);
+  --color-mist-300: var(--mist-300);
+  --color-mist-400: var(--mist-400);
+  --color-mist-500: var(--mist-500);
+  --color-turf-300: var(--turf-300);
+  --color-turf-400: var(--turf-400);
+  --color-turf-500: var(--turf-500);
+  --color-flag-400: var(--flag-400);
+  --color-loss-300: var(--loss-300);
+  --color-loss-400: var(--loss-400);
+  --color-loss-500: var(--loss-500);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--ink-950);
+  color: var(--mist-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+/* Subtle pitch markings behind the hero. No photographic filler. */
+.pitch-lines {
+  background-image:
+    radial-gradient(
+      60rem 30rem at 50% -10%,
+      rgba(16, 185, 129, 0.16),
+      transparent 70%
+    ),
+    linear-gradient(to right, var(--pitch-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--pitch-line) 1px, transparent 1px);
+  background-size: 100% 100%, 5.5rem 5.5rem, 5.5rem 5.5rem;
+  mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+}
+
+/* Stadium wash behind the journal hero. */
+.hero-glow {
+  background:
+    radial-gradient(
+      90% 140% at 82% -20%,
+      rgba(16, 185, 129, 0.22),
+      transparent 62%
+    ),
+    radial-gradient(
+      60% 120% at 6% 120%,
+      rgba(16, 185, 129, 0.1),
+      transparent 60%
+    ),
+    linear-gradient(180deg, rgba(5, 7, 13, 0.15), rgba(5, 7, 13, 0.86));
+}
+
+html.light .hero-glow {
+  background:
+    radial-gradient(
+      90% 140% at 82% -20%,
+      rgba(16, 185, 129, 0.18),
+      transparent 62%
+    ),
+    radial-gradient(
+      60% 120% at 6% 120%,
+      rgba(16, 185, 129, 0.1),
+      transparent 60%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.9));
+}
+
+.panel {
+  background-color: color-mix(in srgb, var(--ink-900) 88%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.28);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--turf-400);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  body {
+    transition: none;
+  }
+}
