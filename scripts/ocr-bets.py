@@ -218,7 +218,7 @@ def parse(path):
                 "raw_event": " | ".join(item["event"])[:300],
                 "market_raw": item["market"],
                 "odds_taken": f"{item['odds']:.3f}" if item["odds"] else "",
-                "status": {"win": "won", "loss": "lost", "lost": "lost", "return": "void"}.get(
+                "status": {"win": "won", "loss": "lost", "lost": "lost", "return": "void", "refund": "void"}.get(
                     (item["status"] or "").lower(), "unknown"
                 ),
             }

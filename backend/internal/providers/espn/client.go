@@ -20,14 +20,19 @@ const baseURL = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 
 // leagues maps our competition slugs to ESPN league codes.
 var leagues = map[string]string{
-	"premier-league":   "eng.1",
-	"la-liga":          "esp.1",
-	"serie-a":          "ita.1",
-	"bundesliga":       "ger.1",
-	"ligue-1":          "fra.1",
-	"copa-del-rey":     "esp.copa_del_rey",
-	"nations-league":   "uefa.nations",
-	"champions-league": "uefa.champions",
+	"premier-league":    "eng.1",
+	"la-liga":           "esp.1",
+	"serie-a":           "ita.1",
+	"bundesliga":        "ger.1",
+	"ligue-1":           "fra.1",
+	"copa-del-rey":      "esp.copa_del_rey",
+	"nations-league":    "uefa.nations",
+	"champions-league":  "uefa.champions",
+	"argentina-primera": "arg.1",
+	"chile-primera":     "chi.1",
+	"paraguay-primera":  "par.1",
+	"uruguay-primera":   "uru.1",
+	"italy-serie-c":     "ita.3",
 }
 
 // Client fetches ESPN scoreboards.

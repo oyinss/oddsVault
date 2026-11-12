@@ -42,7 +42,8 @@ var All = []Competition{
 	},
 	{
 		Slug: "ligue-1", Name: "Ligue 1", CountrySlug: "france",
-		Timezone: "Europe/Paris", FootballDataDivision: "F1", OpenFootballFile: "fr.1.json", FotmobLeagueID: 53,
+		Timezone: "Europe/Paris", FootballDataDivision: "F1", OpenFootballFile: "fr.1.json",
+		FotmobLeagueID: 53, ESPNCode: "fra.1",
 	},
 	{
 		// Cup coverage exists only to identify bets placed on it. It is not in
@@ -58,11 +59,31 @@ var All = []Competition{
 		Slug: "champions-league", Name: "UEFA Champions League",
 		Timezone: "UTC", ESPNCode: "uefa.champions",
 	},
+	{
+		Slug: "argentina-primera", Name: "Argentine Primera División",
+		Timezone: "America/Argentina/Buenos_Aires", ESPNCode: "arg.1",
+	},
+	{
+		Slug: "chile-primera", Name: "Chilean Primera División",
+		Timezone: "America/Santiago", ESPNCode: "chi.1",
+	},
+	{
+		Slug: "paraguay-primera", Name: "Paraguayan Primera División",
+		Timezone: "America/Asuncion", ESPNCode: "par.1",
+	},
+	{
+		Slug: "uruguay-primera", Name: "Uruguayan Primera División",
+		Timezone: "America/Montevideo", ESPNCode: "uru.1",
+	},
+	{
+		Slug: "italy-serie-c", Name: "Italian Serie C",
+		Timezone: "Europe/Rome", ESPNCode: "ita.3",
+	},
 }
 
 // ESPNOnly lists competitions that only the live provider covers. They exist
 // so bookmaker/ bet-history entries can be identified against real fixtures.
-var ESPNOnly = []string{"copa-del-rey", "nations-league", "champions-league"}
+var ESPNOnly = []string{"copa-del-rey", "nations-league", "champions-league", "argentina-primera", "chile-primera", "paraguay-primera", "uruguay-primera", "italy-serie-c", "ligue-1"}
 
 // Enabled lists the competitions the league sync covers. Expand deliberately: each new
 // league needs alias coverage before it is turned on.

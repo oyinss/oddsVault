@@ -26,9 +26,10 @@ func (im *Importer) EventsNeedingStats(ctx context.Context, limit int) ([]StatsC
 		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
 		LEFT JOIN team_match_stats hs ON hs.event_id = e.id AND hs.team_id = hp.team_id
 		LEFT JOIN team_match_stats as_ ON as_.event_id = e.id AND as_.team_id = ap.team_id
+		LEFT JOIN personal_bet_legs jl ON jl.event_id = e.id
 		WHERE e.status = 'finished'
 		  AND (hs.corners IS NULL OR as_.corners IS NULL)
-		ORDER BY e.start_date DESC
+		ORDER BY (jl.id IS NULL), e.start_date DESC
 		LIMIT $1`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list events needing stats: %w", err)
