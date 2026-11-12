@@ -23,25 +23,14 @@ export function SiteHeader() {
     <header className="sticky top-0 z-20 border-b border-line bg-ink-950/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="grid size-8 place-items-center rounded-lg bg-turf-500/15 ring-1 ring-turf-400/30"
-          >
-            <svg viewBox="0 0 24 24" className="size-4 text-turf-300" fill="none">
-              <path
-                d="M12 3.5 20 7v5.2c0 4.4-3.2 7.6-8 8.3-4.8-.7-8-3.9-8-8.3V7l8-3.5Z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-              />
-              <path
-                d="M8.4 12.2l2.5 2.5 4.7-5"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo-64.png"
+            alt=""
+            width={32}
+            height={32}
+            className="size-8 shrink-0 select-none"
+          />
           <span className="text-[15px] font-semibold tracking-tight">
             Odds<span className="text-turf-400">Vault</span>
           </span>

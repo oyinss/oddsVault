@@ -2,9 +2,34 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://oddsvault-web.pages.dev"),
   title: "OddsVault — Sports Odds Intelligence",
   description:
     "Timestamped bookmaker odds, verified results and versioned settlement, kept as immutable history.",
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "OddsVault",
+    title: "OddsVault — Sports Odds Intelligence",
+    description:
+      "Timestamped bookmaker odds, verified results and versioned settlement, kept as immutable history.",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "OddsVault",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OddsVault — Sports Odds Intelligence",
+    description:
+      "Timestamped bookmaker odds, verified results and versioned settlement, kept as immutable history.",
+    images: ["/og.png"],
+  },
 };
 
 export const viewport: Viewport = {

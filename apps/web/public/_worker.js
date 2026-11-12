@@ -309,7 +309,7 @@ html.light{color-scheme:light;--bg:#f6f8fc;--panel:#fff;--text:#0f172a;--muted:#
 body{margin:0;min-height:100dvh;display:grid;place-items:center;background:var(--bg);color:var(--text);font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px}
 .card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
 .brand{display:inline-flex;align-items:center;gap:9px;color:inherit;text-decoration:none;font-weight:600;letter-spacing:-.01em}
-.mark{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.brand img{width:30px;height:30px;display:block}
 h1{font-size:18px;margin:18px 0 6px}
 p{margin:0 0 18px;color:var(--muted);font-size:12.5px}
 label{display:block;font:11px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
@@ -324,7 +324,7 @@ button{margin-top:14px;width:100%;padding:10px 12px;border:0;border-radius:10px;
 <body>
 <main class="card">
 <a class="brand" href="/">
-<span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 20 7v5.2c0 4.4-3.2 7.6-8 8.3-4.8-.7-8-3.9-8-8.3V7l8-3.5Z"/><path d="M8.4 12.2l2.5 2.5 4.7-5"/></svg></span>
+<img src="/brand/logo-64.png" width="30" height="30" alt="">
 <span>Odds<span style="color:var(--accent)">Vault</span></span>
 </a>
 <h1>Journal locked</h1>
