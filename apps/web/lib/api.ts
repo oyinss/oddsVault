@@ -225,6 +225,7 @@ export type PersonalBet = {
   bookmaker: string;
   currency: string;
   placed_at: string | null;
+  placed_at_raw: string | null;
   bet_type: string | null;
   stake: number | null;
   combined_odds: number | null;
@@ -363,6 +364,65 @@ export async function getSnapshots(params: {
   } catch {
     return [];
   }
+}
+
+export type AdminHealth = {
+  generated_at: string;
+  database: { reachable: boolean; latency_ms: number };
+  counts: {
+    events: number;
+    events_today: number;
+    results: number;
+    odds_snapshots: number;
+    odds_last_hour: number;
+    live_states: number;
+    personal_bets: number;
+  };
+  import_runs: Array<{
+    provider: string;
+    job_type: string;
+    status: string;
+    started_at: string;
+    finished_at: string | null;
+    records_received: number;
+    records_inserted: number;
+    records_updated: number;
+    records_skipped: number;
+    error_message: string | null;
+  }>;
+  feeds: Array<{
+    provider: string;
+    job_type: string;
+    last_success: string;
+    age_seconds: number;
+  }>;
+  collectors: Array<{
+    bookmaker: string;
+    source_kind: string;
+    status: string;
+    completed_at: string | null;
+    offer_count: number;
+    age_seconds: number | null;
+  }>;
+  unmatched: { bookmaker_events: number; events: number; bet_legs: number };
+};
+
+export async function getAdminHealth(): Promise<AdminHealth | null> {
+  try {
+    return await getJSON<AdminHealth>("/api/v1/admin/health");
+  } catch {
+    return null;
+  }
+}
+
+export function formatAgeSeconds(seconds: number | null): string {
+  if (seconds === null) return "never";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 export type OddsBucket = {

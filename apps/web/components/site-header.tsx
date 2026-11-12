@@ -13,6 +13,7 @@ import {
   faLock,
   faTicket,
   faTowerBroadcast,
+  faHeartPulse,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -35,6 +36,7 @@ const NAV: {
   { label: "Snapshots", href: "/snapshots", ready: true, icon: faClockRotateLeft },
   { label: "My Bets", href: "/my-bets", ready: true, locked: true, icon: faTicket },
   { label: "Analytics", href: "/analytics", ready: true, icon: faChartColumn },
+  { label: "Health", href: "/admin/health", ready: true, icon: faHeartPulse },
 ];
 
 export function SiteHeader() {

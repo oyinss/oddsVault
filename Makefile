@@ -36,6 +36,13 @@ help:
 	@echo "  make odds           capture live bookmaker prices once"
 	@echo "  make import-bets FILE=path  import a bookmaker bet-history export"
 	@echo "  make import-odds FILE=path  import a browser odds capture"
+	@echo "  make up             start db, api, web and workers (reuses healthy ones)"
+	@echo "  make down           stop what 'make up' started"
+	@echo "  make status         component summary"
+	@echo "  make install-service  keep it running on boot (systemd user units)"
+	@echo "  make backup         dump and verify the database"
+	@echo "  make restore-test   restore the newest dump into a throwaway database"
+	@echo ""
 	@echo "  make api            run the Go API on :8080"
 	@echo "  make workers        run all four background workers"
 	@echo "  make test           run Go tests"
@@ -96,6 +103,24 @@ import-bets:
 import-odds:
 	@test -n "$(FILE)" || (echo "usage: make import-odds FILE=.local/imports/<file>.json" && exit 2)
 	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/import-odds -file "$(abspath $(FILE))"
+
+up:
+	./scripts/runtime.sh up
+
+down:
+	./scripts/runtime.sh down
+
+status:
+	./scripts/runtime.sh status
+
+install-service:
+	./scripts/install-service.sh
+
+backup:
+	./scripts/backup.sh
+
+restore-test:
+	./scripts/restore-test.sh $(FILE)
 
 api:
 	cd backend && DATABASE_URL="$(DATABASE_URL)" CORS_ALLOWED_ORIGINS="$(CORS_ALLOWED_ORIGINS)" go run ./cmd/api
