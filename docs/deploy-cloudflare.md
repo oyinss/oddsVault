@@ -67,8 +67,10 @@ curl -s localhost:8788/svc/healthz
 
 ## Deploys from GitHub
 
-`.github/workflows/deploy-web.yml` builds and deploys on every push to `main`
-that touches `apps/web` or the workflow itself.
+`.github/workflows/deploy-web.yml` is **manual only** — pushing to `main` does
+not deploy, so development cannot consume Cloudflare quota. Run it from
+**Actions → Deploy web → Run workflow**, or deploy from the machine that owns
+the database with `make pages-deploy`.
 
 Add two repository secrets:
 

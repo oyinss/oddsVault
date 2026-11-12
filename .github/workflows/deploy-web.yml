@@ -1,11 +1,9 @@
 name: Deploy web
 
+# Deploys are manual on purpose: local development never consumes Cloudflare
+# quota, and production only changes when you run this workflow (or
+# `make pages-deploy` from the machine that owns the database).
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/web/**"
-      - ".github/workflows/deploy-web.yml"
   workflow_dispatch:
 
 concurrency:
