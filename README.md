@@ -272,6 +272,11 @@ the teams and date match an ingested competition. Competitions outside current
 coverage stay `no_matching_fixture` rather than being guessed; ESPN-backed
 coverage currently adds Copa del Rey for exactly this purpose.
 
+On the hosted site the journal is private: the Pages worker requires a
+passphrase session, and the API requires a bearer token so the public tunnel
+cannot read it directly. See
+[docs/deploy-cloudflare.md](docs/deploy-cloudflare.md#private-bet-journal).
+
 ## Next up
 
 1. Browser-capture import for SportyBet (and any bookmaker that blocks servers).

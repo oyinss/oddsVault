@@ -139,7 +139,34 @@ systemctl --user enable --now oddsvault-api oddsvault-tunnel
 loginctl enable-linger "$USER"
 ```
 
-## What the free tier actually gives you
+## Private bet journal
+
+`/my-bets` is not public. It is protected in two layers:
+
+1. **Pages worker** (`_worker.js`) serves a passphrase login page for
+   `/my-bets/*` and refuses `/svc/api/v1/my-bets` without a signed session
+   cookie (7 days, HttpOnly, SameSite=Lax).
+2. **Go API** requires `Authorization: Bearer <JOURNAL_TOKEN>` on
+   `/api/v1/my-bets`. The tunnel URL is public, so this closes the direct-access
+   hole; only the Pages proxy adds the token.
+
+Secrets (Pages project, production environment):
+
+| Secret | Purpose | Rotation |
+| --- | --- | --- |
+| `JOURNAL_PASSPHRASE` | the passphrase you type | `make journal-lock` |
+| `JOURNAL_SESSION_SECRET` | HMAC key for session cookies | `make journal-lock` (regenerates) |
+| `JOURNAL_TOKEN` | shared API token | `make journal-token` + restart `make api` |
+| `API_ORIGIN` | upstream API base URL | `make tunnel` |
+
+Rotating the passphrase invalidates every session. Rotating the token requires
+restarting the API so `.env` is re-read.
+
+To lock the current browser again, use **Lock journal** at the bottom of the
+page. With a custom domain, Cloudflare Access is the better long-term upgrade —
+it moves the check off the worker and can add email/SSO.
+
+
 
 | Limit | Free plan | What this site uses |
 | --- | --- | --- |
