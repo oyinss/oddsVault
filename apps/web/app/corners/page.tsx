@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  faArrowDownWideShort,
   faArrowsRotate,
   faCircleInfo,
   faFlag,
+  faLayerGroup,
+  faRulerHorizontal,
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -60,7 +63,8 @@ export default function CornersPage() {
           </div>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
-              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+              <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+                <FontAwesomeIcon icon={faRulerHorizontal} className="size-3" />
                 Line
               </span>
               <select
@@ -76,7 +80,8 @@ export default function CornersPage() {
               </select>
             </label>
             <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
-              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+              <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+                <FontAwesomeIcon icon={faArrowDownWideShort} className="size-3" />
                 Sort
               </span>
               <select
@@ -93,7 +98,8 @@ export default function CornersPage() {
               </select>
             </label>
             <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
-              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+              <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+                <FontAwesomeIcon icon={faLayerGroup} className="size-3" />
                 Then
               </span>
               <select
