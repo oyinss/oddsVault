@@ -67,7 +67,20 @@ func (im *Importer) SaveCorners(ctx context.Context, eventID int64, provider str
 			ON CONFLICT (event_id, team_id) DO UPDATE SET
 				corners = EXCLUDED.corners,
 				provider = EXCLUDED.provider,
-				captured_at = now()`,
+				captured_at = now()
+			-- Provider precedence: the bookmaker the user actually bets with
+			-- wins over an aggregator, which wins over ESPN. An inferior source
+			-- must not overwrite a published count with a placeholder zero.
+			WHERE (CASE EXCLUDED.provider
+			           WHEN 'onexbet' THEN 3
+			           WHEN 'fotmob' THEN 2
+			           ELSE 1
+			       END)
+			   >= (CASE team_match_stats.provider
+			           WHEN 'onexbet' THEN 3
+			           WHEN 'fotmob' THEN 2
+			           ELSE 1
+			       END)`,
 			eventID, row.teamID, row.value, provider); err != nil {
 			return fmt.Errorf("save corners: %w", err)
 		}

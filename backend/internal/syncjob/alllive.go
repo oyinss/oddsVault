@@ -31,8 +31,28 @@ func (f *Football) RunAllLive(ctx context.Context) error {
 	names := make(map[string]string)
 	states := make([]providers.LiveState, 0, len(discovered))
 	var errs []error
+	matched := 0
 
 	for _, event := range discovered {
+		// A fixture another provider already stored must not be created twice
+		// just because the league name differs. Refresh its score instead.
+		existing, findErr := f.importer.FindEventByPartialTeams(ctx, "football",
+			event.State.HomeName, event.State.AwayName, event.State.StartUTC)
+		if findErr != nil {
+			errs = append(errs, findErr)
+		} else if existing != nil {
+			if err := f.importer.LinkProviderID(ctx, existing.EventID, "espn",
+				event.State.ProviderEventID, event.State.StartUTC, string(event.State.Status)); err != nil {
+				errs = append(errs, err)
+			}
+			if err := f.importer.RefreshLiveState(ctx, existing.EventID, "espn",
+				event.State.Detail, event.State.HomeScore, event.State.AwayScore); err != nil {
+				errs = append(errs, err)
+			}
+			matched++
+			continue
+		}
+
 		name, ok := names[event.LeagueCode]
 		if !ok {
 			if fetched, err := adapter.FetchLeagueName(ctx, event.LeagueCode); err == nil {
@@ -67,6 +87,7 @@ func (f *Football) RunAllLive(ctx context.Context) error {
 		"imported", stats.Received,
 		"created", stats.Created,
 		"updated", stats.Updated,
+		"matched_existing", matched,
 		"leagues", len(names))
 	return errors.Join(errs...)
 }

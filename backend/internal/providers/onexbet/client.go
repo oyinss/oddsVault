@@ -139,6 +139,16 @@ func (c *Client) FetchLive(ctx context.Context) ([]Event, error) {
 		if event.HomeScore == nil && event.AwayScore == nil {
 			event.HomeScore, event.AwayScore = periodScore(raw.SC.PS)
 		}
+		// The feed omits a side that has not scored. A published scoreline
+		// implies 0 for the missing side, which is not the same as no score.
+		if event.HomeScore == nil && event.AwayScore != nil {
+			zero := 0
+			event.HomeScore = &zero
+		}
+		if event.AwayScore == nil && event.HomeScore != nil {
+			zero := 0
+			event.AwayScore = &zero
+		}
 
 		switch {
 		case strings.Contains(strings.ToLower(raw.SC.CPS), "finish"):

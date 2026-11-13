@@ -188,8 +188,10 @@ func (im *Importer) applyLiveState(ctx context.Context, state providers.LiveStat
 		ON CONFLICT (event_id) DO UPDATE SET
 			provider = EXCLUDED.provider,
 			status = EXCLUDED.status,
-			home_score = EXCLUDED.home_score,
-			away_score = EXCLUDED.away_score,
+			-- A provider that does not publish goals must not blank a score
+			-- another provider already reported.
+			home_score = COALESCE(EXCLUDED.home_score, event_live_states.home_score),
+			away_score = COALESCE(EXCLUDED.away_score, event_live_states.away_score),
 			detail = COALESCE(EXCLUDED.detail, event_live_states.detail),
 			captured_at = now()`,
 		eventID, string(state.Status), state.HomeScore, state.AwayScore, state.Detail, provider); err != nil {
@@ -295,13 +297,30 @@ func (im *Importer) RefreshLiveState(ctx context.Context, eventID int64, provide
 		ON CONFLICT (event_id) DO UPDATE SET
 			provider = EXCLUDED.provider,
 			status = 'live',
-			home_score = EXCLUDED.home_score,
-			away_score = EXCLUDED.away_score,
-			detail = EXCLUDED.detail,
+			home_score = COALESCE(EXCLUDED.home_score, event_live_states.home_score),
+			away_score = COALESCE(EXCLUDED.away_score, event_live_states.away_score),
+			detail = COALESCE(EXCLUDED.detail, event_live_states.detail),
 			captured_at = now()`,
 		eventID, provider, home, away, detail)
 	if err != nil {
 		return fmt.Errorf("refresh live state: %w", err)
+	}
+	return nil
+}
+
+// LinkProviderID attaches a provider id to an existing event without creating
+// one, used when discovery recognises a fixture another provider already owns.
+func (im *Importer) LinkProviderID(ctx context.Context, eventID int64, provider, providerEventID string, startUTC time.Time, status string) error {
+	_, err := im.pool.Exec(ctx, `
+		INSERT INTO event_provider_ids
+			(event_id, provider, provider_event_id, observed_start_time, observed_status, match_method)
+		VALUES ($1, $2, $3, $4, $5, 'team_date_match')
+		ON CONFLICT (provider, provider_event_id) DO UPDATE SET
+			observed_start_time = EXCLUDED.observed_start_time,
+			observed_status = EXCLUDED.observed_status`,
+		eventID, provider, providerEventID, startUTC, status)
+	if err != nil {
+		return fmt.Errorf("link provider id: %w", err)
 	}
 	return nil
 }
