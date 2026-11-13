@@ -9,9 +9,12 @@ package dedupe
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/oyins/oddsvault/backend/internal/normalize"
 )
 
 // Result reports what one pass did.
@@ -99,7 +102,8 @@ func duplicates(ctx context.Context, pool *pgxpool.Pool) ([][]eventRow, error) {
 
 	groups := make(map[string][]eventRow)
 	for _, item := range all {
-		key := item.Home + "|" + item.Away + "|" + item.Kickoff.UTC().Format("2006-01-02")
+		key := teamKey(item.Home) + "|" + teamKey(item.Away) + "|" +
+			item.Kickoff.UTC().Format("2006-01-02")
 		groups[key] = append(groups[key], item)
 	}
 
@@ -110,6 +114,38 @@ func duplicates(ctx context.Context, pool *pgxpool.Pool) ([][]eventRow, error) {
 		}
 	}
 	return out, nil
+}
+
+// teamAliases folds provider spellings that name the same side.
+var teamAliases = map[string]string{
+	"republic of ireland":          "ireland",
+	"cote d ivoire":                "ivory coast",
+	"korea republic":               "south korea",
+	"ir iran":                      "iran",
+	"usa":                          "united states",
+	"uae":                          "united arab emirates",
+	"bosnia herzegovina":           "bosnia and herzegovina",
+	"macedonia":                    "north macedonia",
+	"czech republic":               "czechia",
+	"congo dr":                     "dr congo",
+	"democratic republic of congo": "dr congo",
+	"bosnia and herzegovina":       "bosnia and herzegovina",
+}
+
+// teamKey normalizes a name for duplicate grouping. It folds accents and
+// punctuation, then known country spellings, but keeps age and gender markers
+// because those are different fixtures.
+func teamKey(name string) string {
+	_, key := normalize.Resolve(name)
+	for alias, canonical := range teamAliases {
+		if key == alias {
+			return canonical
+		}
+		if strings.HasPrefix(key, alias+" ") {
+			return canonical + key[len(alias):]
+		}
+	}
+	return key
 }
 
 func choose(group []eventRow) (eventRow, []eventRow) {
