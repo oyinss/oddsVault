@@ -21,6 +21,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { NotificationCenter } from "@/components/notification-center";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 // The stylesheet is imported in the root layout; do not inject it twice.
@@ -153,6 +154,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="space-y-1 border-t border-line p-3">
+          <NotificationCenter variant="sidebar" />
           <Link
             href="/search"
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition ${
@@ -189,6 +191,7 @@ export function SiteHeader() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <NotificationCenter variant="mobile" />
             <Link
               href="/search"
               aria-label="Search fixtures"

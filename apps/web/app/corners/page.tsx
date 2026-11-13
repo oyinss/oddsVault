@@ -49,6 +49,17 @@ export default function CornersPage() {
 
   const matches = data?.matches ?? [];
   const alerts = useCornerAlerts(matches, line);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draft, setDraft] = useState("10");
+
+  function openEditor(match: LiveCornerMatch) {
+    const current = match.total_corners ?? 0;
+    const existing = alerts.watches.find(
+      (watch) => watch.eventId === match.event_id,
+    );
+    setDraft(String(existing?.threshold ?? Math.max(line, current + 1)));
+    setEditingId(match.event_id);
+  }
 
   return (
     <>
@@ -191,7 +202,19 @@ export default function CornersPage() {
                   alerts.watches.find((watch) => watch.eventId === match.event_id)
                     ?.threshold ?? null
                 }
-                onToggle={() => void alerts.toggle(match)}
+                editing={editingId === match.event_id}
+                draft={draft}
+                onOpenEditor={() => openEditor(match)}
+                onDraft={setDraft}
+                onClose={() => setEditingId(null)}
+                onSave={() => {
+                  void alerts.setWatch(match, Number(draft));
+                  setEditingId(null);
+                }}
+                onRemove={() => {
+                  alerts.removeWatch(match.event_id);
+                  setEditingId(null);
+                }}
               />
             ))}
           </div>
@@ -258,13 +281,25 @@ function MatchCard({
   line,
   watched,
   threshold,
-  onToggle,
+  editing,
+  draft,
+  onOpenEditor,
+  onDraft,
+  onClose,
+  onSave,
+  onRemove,
 }: {
   match: LiveCornerMatch;
   line: number;
   watched: boolean;
   threshold: number | null;
-  onToggle: () => void;
+  editing: boolean;
+  draft: string;
+  onOpenEditor: () => void;
+  onDraft: (value: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+  onRemove: () => void;
 }) {
   const tone =
     match.pace === "above"
@@ -299,7 +334,7 @@ function MatchCard({
           </span>
           <button
             type="button"
-            onClick={onToggle}
+            onClick={onOpenEditor}
             aria-pressed={watched}
             title={
               watched
@@ -320,6 +355,50 @@ function MatchCard({
           </button>
         </div>
       </header>
+
+      {editing && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-line bg-ink-950/40 px-4 py-2">
+          <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+            Alert at
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={40}
+            value={draft}
+            onChange={(event) => onDraft(event.target.value)}
+            aria-label="Corner threshold"
+            className="w-16 rounded-md border border-line bg-ink-900 px-2 py-1 font-mono text-sm text-mist-100 outline-none focus:border-turf-400/50"
+          />
+          <span className="font-mono text-[10px] text-mist-500 uppercase">corners</span>
+          <button
+            type="button"
+            onClick={onSave}
+            className="rounded-md border border-turf-400/40 bg-turf-500/10 px-2.5 py-1 font-mono text-[10px] tracking-widest text-turf-200 uppercase hover:bg-turf-500/20"
+          >
+            {watched ? "update" : "save"}
+          </button>
+          {watched && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded-md border border-loss-400/30 px-2.5 py-1 font-mono text-[10px] tracking-widest text-loss-300 uppercase hover:bg-loss-400/10"
+            >
+              remove
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-line px-2.5 py-1 font-mono text-[10px] tracking-widest text-mist-400 uppercase hover:text-mist-200"
+          >
+            cancel
+          </button>
+          <span className="text-[10px] text-mist-500">
+            Defaults to the board line, or the next corner if the match is already past it.
+          </span>
+        </div>
+      )}
 
       <div className="grid gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div>

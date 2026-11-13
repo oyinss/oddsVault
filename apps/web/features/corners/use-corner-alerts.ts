@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LiveCornerMatch } from "@/lib/api";
+import { pushAlert } from "@/lib/corner-alerts";
 
 export type CornerWatch = {
   eventId: number;
@@ -90,40 +91,44 @@ export function useCornerAlerts(matches: LiveCornerMatch[], line: number) {
     [watches],
   );
 
-  const toggle = useCallback(
-    async (match: LiveCornerMatch) => {
-      const existing = watchesRef.current.find(
-        (watch) => watch.eventId === match.event_id,
-      );
-      if (existing) {
-        persist(
-          watchesRef.current.filter(
-            (watch) => watch.eventId !== match.event_id,
-          ),
-        );
-        return;
-      }
+  const removeWatch = useCallback(
+    (eventId: number) => {
+      persist(watchesRef.current.filter((watch) => watch.eventId !== eventId));
+    },
+    [persist],
+  );
 
+  const setWatch = useCallback(
+    async (match: LiveCornerMatch, requestedThreshold?: number) => {
       // A match already past the line alerts on the next corner, not on a
       // threshold it has already cleared.
       const current = match.total_corners ?? 0;
-      const threshold = Math.max(line, current + 1);
+      const threshold =
+        requestedThreshold && requestedThreshold > 0
+          ? requestedThreshold
+          : Math.max(line, current + 1);
 
-      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      if (
+        typeof Notification !== "undefined" &&
+        Notification.permission === "default"
+      ) {
         await requestPermission();
       }
 
-      persist([
-        ...watchesRef.current,
-        {
-          eventId: match.event_id,
-          home: match.home.name,
-          away: match.away.name,
-          threshold,
-          fired: false,
-        },
-      ]);
-      setNotice(`Alert set for ${match.home.name} v ${match.away.name} at ${threshold} corners.`);
+      const next = watchesRef.current.filter(
+        (watch) => watch.eventId !== match.event_id,
+      );
+      next.push({
+        eventId: match.event_id,
+        home: match.home.name,
+        away: match.away.name,
+        threshold,
+        fired: false,
+      });
+      persist(next);
+      setNotice(
+        `Alert set for ${match.home.name} v ${match.away.name} at ${threshold} corners.`,
+      );
     },
     [line, persist, requestPermission],
   );
@@ -131,19 +136,28 @@ export function useCornerAlerts(matches: LiveCornerMatch[], line: number) {
   // Compare watched matches with the latest poll.
   useEffect(() => {
     if (matches.length === 0) return;
-    const hits: { watch: CornerWatch; match: LiveCornerMatch }[] = [];
+    const hits: { watch: CornerWatch; total: number }[] = [];
     for (const watch of watchesRef.current) {
       if (watch.fired) continue;
       const match = matches.find((item) => item.event_id === watch.eventId);
-      if (!match || match.total_corners === null) continue;
-      if (match.total_corners >= watch.threshold) {
-        hits.push({ watch, match });
+      if (!match) continue;
+      const total = match.total_corners;
+      if (total === null) continue;
+      if (total >= watch.threshold) {
+        hits.push({ watch, total });
       }
     }
     if (hits.length === 0) return;
 
-    for (const { watch, match } of hits) {
-      const body = `${watch.home} v ${watch.away}: ${match.total_corners} corners (alert at ${watch.threshold})`;
+    for (const { watch, total } of hits) {
+      const body = `${watch.home} v ${watch.away}: ${total} corners (alert at ${watch.threshold})`;
+      pushAlert({
+        eventId: watch.eventId,
+        home: watch.home,
+        away: watch.away,
+        corners: total,
+        threshold: watch.threshold,
+      });
       if (
         permission === "granted" &&
         typeof Notification !== "undefined"
@@ -174,7 +188,8 @@ export function useCornerAlerts(matches: LiveCornerMatch[], line: number) {
     permission,
     notice,
     isWatched,
-    toggle,
+    setWatch,
+    removeWatch,
     requestPermission,
     dismissNotice: () => setNotice(null),
   };
