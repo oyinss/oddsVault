@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -564,6 +565,12 @@ func (im *Importer) EnsureCountry(ctx context.Context, name string) (int64, erro
 		return 0, nil
 	}
 	slug := normalize.Slug(key)
+	// Providers spell countries differently; fold the ones that would
+	// otherwise create a second row and lose the flag.
+	lower := strings.ToLower(strings.TrimSpace(name))
+	if alias, ok := countrySlugAliases[lower]; ok {
+		slug = alias
+	}
 
 	var id int64
 	err := im.pool.QueryRow(ctx, `SELECT id FROM countries WHERE slug = $1`, slug).Scan(&id)
@@ -582,6 +589,49 @@ func (im *Importer) EnsureCountry(ctx context.Context, name string) (int64, erro
 		return 0, fmt.Errorf("create country %q: %w", name, err)
 	}
 	return id, nil
+}
+
+// countrySlugAliases maps provider spellings to the canonical country slug.
+var countrySlugAliases = map[string]string{
+	"uae":                          "united-arab-emirates",
+	"u.a.e":                        "united-arab-emirates",
+	"usa":                          "united-states",
+	"u.s.a":                        "united-states",
+	"czech republic":               "czechia",
+	"bosnia-herzegovina":           "bosnia-and-herzegovina",
+	"bosnia herzegovina":           "bosnia-and-herzegovina",
+	"macedonia":                    "north-macedonia",
+	"fyrom":                        "north-macedonia",
+	"cote divoire":                 "ivory-coast",
+	"côte d'ivoire":                "ivory-coast",
+	"congo dr":                     "dr-congo",
+	"democratic republic of congo": "dr-congo",
+	"korea republic":               "south-korea",
+	"republic of korea":            "south-korea",
+	"ir iran":                      "iran",
+	"iran islamic republic":        "iran",
+}
+
+// BackfillCompetitionCountries derives a country from a league name prefix
+// ("UAE. Pro League") wherever the country is still missing.
+func (im *Importer) BackfillCompetitionCountries(ctx context.Context) (int64, error) {
+	tag, err := im.pool.Exec(ctx, `
+		UPDATE competitions c
+		SET country_id = co.id
+		FROM countries co
+		WHERE c.country_id IS NULL
+		  AND co.slug = trim(both '-' from lower(regexp_replace(
+		      CASE lower(split_part(c.name, '.', 1))
+		          WHEN 'uae' THEN 'united arab emirates'
+		          WHEN 'usa' THEN 'united states'
+		          WHEN 'czech republic' THEN 'czechia'
+		          WHEN 'bosnia-herzegovina' THEN 'bosnia-and-herzegovina'
+		          ELSE split_part(c.name, '.', 1)
+		      END, '[^a-zA-Z0-9]+', '-', 'g')))`)
+	if err != nil {
+		return 0, fmt.Errorf("backfill competition countries: %w", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 // EnsureCompetitionByOnexbet resolves a 1xBet league id to a canonical

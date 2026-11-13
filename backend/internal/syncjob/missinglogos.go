@@ -18,6 +18,11 @@ import (
 // gap is filled from TheSportsDB by exact name match only: a wrong logo is worse
 // than initials.
 func (f *Football) RunMissingLogos(ctx context.Context) error {
+	// A league named "UAE. Pro League" can still get its flag from the prefix.
+	if updated, err := f.importer.BackfillCompetitionCountries(ctx); err == nil && updated > 0 {
+		f.log.Info("competition countries backfilled", "updated", updated)
+	}
+
 	gaps, err := f.importer.TeamsMissingLogo(ctx, "football", 25)
 	if err != nil {
 		return err

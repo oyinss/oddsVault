@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { faChartLine } from "@fortawesome/free-solid-svg-icons";
+import { faChartLine, faTrophy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TeamCrest } from "@/components/team-crest";
@@ -171,9 +171,14 @@ function GroupMark({
       />
     );
   }
+  // International and friendly competitions have no country. A neutral league
+  // mark reads better than a letter that looks like a broken badge.
   return (
-    <span className="grid size-6 shrink-0 place-items-center rounded bg-white/[0.06] text-[10px] font-semibold text-mist-400">
-      {competition.slice(0, 1)}
+    <span
+      className="grid size-6 shrink-0 place-items-center rounded bg-white/[0.06] text-mist-400"
+      title={competition}
+    >
+      <FontAwesomeIcon icon={faTrophy} className="size-3" />
     </span>
   );
 }
