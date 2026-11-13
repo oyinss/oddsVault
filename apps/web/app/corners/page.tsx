@@ -18,6 +18,7 @@ import {
   flagUrl,
   formatAge,
   getLiveCorners,
+  type CornerSort,
   type LiveCornerMatch,
   type LiveCorners,
 } from "@/lib/api";
@@ -27,7 +28,7 @@ const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 
 export default function CornersPage() {
   const [line, setLine] = useState(10);
-  const [sort, setSort] = useState<"kickoff" | "projection">("kickoff");
+  const [sort, setSort] = useState<CornerSort>("remaining");
   const { data, loading, error, reload } = useApiData<LiveCorners | null>(
     `live-corners:${line}:${sort}`,
     () => getLiveCorners(line, sort),
@@ -79,15 +80,27 @@ export default function CornersPage() {
               <select
                 value={sort}
                 onChange={(event) =>
-                  setSort(event.target.value as "kickoff" | "projection")
+                  setSort(event.target.value as CornerSort)
                 }
                 className="bg-transparent font-mono text-sm text-mist-100 outline-none"
               >
-                <option value="kickoff" className="bg-ink-900">
-                  Earliest kickoff
+                <option value="remaining" className="bg-ink-900">
+                  Most time left
+                </option>
+                <option value="remaining_asc" className="bg-ink-900">
+                  Least time left
                 </option>
                 <option value="projection" className="bg-ink-900">
                   Highest projection
+                </option>
+                <option value="pace" className="bg-ink-900">
+                  Highest pace
+                </option>
+                <option value="corners" className="bg-ink-900">
+                  Most corners
+                </option>
+                <option value="competition" className="bg-ink-900">
+                  Competition A-Z
                 </option>
               </select>
             </label>

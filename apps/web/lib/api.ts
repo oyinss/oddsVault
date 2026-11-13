@@ -528,9 +528,17 @@ export type LiveCorners = {
   matches: LiveCornerMatch[];
 };
 
+export type CornerSort =
+  | "remaining"
+  | "remaining_asc"
+  | "projection"
+  | "pace"
+  | "corners"
+  | "competition";
+
 export async function getLiveCorners(
   line: number,
-  sort: "kickoff" | "projection" = "kickoff",
+  sort: CornerSort = "remaining",
 ): Promise<LiveCorners | null> {
   try {
     return await getJSON<LiveCorners>(

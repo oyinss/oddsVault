@@ -24,6 +24,7 @@ var crestHosts = map[string]bool{
 	"www.thesportsdb.com": true,
 	"flagcdn.com":         true,
 	"images.fotmob.com":   true,
+	"1xbet.ng":            true,
 }
 
 func crestCacheDir() string {

@@ -107,6 +107,19 @@ func (f *Football) RunOnexbetLive(ctx context.Context) error {
 		}
 		refreshed++
 
+		// 1xBet has artwork for nearly every club it prices, including the
+		// lower divisions no other provider carries.
+		if event.HomeLogoURL != "" {
+			if err := f.importer.SetTeamLogoIfMissing(ctx, stored.HomeTeamID, "onexbet", event.HomeLogoURL); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if event.AwayLogoURL != "" {
+			if err := f.importer.SetTeamLogoIfMissing(ctx, stored.AwayTeamID, "onexbet", event.AwayLogoURL); err != nil {
+				errs = append(errs, err)
+			}
+		}
+
 		if event.HomeCorners != nil && event.AwayCorners != nil {
 			if err := f.importer.SaveCorners(ctx, stored.EventID, "onexbet",
 				stored.HomeTeamID, stored.AwayTeamID,

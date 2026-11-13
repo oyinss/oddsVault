@@ -153,16 +153,51 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Default is the earliest kickoff first, which is also the match closest to
-	// full time. Projection order stays available for pace hunting.
+	// Sorting is the operator's choice. The default puts the most time left
+	// first: a match at 88 minutes is the least useful to join.
 	sortBy := r.URL.Query().Get("sort")
 	if sortBy == "" {
-		sortBy = "kickoff"
+		sortBy = "remaining"
 	}
+
+	floatDesc := func(value func(m liveCornerMatch) *float64) func(i, j int) bool {
+		return func(i, j int) bool {
+			left, right := value(matches[i]), value(matches[j])
+			switch {
+			case left == nil && right == nil:
+				return matches[i].EventID < matches[j].EventID
+			case left == nil:
+				return false
+			case right == nil:
+				return true
+			default:
+				return *left > *right
+			}
+		}
+	}
+
 	switch sortBy {
-	case "projection":
+	case "remaining_asc", "kickoff":
 		sort.SliceStable(matches, func(i, j int) bool {
-			left, right := matches[i].ProjectedTotal, matches[j].ProjectedTotal
+			left, right := matches[i].RemainingMins, matches[j].RemainingMins
+			switch {
+			case left == nil && right == nil:
+				return matches[i].Kickoff < matches[j].Kickoff
+			case left == nil:
+				return false
+			case right == nil:
+				return true
+			default:
+				return *left < *right
+			}
+		})
+	case "projection":
+		sort.SliceStable(matches, floatDesc(func(m liveCornerMatch) *float64 { return m.ProjectedTotal }))
+	case "pace":
+		sort.SliceStable(matches, floatDesc(func(m liveCornerMatch) *float64 { return m.CornersPerMin }))
+	case "corners":
+		sort.SliceStable(matches, func(i, j int) bool {
+			left, right := matches[i].TotalCorners, matches[j].TotalCorners
 			switch {
 			case left == nil && right == nil:
 				return matches[i].EventID < matches[j].EventID
@@ -174,13 +209,27 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 				return *left > *right
 			}
 		})
-	default:
+	case "competition":
 		sort.SliceStable(matches, func(i, j int) bool {
-			left, right := matches[i].Kickoff, matches[j].Kickoff
-			if left == right {
-				return matches[i].EventID < matches[j].EventID
+			if matches[i].Competition == matches[j].Competition {
+				return matches[i].Kickoff < matches[j].Kickoff
 			}
-			return left < right
+			return matches[i].Competition < matches[j].Competition
+		})
+	default: // remaining: most time left first
+		sortBy = "remaining"
+		sort.SliceStable(matches, func(i, j int) bool {
+			left, right := matches[i].RemainingMins, matches[j].RemainingMins
+			switch {
+			case left == nil && right == nil:
+				return matches[i].Kickoff < matches[j].Kickoff
+			case left == nil:
+				return false
+			case right == nil:
+				return true
+			default:
+				return *left > *right
+			}
 		})
 	}
 

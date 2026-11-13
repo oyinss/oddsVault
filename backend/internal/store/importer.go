@@ -612,26 +612,101 @@ var countrySlugAliases = map[string]string{
 	"iran islamic republic":        "iran",
 }
 
-// BackfillCompetitionCountries derives a country from a league name prefix
-// ("UAE. Pro League") wherever the country is still missing.
+// BackfillCompetitionCountries derives a country from a league name.
+//
+// Names arrive as "UAE. Pro League", "Egypt. Second Division B" or
+// "UAE Championship U19". The prefix before the first dot, then the first word,
+// then the first two words are tried against the country table. A prefix that
+// matches nothing is left alone rather than guessed.
 func (im *Importer) BackfillCompetitionCountries(ctx context.Context) (int64, error) {
-	tag, err := im.pool.Exec(ctx, `
-		UPDATE competitions c
-		SET country_id = co.id
-		FROM countries co
-		WHERE c.country_id IS NULL
-		  AND co.slug = trim(both '-' from lower(regexp_replace(
-		      CASE lower(split_part(c.name, '.', 1))
-		          WHEN 'uae' THEN 'united arab emirates'
-		          WHEN 'usa' THEN 'united states'
-		          WHEN 'czech republic' THEN 'czechia'
-		          WHEN 'bosnia-herzegovina' THEN 'bosnia-and-herzegovina'
-		          ELSE split_part(c.name, '.', 1)
-		      END, '[^a-zA-Z0-9]+', '-', 'g')))`)
+	rows, err := im.pool.Query(ctx, `
+		SELECT id, name FROM competitions WHERE country_id IS NULL`)
 	if err != nil {
-		return 0, fmt.Errorf("backfill competition countries: %w", err)
+		return 0, fmt.Errorf("list competitions without country: %w", err)
 	}
-	return tag.RowsAffected(), nil
+
+	type pending struct {
+		id   int64
+		name string
+	}
+	var items []pending
+	for rows.Next() {
+		var item pending
+		if err := rows.Scan(&item.id, &item.name); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		items = append(items, item)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	var updated int64
+	for _, item := range items {
+		for _, candidate := range countryCandidates(item.name) {
+			countryID, err := im.countryIDByName(ctx, candidate)
+			if err != nil {
+				return updated, err
+			}
+			if countryID == 0 {
+				continue
+			}
+			if _, err := im.pool.Exec(ctx,
+				`UPDATE competitions SET country_id = $2 WHERE id = $1 AND country_id IS NULL`,
+				item.id, countryID); err != nil {
+				return updated, fmt.Errorf("set competition country: %w", err)
+			}
+			updated++
+			break
+		}
+	}
+	return updated, nil
+}
+
+// countryCandidates lists the plausible country spellings inside a league name.
+func countryCandidates(name string) []string {
+	var out []string
+	if dot := strings.Index(name, "."); dot > 0 {
+		out = append(out, strings.TrimSpace(name[:dot]))
+	}
+	fields := strings.Fields(name)
+	if len(fields) > 0 {
+		out = append(out, fields[0])
+	}
+	if len(fields) > 1 {
+		// "South Sudan. Division 1" and "Saudi Arabia. Division 3".
+		if _, ok := countrySlugAliases[strings.ToLower(fields[0]+" "+fields[1])]; ok {
+			out = append(out, fields[0]+" "+fields[1])
+		}
+	}
+	return out
+}
+
+// countryIDByName resolves a name to a country without creating one.
+func (im *Importer) countryIDByName(ctx context.Context, name string) (int64, error) {
+	_, key := normalize.Resolve(name)
+	if key == "" {
+		return 0, nil
+	}
+	slug := normalize.Slug(key)
+	if alias, ok := countrySlugAliases[strings.ToLower(strings.TrimSpace(name))]; ok {
+		slug = alias
+	}
+	if alias, ok := countrySlugAliases[slug]; ok {
+		slug = alias
+	}
+
+	var id int64
+	err := im.pool.QueryRow(ctx, `SELECT id FROM countries WHERE slug = $1`, slug).Scan(&id)
+	if err == pgx.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("lookup country %q: %w", name, err)
+	}
+	return id, nil
 }
 
 // EnsureCompetitionByOnexbet resolves a 1xBet league id to a canonical

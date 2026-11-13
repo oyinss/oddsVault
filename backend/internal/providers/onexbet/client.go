@@ -45,18 +45,22 @@ type Event struct {
 	AwayScore       *int
 	HomeCorners     *int
 	AwayCorners     *int
+	HomeLogoURL     string
+	AwayLogoURL     string
 }
 
 type payload struct {
 	Value []struct {
-		ID       int64  `json:"I"`
-		Name     int64  `json:"N"`
-		League   string `json:"L"`
-		Country  string `json:"CN"`
-		LeagueID int64  `json:"LI"`
-		Home     string `json:"O1"`
-		Away     string `json:"O2"`
-		Start    int64  `json:"S"`
+		ID       int64    `json:"I"`
+		Name     int64    `json:"N"`
+		League   string   `json:"L"`
+		Country  string   `json:"CN"`
+		LeagueID int64    `json:"LI"`
+		Home     string   `json:"O1"`
+		Away     string   `json:"O2"`
+		HomeIMG  []string `json:"O1IMG"`
+		AwayIMG  []string `json:"O2IMG"`
+		Start    int64    `json:"S"`
 		SC       struct {
 			FS struct {
 				S1 *int `json:"S1"`
@@ -125,6 +129,8 @@ func (c *Client) FetchLive(ctx context.Context) ([]Event, error) {
 		if raw.Start > 0 {
 			event.StartUTC = time.Unix(raw.Start, 0).UTC()
 		}
+		event.HomeLogoURL = teamLogoURL(raw.HomeIMG)
+		event.AwayLogoURL = teamLogoURL(raw.AwayIMG)
 
 		// Some events report the score per period only.
 		if event.HomeScore == nil && event.AwayScore == nil {
@@ -183,6 +189,14 @@ func periodScore(periods []struct {
 		return nil, nil
 	}
 	return &home, &away
+}
+
+// teamLogoURL builds the public badge URL from the filename in the feed.
+func teamLogoURL(files []string) string {
+	if len(files) == 0 || strings.TrimSpace(files[0]) == "" {
+		return ""
+	}
+	return "https://1xbet.ng/sfiles/logo_teams/" + strings.TrimSpace(files[0])
 }
 
 func parseStat(raw string) *int {

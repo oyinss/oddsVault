@@ -174,3 +174,22 @@ func (im *Importer) TeamsMissingLogo(ctx context.Context, sportSlug string, limi
 	}
 	return out, rows.Err()
 }
+
+// SetTeamLogoIfMissing attaches a badge only when the team has none, so a
+// better existing asset is never replaced by a bookmaker thumbnail.
+func (im *Importer) SetTeamLogoIfMissing(ctx context.Context, teamID int64, provider, logoURL string) error {
+	if logoURL == "" {
+		return nil
+	}
+	_, err := im.pool.Exec(ctx, `
+		INSERT INTO media_assets
+			(entity_type, entity_id, asset_type, source_provider, source_url, license_metadata)
+		VALUES ('team', $1, 'team_logo', $2, $3,
+		        jsonb_build_object('provider', $2::text, 'terms', 'unverified'))
+		ON CONFLICT (entity_type, entity_id, asset_type) DO NOTHING`,
+		teamID, provider, logoURL)
+	if err != nil {
+		return fmt.Errorf("set team logo if missing: %w", err)
+	}
+	return nil
+}
