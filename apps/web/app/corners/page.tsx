@@ -48,7 +48,7 @@ export default function CornersPage() {
               Corner pace board
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mist-300">
-              Corner counts refresh from the live provider every 30 seconds.
+              Corner counts refresh from the live provider every 90 seconds.
               Pace and projection are straight arithmetic from the current count
               and the match clock, so you can compare a match with the line you
               are looking at on the bookmaker.
@@ -200,9 +200,22 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
           </Link>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <CornersCell label={match.home.name} value={match.home_corners} />
-            <CornersCell label={match.away.name} value={match.away_corners} />
-            <CornersCell label="Total" value={match.total_corners} strong />
+            <CornersCell
+              label="Home corners"
+              title={match.home.name}
+              value={match.home_corners}
+            />
+            <CornersCell
+              label="Away corners"
+              title={match.away.name}
+              value={match.away_corners}
+            />
+            <CornersCell
+              label="Total corners"
+              title="Both teams"
+              value={match.total_corners}
+              strong
+            />
           </div>
         </div>
 
@@ -266,10 +279,12 @@ function CompetitionFlag({ iso }: { iso: string | null }) {
 
 function CornersCell({
   label,
+  title,
   value,
   strong,
 }: {
   label: string;
+  title: string;
   value: number | null;
   strong?: boolean;
 }) {
@@ -280,10 +295,10 @@ function CornersCell({
           ? "border-turf-400/30 bg-turf-500/10"
           : "border-line bg-white/[0.02]"
       }`}
-      title={label}
+      title={title}
     >
       <span className="font-mono text-[9px] tracking-wide text-mist-500 uppercase">
-        {strong ? "total" : "corners"}
+        {label}
       </span>
       <span
         className={`ml-2 font-mono tabular-nums ${
