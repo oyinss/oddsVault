@@ -476,3 +476,42 @@ func sameScore(prevHome, home, prevAway, away *int) bool {
 	}
 	return *prevHome == *home && *prevAway == *away
 }
+
+// EnsureCompetition resolves an ESPN league code to a canonical competition
+// slug, creating a reference row the first time the league is seen.
+//
+// Competition rows are product configuration like any other, so a league that
+// only appears in live discovery still gets a stable slug that the events can
+// point at. The name comes from the provider, not from a guess.
+func (im *Importer) EnsureCompetition(ctx context.Context, sportSlug, code, name string) (string, error) {
+	var slug string
+	err := im.pool.QueryRow(ctx,
+		`SELECT slug FROM competitions WHERE espn_code = $1`, code).Scan(&slug)
+	if err == nil {
+		return slug, nil
+	}
+	if err != pgx.ErrNoRows {
+		return "", fmt.Errorf("lookup competition for %q: %w", code, err)
+	}
+
+	display := name
+	if display == "" {
+		display = code
+	}
+	slug = normalize.Slug(code)
+
+	if _, err := im.pool.Exec(ctx, `
+		INSERT INTO competitions (sport_id, name, slug, type, espn_code)
+		SELECT id, $2, $3, 'league', $4 FROM sports WHERE slug = $1
+		ON CONFLICT (sport_id, slug) DO UPDATE SET
+			espn_code = COALESCE(competitions.espn_code, EXCLUDED.espn_code)`,
+		sportSlug, display, slug, code); err != nil {
+		return "", fmt.Errorf("create competition %q: %w", code, err)
+	}
+
+	if err := im.pool.QueryRow(ctx,
+		`SELECT slug FROM competitions WHERE espn_code = $1`, code).Scan(&slug); err != nil {
+		return "", fmt.Errorf("resolve competition %q: %w", code, err)
+	}
+	return slug, nil
+}

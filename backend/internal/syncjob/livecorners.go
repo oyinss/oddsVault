@@ -27,17 +27,16 @@ func (f *Football) RunLiveCorners(ctx context.Context) error {
 	var errs []error
 
 	for _, candidate := range candidates {
-		stats, err := adapter.FetchMatchStats(ctx, candidate.CompetitionSlug, candidate.ProviderEventID)
+		stats, err := adapter.FetchMatchStats(ctx, candidate.ESPNRef, candidate.ProviderEventID)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("live corners event %d: %w", candidate.EventID, err))
 			continue
 		}
-		if stats.HomeCorners == nil || stats.AwayCorners == nil {
-			continue
-		}
+		// A nil pair clears stale counts; an absent statistic must not look like
+		// a real zero.
 		if err := f.importer.SaveCorners(ctx, candidate.EventID, "espn",
 			candidate.HomeTeamID, candidate.AwayTeamID,
-			*stats.HomeCorners, *stats.AwayCorners); err != nil {
+			stats.HomeCorners, stats.AwayCorners); err != nil {
 			errs = append(errs, err)
 			continue
 		}

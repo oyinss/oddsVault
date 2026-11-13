@@ -22,7 +22,7 @@ func (f *Football) RunStats(ctx context.Context) error {
 	var errs []error
 
 	for _, candidate := range candidates {
-		stats, err := adapter.FetchMatchStats(ctx, candidate.CompetitionSlug, candidate.ProviderEventID)
+		stats, err := adapter.FetchMatchStats(ctx, candidate.ESPNRef, candidate.ProviderEventID)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("stats event %d: %w", candidate.EventID, err))
 			continue
@@ -31,7 +31,7 @@ func (f *Football) RunStats(ctx context.Context) error {
 			continue
 		}
 		if err := f.importer.SaveCorners(ctx, candidate.EventID, "espn",
-			candidate.HomeTeamID, candidate.AwayTeamID, *stats.HomeCorners, *stats.AwayCorners); err != nil {
+			candidate.HomeTeamID, candidate.AwayTeamID, stats.HomeCorners, stats.AwayCorners); err != nil {
 			errs = append(errs, err)
 			continue
 		}

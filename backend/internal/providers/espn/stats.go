@@ -50,15 +50,22 @@ type summaryPayload struct {
 
 // FetchMatchStats reads corner counts and completion state for one event.
 func (c *Client) FetchMatchStats(ctx context.Context, competitionSlug, eventID string) (MatchStats, error) {
-	spec, ok := leagues[competitionSlug]
-	if !ok {
+	// The caller passes an ESPN league code when the competition was discovered
+	// outside the catalogue, and one of our slugs otherwise.
+	path := ""
+	if spec, ok := leagues[competitionSlug]; ok {
+		path = spec.Path
+	} else if competitionSlug != "" {
+		path = "soccer/" + competitionSlug
+	}
+	if path == "" {
 		return MatchStats{}, fmt.Errorf("espn: no league code for %q", competitionSlug)
 	}
 
 	res, err := c.http.Get(ctx, providers.Request{
 		Provider: "espn",
 		CacheKey: competitionSlug + "/summary/" + eventID,
-		URL:      fmt.Sprintf("%s/%s/summary?event=%s", baseURL, spec.Path, eventID),
+		URL:      fmt.Sprintf("%s/%s/summary?event=%s", baseURL, path, eventID),
 		MaxAge:   time.Hour,
 		Headers:  map[string]string{"Accept": "application/json"},
 	})
@@ -90,15 +97,25 @@ func (c *Client) FetchMatchStats(ctx context.Context, competitionSlug, eventID s
 		}
 	}
 
+	// Some competitions publish a placeholder statistics block where every
+	// number is "0". That is an absent statistic, not a real zero, so it must
+	// not reach the corner board. Possession or shots above zero proves the
+	// block is real.
+	realStats := false
+
 	for _, team := range doc.Boxscore.Teams {
 		var corners *int
 		for _, stat := range team.Statistics {
-			if stat.Name != "wonCorners" {
-				continue
-			}
-			if value, err := strconv.Atoi(stat.DisplayValue); err == nil {
-				v := value
-				corners = &v
+			switch stat.Name {
+			case "possessionPct", "totalShots":
+				if value, err := strconv.ParseFloat(stat.DisplayValue, 64); err == nil && value > 0 {
+					realStats = true
+				}
+			case "wonCorners":
+				if value, err := strconv.Atoi(stat.DisplayValue); err == nil {
+					v := value
+					corners = &v
+				}
 			}
 		}
 		switch team.Team.ID {
@@ -107,6 +124,10 @@ func (c *Client) FetchMatchStats(ctx context.Context, competitionSlug, eventID s
 		case awayID:
 			stats.AwayCorners = corners
 		}
+	}
+	if !realStats {
+		stats.HomeCorners = nil
+		stats.AwayCorners = nil
 	}
 	return stats, nil
 }

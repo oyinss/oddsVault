@@ -236,9 +236,11 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
       <footer className="flex items-center justify-between gap-2 border-t border-line px-4 py-2">
         <PaceBadge pace={match.pace} line={line} />
         <span className="font-mono text-[10px] text-mist-500">
-          {match.remaining_minutes !== null
-            ? `${match.remaining_minutes} min left`
-            : "clock unavailable"}
+          {match.total_corners === null
+            ? "corners not published by provider"
+            : match.remaining_minutes !== null
+              ? `${match.remaining_minutes} min left`
+              : "clock unavailable"}
         </span>
       </footer>
     </article>

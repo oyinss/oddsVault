@@ -7,8 +7,10 @@ import (
 
 // StatsCandidate is a finished event whose provider stats are still missing.
 type StatsCandidate struct {
-	EventID         int64
-	CompetitionSlug string
+	EventID int64
+	// ESPNRef is the provider's league code when known, otherwise the
+	// canonical competition slug the adapter maps itself.
+	ESPNRef         string
 	ProviderEventID string
 	HomeTeamID      int64
 	AwayTeamID      int64
@@ -18,7 +20,7 @@ type StatsCandidate struct {
 // counts.
 func (im *Importer) EventsNeedingStats(ctx context.Context, limit int) ([]StatsCandidate, error) {
 	rows, err := im.pool.Query(ctx, `
-		SELECT e.id, c.slug, epi.provider_event_id, hp.team_id, ap.team_id
+		SELECT e.id, COALESCE(c.espn_code, c.slug), epi.provider_event_id, hp.team_id, ap.team_id
 		FROM events e
 		JOIN competitions c ON c.id = e.competition_id
 		JOIN event_provider_ids epi ON epi.event_id = e.id AND epi.provider = 'espn'
@@ -39,7 +41,7 @@ func (im *Importer) EventsNeedingStats(ctx context.Context, limit int) ([]StatsC
 	var out []StatsCandidate
 	for rows.Next() {
 		var item StatsCandidate
-		if err := rows.Scan(&item.EventID, &item.CompetitionSlug, &item.ProviderEventID,
+		if err := rows.Scan(&item.EventID, &item.ESPNRef, &item.ProviderEventID,
 			&item.HomeTeamID, &item.AwayTeamID); err != nil {
 			return nil, err
 		}
@@ -48,11 +50,13 @@ func (im *Importer) EventsNeedingStats(ctx context.Context, limit int) ([]StatsC
 	return out, rows.Err()
 }
 
-// SaveCorners records both teams' corner counts for an event.
-func (im *Importer) SaveCorners(ctx context.Context, eventID int64, provider string, homeTeamID, awayTeamID int64, home, away int) error {
+// SaveCorners records both teams' corner counts for an event. A nil count
+// clears a previous value: a provider that stops publishing statistics must not
+// leave a false zero behind.
+func (im *Importer) SaveCorners(ctx context.Context, eventID int64, provider string, homeTeamID, awayTeamID int64, home, away *int) error {
 	for _, row := range []struct {
 		teamID int64
-		value  int
+		value  *int
 	}{{homeTeamID, home}, {awayTeamID, away}} {
 		if _, err := im.pool.Exec(ctx, `
 			INSERT INTO team_match_stats (event_id, team_id, corners, provider)
@@ -163,7 +167,7 @@ func (im *Importer) VerifyCornerLegs(ctx context.Context) (verified, mismatches 
 // refreshed from the provider.
 type LiveCornerCandidate struct {
 	EventID         int64
-	CompetitionSlug string
+	ESPNRef         string
 	ProviderEventID string
 	HomeTeamID      int64
 	AwayTeamID      int64
@@ -173,7 +177,7 @@ type LiveCornerCandidate struct {
 // for. Only linked events qualify: an unlinked live match would need a guess.
 func (im *Importer) LiveCornerCandidates(ctx context.Context, limit int) ([]LiveCornerCandidate, error) {
 	rows, err := im.pool.Query(ctx, `
-		SELECT e.id, c.slug, epi.provider_event_id, hp.team_id, ap.team_id
+		SELECT e.id, COALESCE(c.espn_code, c.slug), epi.provider_event_id, hp.team_id, ap.team_id
 		FROM events e
 		JOIN competitions c ON c.id = e.competition_id
 		JOIN sports sp ON sp.id = e.sport_id
@@ -191,7 +195,7 @@ func (im *Importer) LiveCornerCandidates(ctx context.Context, limit int) ([]Live
 	var out []LiveCornerCandidate
 	for rows.Next() {
 		var item LiveCornerCandidate
-		if err := rows.Scan(&item.EventID, &item.CompetitionSlug, &item.ProviderEventID,
+		if err := rows.Scan(&item.EventID, &item.ESPNRef, &item.ProviderEventID,
 			&item.HomeTeamID, &item.AwayTeamID); err != nil {
 			return nil, err
 		}
