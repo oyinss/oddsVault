@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -220,4 +221,58 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// TeamSuggestion is a team result from FotMob's search.
+type TeamSuggestion struct {
+	ID   int64
+	Name string
+}
+
+type searchPayload []struct {
+	Suggestions []struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"suggestions"`
+}
+
+// SearchTeams looks a club up by name. It is used only to find artwork: the
+// collective is matched by exact name afterwards, never by proximity.
+func (c *Client) SearchTeams(ctx context.Context, name string) ([]TeamSuggestion, error) {
+	res, err := c.http.Get(ctx, providers.Request{
+		Provider: "fotmob",
+		CacheKey: "search/" + name,
+		URL:      fmt.Sprintf("%s/search/suggest?term=%s&lang=en", baseURL, url.QueryEscape(name)),
+		MaxAge:   24 * time.Hour,
+		Headers:  map[string]string{"Accept": "application/json"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var doc searchPayload
+	if err := json.Unmarshal(res.Body, &doc); err != nil {
+		return nil, fmt.Errorf("fotmob: decode search: %w", err)
+	}
+
+	out := make([]TeamSuggestion, 0, 4)
+	for _, group := range doc {
+		for _, item := range group.Suggestions {
+			if item.Type != "team" {
+				continue
+			}
+			id, err := strconv.ParseInt(item.ID, 10, 64)
+			if err != nil || id <= 0 {
+				continue
+			}
+			out = append(out, TeamSuggestion{ID: id, Name: item.Name})
+		}
+	}
+	return out, nil
+}
+
+// TeamLogoURL builds the badge URL for a FotMob team id.
+func TeamLogoURL(id int64) string {
+	return fmt.Sprintf("https://images.fotmob.com/image_resources/logo/teamlogo/%d_small.png", id)
 }

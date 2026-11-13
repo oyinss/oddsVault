@@ -157,7 +157,7 @@ func (im *Importer) TeamsMissingLogo(ctx context.Context, sportSlug string, limi
 		      JOIN events e ON e.id = ep.event_id
 		      WHERE ep.team_id = t.id AND e.status = 'live'
 		  )
-		ORDER BY t.id
+		ORDER BY random()
 		LIMIT $2`, sportSlug, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list teams missing logo: %w", err)
