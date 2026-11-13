@@ -554,3 +554,42 @@ func (im *Importer) EnsureCompetitionByFotmob(ctx context.Context, sportSlug str
 	}
 	return slug, nil
 }
+
+// EnsureCompetitionByOnexbet resolves a 1xBet league id to a canonical
+// competition slug, creating a reference row the first time the league is seen.
+func (im *Importer) EnsureCompetitionByOnexbet(ctx context.Context, sportSlug string, leagueID int64, name string) (string, error) {
+	var slug string
+	err := im.pool.QueryRow(ctx,
+		`SELECT slug FROM competitions WHERE onexbet_league_id = $1`, leagueID).Scan(&slug)
+	if err == nil {
+		return slug, nil
+	}
+	if err != pgx.ErrNoRows {
+		return "", fmt.Errorf("lookup competition for 1xbet %d: %w", leagueID, err)
+	}
+
+	display := name
+	if display == "" {
+		display = fmt.Sprintf("1xBet league %d", leagueID)
+	}
+	_, key := normalize.Resolve(display)
+	slug = normalize.Slug(key)
+	if slug == "" {
+		slug = fmt.Sprintf("onexbet-%d", leagueID)
+	}
+
+	if _, err := im.pool.Exec(ctx, `
+		INSERT INTO competitions (sport_id, name, slug, type, onexbet_league_id)
+		SELECT id, $2, $3, 'league', $4 FROM sports WHERE slug = $1
+		ON CONFLICT (sport_id, slug) DO UPDATE SET
+			onexbet_league_id = COALESCE(competitions.onexbet_league_id, EXCLUDED.onexbet_league_id)`,
+		sportSlug, display, slug, leagueID); err != nil {
+		return "", fmt.Errorf("create competition from 1xbet %d: %w", leagueID, err)
+	}
+
+	if err := im.pool.QueryRow(ctx,
+		`SELECT slug FROM competitions WHERE onexbet_league_id = $1`, leagueID).Scan(&slug); err != nil {
+		return "", fmt.Errorf("resolve competition from 1xbet %d: %w", leagueID, err)
+	}
+	return slug, nil
+}

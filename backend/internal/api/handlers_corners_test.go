@@ -17,6 +17,7 @@ func TestParseMinute(t *testing.T) {
 		{detail: "Fri, November 13th at 12:00 PM EST", want: nil},
 		{detail: "", want: nil},
 		{detail: "FT", want: nil},
+		{detail: "51 minutes", want: intPtr(51)},
 	}
 	for _, tc := range tests {
 		got := parseMinute(tc.detail)

@@ -247,3 +247,43 @@ func (im *Importer) FindEventByTeamNames(ctx context.Context, sportSlug, home, a
 	}
 	return &out, nil
 }
+
+// FindEventByPartialTeams matches an event when one team name is exact and the
+// other starts the same way. Providers spell clubs differently ("Comoros" and
+// "Comoro Islands"), and without this a discovery run would create a second
+// event for a match already stored.
+func (im *Importer) FindEventByPartialTeams(ctx context.Context, sportSlug, home, away string, start time.Time) (*EventTeams, error) {
+	_, homeKey := normalize.Resolve(home)
+	_, awayKey := normalize.Resolve(away)
+	if homeKey == "" || awayKey == "" {
+		return nil, nil
+	}
+
+	var out EventTeams
+	err := im.pool.QueryRow(ctx, `
+		SELECT e.id, hp.team_id, ap.team_id
+		FROM events e
+		JOIN sports sp ON sp.id = e.sport_id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN teams ht ON ht.id = hp.team_id AND ht.sport_id = sp.id
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		JOIN teams at ON at.id = ap.team_id AND at.sport_id = sp.id
+		WHERE sp.slug = $1
+		  AND e.start_date BETWEEN $4::date - 1 AND $4::date + 1
+		  AND (
+		      (ht.name_key = $2 AND (at.name_key = $3 OR left(at.name_key, 5) = left($3, 5)))
+		      OR
+		      (at.name_key = $3 AND (ht.name_key = $2 OR left(ht.name_key, 5) = left($2, 5)))
+		  )
+		ORDER BY abs(e.start_date - $4::date),
+		         abs(extract(epoch FROM (COALESCE(e.start_time, e.start_date::timestamptz) - $4::timestamptz))),
+		         e.id
+		LIMIT 1`, sportSlug, homeKey, awayKey, start).Scan(&out.EventID, &out.HomeTeamID, &out.AwayTeamID)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("match event by partial teams: %w", err)
+	}
+	return &out, nil
+}

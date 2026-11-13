@@ -34,10 +34,13 @@ func main() {
 	corners := flag.Bool("corners", false, "refresh live corner counts once and exit")
 	allLive := flag.Bool("alllive", false, "import every live soccer fixture once and exit")
 	fotmob := flag.Bool("fotmob", false, "refresh live corners from FotMob once and exit")
+	onexbetFlag := flag.Bool("onexbet", false, "import 1xBet live football once and exit")
 	flag.Parse()
 
 	var err error
 	switch {
+	case *onexbetFlag:
+		err = runOnexbetOnce()
 	case *fotmob:
 		err = runFotmobOnce()
 	case *allLive:
@@ -116,6 +119,35 @@ func runMultiSportOnce() error {
 		logger,
 	)
 	return football.RunMultiSportFixtures(ctx)
+}
+
+// runOnexbetOnce imports the live football feed from 1xBet once.
+func runOnexbetOnce() error {
+	cfg, err := config.Load("oddsvault-sports-sync")
+	if err != nil {
+		return err
+	}
+	logger := logging.New(cfg.Env, cfg.LogLevel)
+	slog.SetDefault(logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.JobTimeout)
+	defer cancel()
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := database.Ping(ctx, pool, cfg.ConnectTimeout); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+
+	football := syncjob.NewFootball(
+		providers.NewClient(pool, logger, "OddsVault/0.1 (research)"),
+		store.NewImporter(pool, logger),
+		logger,
+	)
+	return football.RunOnexbetLive(ctx)
 }
 
 // runFotmobOnce refreshes live corner counts from FotMob only.
@@ -267,6 +299,11 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Name:  "sync_all_live_soccer",
 			Every: 2 * time.Minute,
 			Run:   football.RunAllLive,
+		},
+		{
+			Name:  "sync_onexbet_live",
+			Every: 3 * time.Minute,
+			Run:   football.RunOnexbetLive,
 		},
 		{
 			Name:  "sync_fotmob_corners",

@@ -40,7 +40,7 @@ func (f *Football) RunFotmobLive(ctx context.Context) error {
 	// Pass 1: import fixtures we do not already have.
 	states := make([]providers.LiveState, 0, len(live))
 	for _, match := range live {
-		existing, err := f.importer.FindEventByTeamNames(ctx, "football", match.Home, match.Away, match.StartUTC)
+		existing, err := f.importer.FindEventByPartialTeams(ctx, "football", match.Home, match.Away, match.StartUTC)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -95,7 +95,7 @@ func (f *Football) RunFotmobLive(ctx context.Context) error {
 	saved := 0
 	unmatched := 0
 	for _, match := range live {
-		event, err := f.importer.FindEventByTeamNames(ctx, "football", match.Home, match.Away, match.StartUTC)
+		event, err := f.importer.FindEventByPartialTeams(ctx, "football", match.Home, match.Away, match.StartUTC)
 		if err != nil {
 			errs = append(errs, err)
 			continue
