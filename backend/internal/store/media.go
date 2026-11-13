@@ -135,3 +135,42 @@ func (im *Importer) TeamHasLogo(ctx context.Context, sportSlug, nameKey string) 
 	}
 	return exists, nil
 }
+
+// TeamLogoGap is a team that appears in a live event without a badge.
+type TeamLogoGap struct {
+	ID   int64
+	Name string
+}
+
+// TeamsMissingLogo lists teams playing right now that have no active badge.
+// The limit keeps third-party lookups bounded on a busy slate.
+func (im *Importer) TeamsMissingLogo(ctx context.Context, sportSlug string, limit int) ([]TeamLogoGap, error) {
+	rows, err := im.pool.Query(ctx, `
+		SELECT t.id, t.name
+		FROM teams t
+		JOIN sports s ON s.id = t.sport_id
+		LEFT JOIN media_assets ma ON ma.entity_type = 'team' AND ma.entity_id = t.id
+		                          AND ma.asset_type = 'team_logo' AND ma.active
+		WHERE s.slug = $1 AND ma.id IS NULL
+		  AND EXISTS (
+		      SELECT 1 FROM event_participants ep
+		      JOIN events e ON e.id = ep.event_id
+		      WHERE ep.team_id = t.id AND e.status = 'live'
+		  )
+		ORDER BY t.id
+		LIMIT $2`, sportSlug, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list teams missing logo: %w", err)
+	}
+	defer rows.Close()
+
+	var out []TeamLogoGap
+	for rows.Next() {
+		var item TeamLogoGap
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
