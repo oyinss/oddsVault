@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { config, type IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faBars,
+  faBullseye,
   faCalendarDays,
   faChartColumn,
   faChartLine,
@@ -34,6 +35,7 @@ const NAV: {
 }[] = [
   { label: "Events", href: "/events", ready: true, icon: faCalendarDays },
   { label: "Live", href: "/live", ready: true, icon: faTowerBroadcast },
+  { label: "Corners", href: "/corners", ready: true, icon: faBullseye },
   { label: "Odds", href: "/odds", ready: true, icon: faChartLine },
   { label: "Snapshots", href: "/snapshots", ready: true, icon: faClockRotateLeft },
   { label: "My Bets", href: "/my-bets", ready: true, locked: true, icon: faTicket },

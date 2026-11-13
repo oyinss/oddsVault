@@ -31,10 +31,13 @@ func main() {
 	once := flag.Bool("once", false, "run one sync and exit")
 	live := flag.Bool("live", false, "poll live scores once and exit")
 	fixtures := flag.Bool("fixtures", false, "rebuild multi-sport fixtures once and exit")
+	corners := flag.Bool("corners", false, "refresh live corner counts once and exit")
 	flag.Parse()
 
 	var err error
 	switch {
+	case *corners:
+		err = runLiveCornersOnce()
 	case *fixtures:
 		err = runMultiSportOnce()
 	case *live:
@@ -109,6 +112,35 @@ func runMultiSportOnce() error {
 	return football.RunMultiSportFixtures(ctx)
 }
 
+// runLiveCornersOnce refreshes corner counts for matches in progress only.
+func runLiveCornersOnce() error {
+	cfg, err := config.Load("oddsvault-sports-sync")
+	if err != nil {
+		return err
+	}
+	logger := logging.New(cfg.Env, cfg.LogLevel)
+	slog.SetDefault(logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.JobTimeout)
+	defer cancel()
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := database.Ping(ctx, pool, cfg.ConnectTimeout); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+
+	football := syncjob.NewFootball(
+		providers.NewClient(pool, logger, "OddsVault/0.1 (research)"),
+		store.NewImporter(pool, logger),
+		logger,
+	)
+	return football.RunLiveCorners(ctx)
+}
+
 func runOnce() error {
 	cfg, err := config.Load("oddsvault-sports-sync")
 	if err != nil {
@@ -166,6 +198,11 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Name:  "sync_multi_sport_fixtures",
 			Every: syncInterval,
 			Run:   football.RunMultiSportFixtures,
+		},
+		{
+			Name:  "sync_live_corners",
+			Every: 90 * time.Second,
+			Run:   football.RunLiveCorners,
 		},
 		{
 			Name:  "sync_live_scores",

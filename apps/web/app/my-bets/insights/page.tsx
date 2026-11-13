@@ -156,6 +156,74 @@ function InsightsView() {
               />
             </Section>
 
+            <Section
+              title="What changes the outcome"
+              note="Slip-level patterns: bet type, time of day and slip size. Each row shows its own slip count."
+            >
+              <div className="divide-y divide-white/[0.05]">
+                {(data.factors ?? []).map((group) => (
+                  <div key={group.group} className="px-4 py-3">
+                    <p className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+                      {group.group.replace("_", " ")}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-mist-500">{group.note}</p>
+                    <table className="mt-2 w-full text-left">
+                      <tbody>
+                        {group.rows.map((row) => (
+                          <tr key={row.label} className="border-t border-white/[0.04]">
+                            <td className="py-1.5 pr-3 text-xs text-mist-200">
+                              {row.label}
+                            </td>
+                            <td className="px-2 py-1.5 font-mono text-[11px] text-mist-400">
+                              {row.bets} {row.bets === 1 ? "slip" : "slips"}
+                            </td>
+                            <td className="px-2 py-1.5 font-mono text-[11px] text-mist-400">
+                              {row.won}W / {row.lost}L
+                            </td>
+                            <td
+                              className={`px-2 py-1.5 text-right font-mono text-[11px] ${
+                                row.profit_loss >= 0 ? "text-turf-300" : "text-flag-400"
+                              }`}
+                            >
+                              {formatMoney(row.profit_loss)}
+                            </td>
+                            <td
+                              className={`py-1.5 pl-2 text-right font-mono text-[11px] ${
+                                row.roi >= 0 ? "text-turf-300" : "text-flag-400"
+                              }`}
+                            >
+                              {(row.roi * 100).toFixed(1)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+                {(data.factors ?? []).length === 0 && (
+                  <p className="px-4 py-4 text-xs text-mist-500">
+                    Not enough samples yet.
+                  </p>
+                )}
+              </div>
+            </Section>
+
+            <Section
+              title="By fixture"
+              note="Only legs linked to a stored match. Corner bets are not attributable to one team, so the pairing is the unit."
+            >
+              <Table
+                head={["Fixture", "Legs", "Won", "Lost", "Rate"]}
+                rows={(data.fixtures ?? []).map((row) => [
+                  row.label,
+                  String(row.legs),
+                  String(row.won),
+                  String(row.lost),
+                  `${(row.rate * 100).toFixed(1)}% (${row.won + row.lost})`,
+                ])}
+              />
+            </Section>
+
             <Section title="By leg odds" note="Price you took for each leg.">
               <Table
                 head={["Odds range", "Legs", "Won", "Lost", "Rate"]}

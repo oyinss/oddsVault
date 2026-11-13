@@ -425,6 +425,28 @@ export type BetInsights = {
     returned: number;
     profit_loss: number;
   }>;
+  factors?: Array<{
+    group: string;
+    note: string;
+    rows: Array<{
+      label: string;
+      bets: number;
+      staked: number;
+      returned: number;
+      profit_loss: number;
+      won: number;
+      lost: number;
+      roi: number;
+    }>;
+  }>;
+  fixtures?: Array<{
+    label: string;
+    legs: number;
+    won: number;
+    lost: number;
+    rate: number;
+    verified: number;
+  }>;
   disagreements: Array<{
     leg_id: number;
     event_raw: string;
@@ -468,6 +490,42 @@ export async function getHomeSummary(
     return await getJSON<HomeSummary>(
       `/api/v1/home/summary?sport=${encodeURIComponent(sport)}&date=${encodeURIComponent(date)}`,
     );
+  } catch {
+    return null;
+  }
+}
+
+export type LiveCornerMatch = {
+  event_id: number;
+  competition: string;
+  home: { id: number; name: string; crest_url: string | null };
+  away: { id: number; name: string; crest_url: string | null };
+  home_score: number | null;
+  away_score: number | null;
+  clock: string;
+  minute: number | null;
+  home_corners: number | null;
+  away_corners: number | null;
+  total_corners: number | null;
+  projected_total: number | null;
+  corners_per_minute: number | null;
+  remaining_minutes: number | null;
+  needed: number | null;
+  needed_per_minute: number | null;
+  captured_at: string | null;
+  pace: "above" | "below" | "on_pace" | "unknown";
+};
+
+export type LiveCorners = {
+  generated_at: string;
+  line: number;
+  count: number;
+  matches: LiveCornerMatch[];
+};
+
+export async function getLiveCorners(line: number): Promise<LiveCorners | null> {
+  try {
+    return await getJSON<LiveCorners>(`/api/v1/corners/live?line=${line}`);
   } catch {
     return null;
   }

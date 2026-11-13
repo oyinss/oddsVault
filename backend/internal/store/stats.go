@@ -158,3 +158,44 @@ func (im *Importer) VerifyCornerLegs(ctx context.Context) (verified, mismatches 
 	}
 	return verified, mismatches, nil
 }
+
+// LiveCornerCandidate is a live football event whose corner counts can be
+// refreshed from the provider.
+type LiveCornerCandidate struct {
+	EventID         int64
+	CompetitionSlug string
+	ProviderEventID string
+	HomeTeamID      int64
+	AwayTeamID      int64
+}
+
+// LiveCornerCandidates lists events in progress that ESPN can report corners
+// for. Only linked events qualify: an unlinked live match would need a guess.
+func (im *Importer) LiveCornerCandidates(ctx context.Context, limit int) ([]LiveCornerCandidate, error) {
+	rows, err := im.pool.Query(ctx, `
+		SELECT e.id, c.slug, epi.provider_event_id, hp.team_id, ap.team_id
+		FROM events e
+		JOIN competitions c ON c.id = e.competition_id
+		JOIN sports sp ON sp.id = e.sport_id
+		JOIN event_provider_ids epi ON epi.event_id = e.id AND epi.provider = 'espn'
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		WHERE e.status = 'live' AND sp.slug = 'football'
+		ORDER BY COALESCE(e.start_time, e.start_date::timestamptz) ASC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list live corner candidates: %w", err)
+	}
+	defer rows.Close()
+
+	var out []LiveCornerCandidate
+	for rows.Next() {
+		var item LiveCornerCandidate
+		if err := rows.Scan(&item.EventID, &item.CompetitionSlug, &item.ProviderEventID,
+			&item.HomeTeamID, &item.AwayTeamID); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
