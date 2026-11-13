@@ -11,6 +11,7 @@ import {
   faChartLine,
   faClockRotateLeft,
   faLock,
+  faMagnifyingGlass,
   faTicket,
   faTowerBroadcast,
   faHeartPulse,
@@ -147,6 +148,21 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <Link
+              href="/search"
+              aria-label="Search fixtures"
+              title="Search fixtures"
+              className={`grid size-9 place-items-center rounded-lg border text-mist-300 transition hover:border-line-strong hover:bg-raised hover:text-mist-100 ${
+                isActive("/search")
+                  ? "border-turf-400/40 bg-turf-500/10 text-turf-300"
+                  : "border-line"
+              }`}
+            >
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
+                style={{ width: 13, height: 13 }}
+              />
+            </Link>
             <ThemeToggle />
             <span className="hidden rounded-full border border-line-strong px-3 py-1 font-mono text-[11px] tracking-widest text-mist-400 uppercase lg:inline-flex">
               Phase 7

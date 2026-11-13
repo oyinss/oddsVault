@@ -473,6 +473,22 @@ export async function getHomeSummary(
   }
 }
 
+export type SearchResult = {
+  query: string;
+  count: number;
+  events: EventItem[];
+};
+
+export async function searchEvents(query: string): Promise<SearchResult | null> {
+  try {
+    return await getJSON<SearchResult>(
+      `/api/v1/search?q=${encodeURIComponent(query)}&limit=30`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export type BoardPrice = {
   bookmaker: string;
   bookmaker_name: string;
