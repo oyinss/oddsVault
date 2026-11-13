@@ -13,7 +13,9 @@ import {
   faFlag,
   faGaugeHigh,
   faLayerGroup,
+  faMagnifyingGlass,
   faRulerHorizontal,
+  faXmark,
   faTriangleExclamation,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
@@ -38,6 +40,7 @@ const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 
 export default function CornersPage() {
   const [line, setLine] = useState(10);
+  const [search, setSearch] = useState("");
   const [sort, setSort] = useState<CornerSort>("remaining");
   const [then, setThen] = useState<CornerSort | "">("");
   const sortParam = then ? `${sort},${then}` : sort;
@@ -49,6 +52,15 @@ export default function CornersPage() {
 
   const matches = data?.matches ?? [];
   const alerts = useCornerAlerts(matches, line);
+  const needle = search.trim().toLowerCase();
+  const visible = needle
+    ? matches.filter((match) =>
+        [match.home.name, match.away.name, match.competition]
+          .join(" ")
+          .toLowerCase()
+          .includes(needle),
+      )
+    : matches;
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState("10");
 
@@ -137,6 +149,29 @@ export default function CornersPage() {
                 <option value="competition" className="bg-ink-900">Competition A-Z</option>
               </select>
             </label>
+            <div className="relative min-w-[200px] flex-1">
+              <FontAwesomeIcon
+                icon={faMagnifyingGlass}
+                className="pointer-events-none absolute top-1/2 left-3 size-3 -translate-y-1/2 text-mist-500"
+              />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search team or competition"
+                aria-label="Search live matches"
+                className="w-full rounded-xl border border-line bg-ink-900 py-2 pr-9 pl-9 text-sm text-mist-100 placeholder:text-mist-500 focus:border-turf-400/50 focus:outline-none"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                  className="absolute top-1/2 right-2 grid size-6 -translate-y-1/2 place-items-center rounded-md text-mist-500 hover:bg-raised hover:text-mist-200"
+                >
+                  <FontAwesomeIcon icon={faXmark} className="size-2.5" />
+                </button>
+              )}
+            </div>
             <button
               type="button"
               onClick={reload}
@@ -151,7 +186,9 @@ export default function CornersPage() {
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <p className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
             {data?.generated_at ? formatAge(data.generated_at) : "not loaded"} ·{" "}
-            {matches.length} live {matches.length === 1 ? "match" : "matches"}
+            {needle
+              ? `${visible.length} of ${matches.length} matches`
+              : `${matches.length} live ${matches.length === 1 ? "match" : "matches"}`}
           </p>
           {alerts.permission !== "granted" && (
             <button
@@ -190,9 +227,26 @@ export default function CornersPage() {
               fills in as games kick off; nothing is simulated in the meantime.
             </p>
           </div>
+        ) : visible.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
+            <p className="text-sm font-medium text-mist-100">
+              No live match matches “{search.trim()}”.
+            </p>
+            <p className="mt-1 text-xs text-mist-400">
+              The search covers team and competition names on the live board
+              only. Clear it to see all {matches.length} matches.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-white/20 hover:text-mist-100"
+            >
+              Clear search
+            </button>
+          </div>
         ) : (
           <div className="mt-6 space-y-3">
-            {matches.map((match) => (
+            {visible.map((match) => (
               <MatchCard
                 key={match.event_id}
                 match={match}
