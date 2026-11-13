@@ -99,6 +99,16 @@ html {
   scroll-behavior: smooth;
 }
 
+/*
+ * The desktop navigation lives in a fixed 15rem rail, so the page column gets
+ * that width back. Below lg the rail is replaced by the mobile top bar.
+ */
+@media (min-width: 1024px) {
+  body {
+    padding-left: 15rem;
+  }
+}
+
 body {
   background-color: var(--ink-950);
   color: var(--mist-100);

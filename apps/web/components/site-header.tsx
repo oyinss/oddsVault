@@ -11,11 +11,11 @@ import {
   faChartColumn,
   faChartLine,
   faClockRotateLeft,
+  faHeartPulse,
   faLock,
   faMagnifyingGlass,
   faTicket,
   faTowerBroadcast,
-  faHeartPulse,
   faWandMagicSparkles,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
@@ -76,7 +76,7 @@ export function SiteHeader() {
 
   // Rotating to a tablet should not leave the mobile drawer open.
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 768px)");
+    const query = window.matchMedia("(min-width: 1024px)");
     const onChange = () => {
       if (query.matches) setMenuOpen(false);
     };
@@ -86,7 +86,93 @@ export function SiteHeader() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-line bg-ink-950/80 backdrop-blur">
+      {/* Desktop: a permanent rail keeps the growing menu out of the content. */}
+      <aside
+        aria-label="Primary"
+        className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-ink-950/95 backdrop-blur lg:flex"
+      >
+        <Link href="/" className="flex h-16 items-center gap-2.5 px-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/logo-64.png"
+            alt=""
+            width={30}
+            height={30}
+            className="size-[30px] shrink-0 select-none"
+          />
+          <span className="text-[15px] font-semibold tracking-tight">
+            Odds<span className="text-turf-400">Vault</span>
+          </span>
+        </Link>
+
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+          {NAV.map((item) => {
+            const active = item.href !== null && isActive(item.href);
+            if (!item.href) {
+              return (
+                <span
+                  key={item.label}
+                  title="Available in a later phase"
+                  className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-mist-500"
+                >
+                  <FontAwesomeIcon icon={item.icon} className="size-3.5 opacity-70" />
+                  {item.label}
+                  <span className="ml-auto font-mono text-[9px] tracking-widest uppercase">
+                    soon
+                  </span>
+                </span>
+              );
+            }
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  active
+                    ? "bg-turf-500/10 text-turf-300"
+                    : "text-mist-200 hover:bg-raised hover:text-mist-100"
+                }`}
+              >
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-turf-400"
+                  />
+                )}
+                <FontAwesomeIcon icon={item.icon} className="size-3.5 opacity-80" />
+                {item.label}
+                {item.locked && (
+                  <FontAwesomeIcon
+                    icon={faLock}
+                    className="ml-auto size-2.5 opacity-60"
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="space-y-1 border-t border-line p-3">
+          <Link
+            href="/search"
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+              isActive("/search")
+                ? "bg-turf-500/10 text-turf-300"
+                : "text-mist-200 hover:bg-raised hover:text-mist-100"
+            }`}
+          >
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="size-3.5 opacity-80" />
+            Search
+          </Link>
+          <div className="flex items-center justify-between rounded-lg px-3 py-1.5">
+            <span className="text-sm font-semibold text-mist-200">Theme</span>
+            <ThemeToggle />
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile: the top bar only holds what the rail would hold. */}
+      <header className="sticky top-0 z-50 border-b border-line bg-ink-950/80 backdrop-blur lg:hidden">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -102,82 +188,23 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">
-            {NAV.map((item) =>
-              item.href ? (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  aria-label={item.label}
-                  title={item.label}
-                  className={`relative flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-semibold transition hover:bg-raised hover:text-mist-100 xl:px-2.5 xl:text-sm ${
-                    isActive(item.href) ? "text-mist-100" : "text-mist-200"
-                  }`}
-                >
-                  <FontAwesomeIcon
-                    icon={item.icon}
-                    style={{ width: 12, height: 12 }}
-                    className="shrink-0 opacity-80"
-                  />
-                  <span className="hidden xl:inline">{item.label}</span>
-                  {item.locked && (
-                    <FontAwesomeIcon
-                      icon={faLock}
-                      style={{ width: 9, height: 9 }}
-                      className="shrink-0 opacity-60"
-                    />
-                  )}
-                  {isActive(item.href) && (
-                    <span
-                      aria-hidden
-                      className="absolute inset-x-2 -bottom-1.5 h-px bg-turf-400"
-                    />
-                  )}
-                </Link>
-              ) : (
-                <span
-                  key={item.label}
-                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-semibold whitespace-nowrap text-mist-500 xl:px-2.5 xl:text-sm"
-                  title="Available in a later phase"
-                >
-                  <FontAwesomeIcon
-                    icon={item.icon}
-                    style={{ width: 12, height: 12 }}
-                    className="shrink-0 opacity-60"
-                  />
-                  {item.label}
-                </span>
-              ),
-            )}
-          </nav>
-
           <div className="flex items-center gap-2">
             <Link
               href="/search"
               aria-label="Search fixtures"
               title="Search fixtures"
-              className={`grid size-9 place-items-center rounded-lg border text-mist-300 transition hover:border-line-strong hover:bg-raised hover:text-mist-100 ${
-                isActive("/search")
-                  ? "border-turf-400/40 bg-turf-500/10 text-turf-300"
-                  : "border-line"
-              }`}
+              className="grid size-10 place-items-center rounded-lg border border-line text-mist-300 transition hover:bg-raised hover:text-mist-100"
             >
-              <FontAwesomeIcon
-                icon={faMagnifyingGlass}
-                style={{ width: 13, height: 13 }}
-              />
+              <FontAwesomeIcon icon={faMagnifyingGlass} style={{ width: 14, height: 14 }} />
             </Link>
             <ThemeToggle />
-            <span className="hidden rounded-full border border-line-strong px-3 py-1 font-mono text-[11px] tracking-widest whitespace-nowrap text-mist-400 uppercase 2xl:inline-flex">
-              Phase 7
-            </span>
             <button
               type="button"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
               onClick={() => setMenuOpen((open) => !open)}
-              className="grid size-10 place-items-center rounded-lg border border-line-strong text-mist-300 transition hover:bg-raised hover:text-mist-100 md:hidden"
+              className="grid size-10 place-items-center rounded-lg border border-line-strong text-mist-300 transition hover:bg-raised hover:text-mist-100"
             >
               <FontAwesomeIcon
                 icon={menuOpen ? faXmark : faBars}
@@ -189,7 +216,7 @@ export function SiteHeader() {
       </header>
 
       {menuOpen && (
-        <div className="md:hidden">
+        <div className="lg:hidden">
           <button
             type="button"
             aria-label="Close menu"
@@ -226,7 +253,7 @@ export function SiteHeader() {
                       <Link
                         href={item.href}
                         onClick={() => setMenuOpen(false)}
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
                           active
                             ? "bg-turf-500/10 text-turf-300"
                             : "text-mist-200 hover:bg-raised"
@@ -250,7 +277,7 @@ export function SiteHeader() {
                       </Link>
                     ) : (
                       <span
-                        className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-mist-500"
+                        className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-mist-500"
                         title="Available in a later phase"
                       >
                         {tile}
@@ -263,16 +290,22 @@ export function SiteHeader() {
                   </li>
                 );
               })}
+              <li>
+                <Link
+                  href="/search"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-mist-200 hover:bg-raised"
+                >
+                  <span className="grid size-8 shrink-0 place-items-center rounded-md border border-line bg-raised text-mist-400">
+                    <FontAwesomeIcon
+                      icon={faMagnifyingGlass}
+                      style={{ width: 13, height: 13 }}
+                    />
+                  </span>
+                  <span className="flex-1">Search</span>
+                </Link>
+              </li>
             </ul>
-
-            <div className="mx-auto flex max-w-6xl items-center justify-between border-t border-line px-5 py-3">
-              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
-                Phase 7
-              </span>
-              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
-                OddsVault
-              </span>
-            </div>
           </nav>
         </div>
       )}
