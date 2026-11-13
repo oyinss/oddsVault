@@ -473,6 +473,65 @@ export async function getHomeSummary(
   }
 }
 
+export type BoardPrice = {
+  bookmaker: string;
+  bookmaker_name: string;
+  odds: number;
+  price_kind: string;
+  captured_at: string;
+};
+
+export type BoardSelection = {
+  selection: string;
+  best: BoardPrice | null;
+  opening: BoardPrice | null;
+  movement: number | null;
+  prices: BoardPrice[];
+};
+
+export type BoardLine = {
+  line: number | null;
+  selections: BoardSelection[];
+};
+
+export type BoardEvent = {
+  event_id: number;
+  sport: string;
+  competition: string;
+  competition_slug: string;
+  home: { id: number; name: string; crest_url: string | null };
+  away: { id: number; name: string; crest_url: string | null };
+  kickoff: string;
+  status: string;
+  lines: BoardLine[];
+  last_captured_at: string | null;
+};
+
+export type OddsBoard = {
+  sport: string;
+  market: string;
+  generated_at: string;
+  count: number;
+  events: BoardEvent[];
+};
+
+export async function getOddsBoard(params: {
+  sport: string;
+  market?: string;
+  competition?: string;
+  limit?: number;
+}): Promise<OddsBoard | null> {
+  const query = new URLSearchParams({ sport: params.sport });
+  if (params.market) query.set("market", params.market);
+  if (params.competition) query.set("competition", params.competition);
+  if (params.limit) query.set("limit", String(params.limit));
+  try {
+    return await getJSON<OddsBoard>(`/api/v1/odds/board?${query.toString()}`);
+  } catch {
+    return null;
+  }
+}
+
 export type ModelPick = {
   id: number;
   run_id: number;

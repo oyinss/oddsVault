@@ -33,7 +33,7 @@ const NAV: {
 }[] = [
   { label: "Events", href: "/events", ready: true, icon: faCalendarDays },
   { label: "Live", href: "/live", ready: true, icon: faTowerBroadcast },
-  { label: "Odds", href: null, ready: false, icon: faChartLine },
+  { label: "Odds", href: "/odds", ready: true, icon: faChartLine },
   { label: "Snapshots", href: "/snapshots", ready: true, icon: faClockRotateLeft },
   { label: "My Bets", href: "/my-bets", ready: true, locked: true, icon: faTicket },
   { label: "Picks", href: "/model-picks", ready: true, icon: faWandMagicSparkles },
