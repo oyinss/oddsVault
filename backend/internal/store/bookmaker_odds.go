@@ -55,8 +55,8 @@ func (im *Importer) ImportBookmakerOdds(ctx context.Context, bookmakerSlug, comp
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 
 	var sportID, competitionID, bookmakerID int64
-	if err := tx.QueryRow(ctx, `SELECT id FROM sports WHERE slug = 'football'`).Scan(&sportID); err != nil {
-		return stats, fmt.Errorf("lookup sport: %w", err)
+	if err := tx.QueryRow(ctx, `SELECT id FROM sports WHERE slug = $1`, comp.SportSlug()).Scan(&sportID); err != nil {
+		return stats, fmt.Errorf("lookup sport %q: %w", comp.SportSlug(), err)
 	}
 	if err := tx.QueryRow(ctx,
 		`SELECT id FROM competitions WHERE sport_id = $1 AND slug = $2`,

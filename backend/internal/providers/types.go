@@ -60,6 +60,9 @@ type OddsQuote struct {
 // LiveState is a provider's current view of one event.
 type LiveState struct {
 	ProviderEventID string
+	// Sport is the canonical sport slug (football, basketball, ...). Empty
+	// means football, the provider's original scope.
+	Sport           string
 	CompetitionSlug string
 	StartUTC        time.Time
 	Status          Status

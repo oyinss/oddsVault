@@ -29,18 +29,84 @@ const syncInterval = 6 * time.Hour
 
 func main() {
 	once := flag.Bool("once", false, "run one sync and exit")
+	live := flag.Bool("live", false, "poll live scores once and exit")
+	fixtures := flag.Bool("fixtures", false, "rebuild multi-sport fixtures once and exit")
 	flag.Parse()
 
 	var err error
-	if *once {
+	switch {
+	case *fixtures:
+		err = runMultiSportOnce()
+	case *live:
+		err = runLiveOnce()
+	case *once:
 		err = runOnce()
-	} else {
+	default:
 		err = worker.Boot("oddsvault-sports-sync", buildJobs)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sports-sync: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// runLiveOnce refreshes live state only. Useful after adding a competition, and
+// as a manual check that a provider is still answering.
+func runLiveOnce() error {
+	cfg, err := config.Load("oddsvault-sports-sync")
+	if err != nil {
+		return err
+	}
+	logger := logging.New(cfg.Env, cfg.LogLevel)
+	slog.SetDefault(logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.JobTimeout)
+	defer cancel()
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := database.Ping(ctx, pool, cfg.ConnectTimeout); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+
+	football := syncjob.NewFootball(
+		providers.NewClient(pool, logger, "OddsVault/0.1 (research)"),
+		store.NewImporter(pool, logger),
+		logger,
+	)
+	return football.RunLive(ctx)
+}
+
+// runMultiSportOnce rebuilds the non-football fixture list only.
+func runMultiSportOnce() error {
+	cfg, err := config.Load("oddsvault-sports-sync")
+	if err != nil {
+		return err
+	}
+	logger := logging.New(cfg.Env, cfg.LogLevel)
+	slog.SetDefault(logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.JobTimeout)
+	defer cancel()
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := database.Ping(ctx, pool, cfg.ConnectTimeout); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+
+	football := syncjob.NewFootball(
+		providers.NewClient(pool, logger, "OddsVault/0.1 (research)"),
+		store.NewImporter(pool, logger),
+		logger,
+	)
+	return football.RunMultiSportFixtures(ctx)
 }
 
 func runOnce() error {
@@ -95,6 +161,11 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Name:  "sync_football_fixtures",
 			Every: syncInterval,
 			Run:   football.Run,
+		},
+		{
+			Name:  "sync_multi_sport_fixtures",
+			Every: syncInterval,
+			Run:   football.RunMultiSportFixtures,
 		},
 		{
 			Name:  "sync_live_scores",

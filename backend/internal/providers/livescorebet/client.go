@@ -198,6 +198,18 @@ func Quotes(event Event) []providers.OddsQuote {
 				}
 			}
 
+		case "Moneyline - Including Overtime", "Moneyline":
+			// Two-way sports only: a draw selection here would be a different
+			// market, so it is skipped rather than forced into this one.
+			for _, selection := range market.Selections {
+				switch {
+				case strings.EqualFold(selection.Name, event.Home):
+					add("moneyline", nil, "home", selection.Odds)
+				case strings.EqualFold(selection.Name, event.Away):
+					add("moneyline", nil, "away", selection.Odds)
+				}
+			}
+
 		case "Total Goals":
 			for _, selection := range market.Selections {
 				side, line, ok := parseTotal(selection.Name)

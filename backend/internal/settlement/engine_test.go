@@ -93,6 +93,35 @@ func TestEvaluate(t *testing.T) {
 	}
 }
 
+func TestEvaluateMoneyline(t *testing.T) {
+	tests := []struct {
+		name      string
+		home      int
+		away      int
+		selection string
+		status    string
+	}{
+		{name: "home wins", home: 112, away: 104, selection: "home", status: "hit"},
+		{name: "away wins", home: 21, away: 24, selection: "home", status: "miss"},
+		{name: "away picked", home: 21, away: 24, selection: "away", status: "hit"},
+		{name: "tie refunds", home: 20, away: 20, selection: "home", status: "push"},
+		{name: "no draw selection", home: 1, away: 2, selection: "draw", status: "not_gradable"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			status, _, _, _ := evaluate(candidate{
+				marketType: "moneyline",
+				selection:  tc.selection,
+				homeScore:  tc.home,
+				awayScore:  tc.away,
+			})
+			if status != tc.status {
+				t.Fatalf("status = %q, want %q", status, tc.status)
+			}
+		})
+	}
+}
+
 func TestEvaluateCorners(t *testing.T) {
 	line := 9.5
 	exact := 10.0

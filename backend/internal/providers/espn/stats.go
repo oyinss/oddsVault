@@ -50,15 +50,15 @@ type summaryPayload struct {
 
 // FetchMatchStats reads corner counts and completion state for one event.
 func (c *Client) FetchMatchStats(ctx context.Context, competitionSlug, eventID string) (MatchStats, error) {
-	league, ok := leagues[competitionSlug]
+	spec, ok := leagues[competitionSlug]
 	if !ok {
 		return MatchStats{}, fmt.Errorf("espn: no league code for %q", competitionSlug)
 	}
 
 	res, err := c.http.Get(ctx, providers.Request{
 		Provider: "espn",
-		CacheKey: league + "/summary/" + eventID,
-		URL:      fmt.Sprintf("%s/%s/summary?event=%s", baseURL, league, eventID),
+		CacheKey: competitionSlug + "/summary/" + eventID,
+		URL:      fmt.Sprintf("%s/%s/summary?event=%s", baseURL, spec.Path, eventID),
 		MaxAge:   time.Hour,
 		Headers:  map[string]string{"Accept": "application/json"},
 	})

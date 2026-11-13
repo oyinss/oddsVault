@@ -30,6 +30,7 @@ const MARKET_LABELS: Record<string, string> = {
   double_chance: "Double chance",
   draw_no_bet: "Draw no bet",
   total_goals: "Total goals",
+  moneyline: "Moneyline",
   total_corners: "Total corners",
   corners_handicap: "Corners handicap",
   both_teams_to_score: "Both teams to score",

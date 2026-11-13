@@ -68,9 +68,14 @@ func (im *Importer) applyLiveState(ctx context.Context, state providers.LiveStat
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 
+	sportSlug := state.Sport
+	if sportSlug == "" {
+		sportSlug = "football"
+	}
+
 	var sportID, competitionID int64
-	if err := tx.QueryRow(ctx, `SELECT id FROM sports WHERE slug = 'football'`).Scan(&sportID); err != nil {
-		return liveSkipped, fmt.Errorf("lookup sport: %w", err)
+	if err := tx.QueryRow(ctx, `SELECT id FROM sports WHERE slug = $1`, sportSlug).Scan(&sportID); err != nil {
+		return liveSkipped, fmt.Errorf("lookup sport %q: %w", sportSlug, err)
 	}
 	if err := tx.QueryRow(ctx,
 		`SELECT id FROM competitions WHERE sport_id = $1 AND slug = $2`,

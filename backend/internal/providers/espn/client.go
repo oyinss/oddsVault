@@ -1,8 +1,11 @@
-// Package espn reads ESPN's public soccer scoreboard.
+// Package espn reads ESPN's public scoreboards.
 //
 // It is the live-state provider: no API key, status and scores only. ESPN does
 // provide real event ids, so matching one of its fixtures confirms an event's
 // identity instead of leaving it provisional.
+//
+// The same response shape covers soccer, basketball and American football, so
+// one adapter serves every supported sport.
 package espn
 
 import (
@@ -16,23 +19,34 @@ import (
 	"github.com/oyins/oddsvault/backend/internal/providers"
 )
 
-const baseURL = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+const baseURL = "https://site.api.espn.com/apis/site/v2/sports"
 
-// leagues maps our competition slugs to ESPN league codes.
-var leagues = map[string]string{
-	"premier-league":    "eng.1",
-	"la-liga":           "esp.1",
-	"serie-a":           "ita.1",
-	"bundesliga":        "ger.1",
-	"ligue-1":           "fra.1",
-	"copa-del-rey":      "esp.copa_del_rey",
-	"nations-league":    "uefa.nations",
-	"champions-league":  "uefa.champions",
-	"argentina-primera": "arg.1",
-	"chile-primera":     "chi.1",
-	"paraguay-primera":  "par.1",
-	"uruguay-primera":   "uru.1",
-	"italy-serie-c":     "ita.3",
+// league describes where one of our competitions lives on ESPN.
+type league struct {
+	// Path is the sport and league path after /sports.
+	Path string
+	// Sport is our canonical sport slug for that path.
+	Sport string
+}
+
+// leagues maps our competition slugs to ESPN coordinates.
+var leagues = map[string]league{
+	"premier-league":    {"soccer/eng.1", "football"},
+	"la-liga":           {"soccer/esp.1", "football"},
+	"serie-a":           {"soccer/ita.1", "football"},
+	"bundesliga":        {"soccer/ger.1", "football"},
+	"ligue-1":           {"soccer/fra.1", "football"},
+	"copa-del-rey":      {"soccer/esp.copa_del_rey", "football"},
+	"nations-league":    {"soccer/uefa.nations", "football"},
+	"champions-league":  {"soccer/uefa.champions", "football"},
+	"argentina-primera": {"soccer/arg.1", "football"},
+	"chile-primera":     {"soccer/chi.1", "football"},
+	"paraguay-primera":  {"soccer/par.1", "football"},
+	"uruguay-primera":   {"soccer/uru.1", "football"},
+	"italy-serie-c":     {"soccer/ita.3", "football"},
+
+	"nba": {"basketball/nba", "basketball"},
+	"nfl": {"football/nfl", "american-football"},
 }
 
 // Client fetches ESPN scoreboards.
@@ -69,15 +83,15 @@ type scoreboard struct {
 
 // FetchScoreboard returns the fixtures ESPN lists for one calendar date (UTC).
 func (c *Client) FetchScoreboard(ctx context.Context, competitionSlug string, date time.Time) ([]providers.LiveState, error) {
-	league, ok := leagues[competitionSlug]
+	spec, ok := leagues[competitionSlug]
 	if !ok {
 		return nil, fmt.Errorf("espn: no league code for %q", competitionSlug)
 	}
 	day := date.UTC().Format("20060102")
 	res, err := c.http.Get(ctx, providers.Request{
 		Provider: "espn",
-		CacheKey: league + "/scoreboard/" + day,
-		URL:      fmt.Sprintf("%s/%s/scoreboard?dates=%s", baseURL, league, day),
+		CacheKey: competitionSlug + "/scoreboard/" + day,
+		URL:      fmt.Sprintf("%s/%s/scoreboard?dates=%s", baseURL, spec.Path, day),
 		MaxAge:   60 * time.Second,
 		Headers:  map[string]string{"Accept": "application/json"},
 	})
@@ -112,17 +126,31 @@ func (c *Client) FetchScoreboard(ctx context.Context, competitionSlug string, da
 		if home == "" || away == "" {
 			continue
 		}
+		// Cup and neutral-site fixtures are published before the teams are
+		// known. "TBD" is not a team, and importing it would collapse every
+		// unresolved fixture into one event.
+		if isPlaceholder(home) || isPlaceholder(away) {
+			continue
+		}
 
 		start, ok := parseTime(event.Date)
 		if !ok {
 			continue
 		}
 
+		status := mapStatus(competition.Status.Type.State, competition.Status.Type.Completed)
+		if status != providers.StatusLive && status != providers.StatusFinished {
+			// ESPN publishes "0" before kickoff. A scheduled game has no score,
+			// and zero must mean a reported zero.
+			homeScore, awayScore = nil, nil
+		}
+
 		states = append(states, providers.LiveState{
 			ProviderEventID: event.ID,
+			Sport:           spec.Sport,
 			CompetitionSlug: competitionSlug,
 			StartUTC:        start,
-			Status:          mapStatus(competition.Status.Type.State, competition.Status.Type.Completed),
+			Status:          status,
 			Detail:          firstNonEmpty(competition.Status.Type.Detail, competition.Status.Type.Short),
 			HomeName:        home,
 			AwayName:        away,
@@ -131,6 +159,17 @@ func (c *Client) FetchScoreboard(ctx context.Context, competitionSlug string, da
 		})
 	}
 	return states, nil
+}
+
+// isPlaceholder reports whether ESPN published a slot instead of a team.
+func isPlaceholder(name string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(name))
+	for _, prefix := range []string{"TBD", "TBA", "TBC", "WINNER", "LOSER"} {
+		if strings.HasPrefix(upper, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // parseTime accepts ESPN's RFC3339 variants, which sometimes omit seconds.

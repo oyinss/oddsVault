@@ -23,6 +23,14 @@ func (f *Football) RunCrests(ctx context.Context) error {
 			selected = append(selected, comp)
 		}
 	}
+	// Basketball and American football get badges from the same endpoint.
+	for _, slug := range competitions.LiveEnabled {
+		comp, err := competitions.BySlug(slug)
+		if err != nil || comp.SportSlug() == "football" {
+			continue
+		}
+		selected = append(selected, comp)
+	}
 
 	adapter := espn.New(f.http)
 	var errs []error
@@ -35,7 +43,7 @@ func (f *Football) RunCrests(ctx context.Context) error {
 			continue
 		}
 		for _, team := range teams {
-			ok, err := f.importer.UpsertLogoByName(ctx, "football", "espn", team.Name, team.LogoURL)
+			ok, err := f.importer.UpsertLogoByName(ctx, comp.SportSlug(), "espn", team.Name, team.LogoURL)
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -52,7 +60,7 @@ func (f *Football) RunCrests(ctx context.Context) error {
 	attached += legAttached
 	errs = append(errs, legErrs...)
 
-	f.log.Info("team crests refreshed", "competition", "football", "attached", attached)
+	f.log.Info("team crests refreshed", "competitions", len(selected), "attached", attached)
 	return errors.Join(errs...)
 }
 

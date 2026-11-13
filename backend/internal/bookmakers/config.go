@@ -27,4 +27,14 @@ var Feeds = []Feed{
 		CompetitionSlug: "champions-league",
 		CategoryID:      "SBTC3_40685",
 	},
+	{
+		BookmakerSlug:   "livescorebet",
+		CompetitionSlug: "nba",
+		CategoryID:      "SBTC3_42648",
+	},
+	{
+		BookmakerSlug:   "livescorebet",
+		CompetitionSlug: "nfl",
+		CategoryID:      "SBTC3_88808",
+	},
 }

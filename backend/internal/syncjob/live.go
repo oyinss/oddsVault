@@ -11,10 +11,11 @@ import (
 	"github.com/oyins/oddsvault/backend/internal/providers/espn"
 )
 
-// RunLive fetches live/finished state for the enabled competitions from ESPN.
-// It runs every few minutes and only covers yesterday, today and tomorrow.
+// RunLive fetches live/finished state for every live-enabled competition from
+// ESPN, across sports. It runs every few minutes and only covers the days that
+// still have unfinished events.
 func (f *Football) RunLive(ctx context.Context) error {
-	selected, err := competitions.Selected()
+	selected, err := competitions.List(competitions.LiveEnabled)
 	if err != nil {
 		return err
 	}

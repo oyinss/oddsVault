@@ -14,6 +14,7 @@ type Competition struct {
 	Slug                 string
 	Name                 string
 	CountrySlug          string
+	Sport                string
 	Timezone             string
 	FootballDataDivision string
 	OpenFootballFile     string
@@ -79,6 +80,23 @@ var All = []Competition{
 		Slug: "italy-serie-c", Name: "Italian Serie C",
 		Timezone: "Europe/Rome", ESPNCode: "ita.3",
 	},
+	{
+		Slug: "nba", Name: "NBA", CountrySlug: "usa", Sport: "basketball",
+		Timezone: "America/New_York", ESPNCode: "basketball/nba",
+	},
+	{
+		Slug: "nfl", Name: "NFL", CountrySlug: "usa", Sport: "american-football",
+		Timezone: "America/New_York", ESPNCode: "football/nfl",
+	},
+}
+
+// SportSlug returns the canonical sport for a competition. An unset sport
+// means football, the catalogue's original scope.
+func (c Competition) SportSlug() string {
+	if c.Sport == "" {
+		return "football"
+	}
+	return c.Sport
 }
 
 // ESPNOnly lists competitions that only the live provider covers. They exist
@@ -88,6 +106,11 @@ var ESPNOnly = []string{"copa-del-rey", "nations-league", "champions-league", "a
 // Enabled lists the competitions the league sync covers. Expand deliberately: each new
 // league needs alias coverage before it is turned on.
 var Enabled = []string{"premier-league"}
+
+// LiveEnabled lists the competitions whose live state is polled every couple of
+// minutes. The other ESPN-only competitions still refresh through coverage, but
+// at a slower cadence.
+var LiveEnabled = []string{"premier-league", "nba", "nfl"}
 
 // BySlug returns a competition or an error.
 func BySlug(slug string) (Competition, error) {
@@ -101,8 +124,13 @@ func BySlug(slug string) (Competition, error) {
 
 // Selected returns the enabled competitions.
 func Selected() ([]Competition, error) {
-	out := make([]Competition, 0, len(Enabled))
-	for _, slug := range Enabled {
+	return List(Enabled)
+}
+
+// List returns the named competitions in order.
+func List(slugs []string) ([]Competition, error) {
+	out := make([]Competition, 0, len(slugs))
+	for _, slug := range slugs {
 		c, err := BySlug(slug)
 		if err != nil {
 			return nil, err

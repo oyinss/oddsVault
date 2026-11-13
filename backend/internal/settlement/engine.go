@@ -200,6 +200,21 @@ func evaluate(c candidate) (status, actual, detail, reason string) {
 		}
 		return hitOrMiss(winner == c.selection), actual, "match result " + winner, ""
 
+	case "moneyline":
+		// Two-way market: there is no draw selection. A tied final score has no
+		// winner to pay, so the leg is refunded instead of guessed.
+		if c.homeScore == c.awayScore {
+			return "push", actual, "tied", "two_way_draw"
+		}
+		winner := "away"
+		if c.homeScore > c.awayScore {
+			winner = "home"
+		}
+		if c.selection != "home" && c.selection != "away" {
+			return "not_gradable", actual, "", "unsupported_selection"
+		}
+		return hitOrMiss(winner == c.selection), actual, "winner " + winner, ""
+
 	case "double_chance":
 		ok := false
 		switch c.selection {

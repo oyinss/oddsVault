@@ -121,7 +121,14 @@ function CompetitionGroups({
               </h3>
             </div>
             <span className="font-mono text-[11px] text-mist-500">
-              {group.events.length} {group.events.length === 1 ? "match" : "matches"}
+              {group.events.length}{" "}
+              {sport === "football"
+                ? group.events.length === 1
+                  ? "match"
+                  : "matches"
+                : group.events.length === 1
+                  ? "game"
+                  : "games"}
             </span>
           </header>
 
@@ -198,22 +205,24 @@ function EventRow({
         </div>
 
         <div className="flex items-center justify-between gap-3 sm:justify-end">
-          {sport === "football" ? (
-            <OddsGroup
-              values={[
-                { label: "1", value: event.odds?.home ?? null },
-                { label: "X", value: event.odds?.draw ?? null },
-                { label: "2", value: event.odds?.away ?? null },
-              ]}
-            />
-          ) : (
-            <OddsGroup
-              values={[
-                { label: "1", value: event.odds?.home ?? null },
-                { label: "2", value: event.odds?.away ?? null },
-              ]}
-            />
-          )}
+          {hasAnyPrice(event) ? (
+            sport === "football" ? (
+              <OddsGroup
+                values={[
+                  { label: "1", value: event.odds?.home ?? null },
+                  { label: "X", value: event.odds?.draw ?? null },
+                  { label: "2", value: event.odds?.away ?? null },
+                ]}
+              />
+            ) : (
+              <OddsGroup
+                values={[
+                  { label: "1", value: event.odds?.home ?? null },
+                  { label: "2", value: event.odds?.away ?? null },
+                ]}
+              />
+            )
+          ) : null}
 
           <span
             className="hidden size-7 shrink-0 place-items-center rounded-md border border-line text-mist-500 transition group-hover:text-mist-200 sm:grid"
@@ -224,6 +233,15 @@ function EventRow({
         </div>
       </Link>
     </li>
+  );
+}
+
+/** True when at least one captured price exists, so no column of dashes shows. */
+function hasAnyPrice(event: EventItem): boolean {
+  return (
+    event.odds?.home != null ||
+    event.odds?.draw != null ||
+    event.odds?.away != null
   );
 }
 

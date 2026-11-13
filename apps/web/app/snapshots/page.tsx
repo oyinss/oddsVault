@@ -38,6 +38,7 @@ const BOOKS = [
 const MARKET_LABELS: Record<string, string> = {
   match_result: "1X2",
   total_goals: "Total goals",
+  moneyline: "Moneyline",
   total_corners: "Total corners",
   corners_handicap: "Corners handicap",
   both_teams_to_score: "BTTS",

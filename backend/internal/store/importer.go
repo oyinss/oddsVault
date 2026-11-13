@@ -247,14 +247,22 @@ func (t *txImporter) resolveTeam(ctx context.Context, provider, rawName string) 
 	if key == "" {
 		return 0, fmt.Errorf("team name %q has no usable key", rawName)
 	}
-	if id, ok := t.teamCache[key]; ok {
+	// Names repeat across sports (Kings, Panthers, ...), so the cache is
+	// scoped by sport as well as by name key.
+	cacheKey := fmt.Sprintf("%d:%s", t.sportID, key)
+	if id, ok := t.teamCache[cacheKey]; ok {
 		return id, nil
 	}
 
 	var id int64
 	err := t.tx.QueryRow(ctx, `SELECT id FROM teams WHERE sport_id = $1 AND name_key = $2`, t.sportID, key).Scan(&id)
 	if err == pgx.ErrNoRows {
-		err = t.tx.QueryRow(ctx, `SELECT team_id FROM team_aliases WHERE alias_key = $1 LIMIT 1`, key).Scan(&id)
+		err = t.tx.QueryRow(ctx, `
+			SELECT ta.team_id
+			FROM team_aliases ta
+			JOIN teams t ON t.id = ta.team_id
+			WHERE ta.alias_key = $1 AND t.sport_id = $2
+			LIMIT 1`, key, t.sportID).Scan(&id)
 	}
 	if err == pgx.ErrNoRows {
 		err = t.tx.QueryRow(ctx, `
@@ -270,7 +278,7 @@ func (t *txImporter) resolveTeam(ctx context.Context, provider, rawName string) 
 		return 0, fmt.Errorf("resolve team %q: %w", rawName, err)
 	}
 
-	t.teamCache[key] = id
+	t.teamCache[cacheKey] = id
 
 	// Keep the provider spelling as an alias when it differs from the key.
 	aliasKey := normalize.Key(rawName)
@@ -308,7 +316,16 @@ func (t *txImporter) findEvent(ctx context.Context, f providers.Fixture, homeID,
 		  AND e.season_id = $2
 		  AND hp.team_id = $3
 		  AND ap.team_id = $4
-		  AND e.start_date BETWEEN $5::date - 3 AND $5::date + 3
+		  AND (
+		      -- A verified kickoff must line up to the hour; two fixtures
+		      -- between the same teams cannot be confused. Date-only events
+		      -- keep the wider window so a provider day shift still matches.
+		      (e.start_time IS NOT NULL
+		       AND abs(extract(epoch FROM (e.start_time - $5))) < 12 * 3600)
+		      OR
+		      (e.start_time IS NULL
+		       AND e.start_date BETWEEN $5::date - 3 AND $5::date + 3)
+		  )
 		ORDER BY abs(e.start_date - $5::date)
 		LIMIT 2`,
 		t.competitionID, t.seasonID, homeID, awayID, f.StartDate)

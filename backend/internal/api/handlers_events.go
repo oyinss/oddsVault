@@ -152,7 +152,9 @@ const eventSelect = `
 			LIMIT 1
 		) o ON TRUE
 		WHERE m.event_id = e.id
-		  AND mt.slug = 'match_result'
+		  -- Football prices 1X2; the other sports price a two-way winner.
+		  AND mt.slug = CASE WHEN sp.slug = 'football'
+		                     THEN 'match_result' ELSE 'moneyline' END
 		  AND se.selection IN ('home', 'draw', 'away')
 	) odds ON TRUE`
 

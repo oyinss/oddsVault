@@ -34,15 +34,15 @@ type teamsPayload struct {
 
 // FetchTeams lists a competition's clubs and their badges.
 func (c *Client) FetchTeams(ctx context.Context, competitionSlug string) ([]Team, error) {
-	league, ok := leagues[competitionSlug]
+	spec, ok := leagues[competitionSlug]
 	if !ok {
 		return nil, fmt.Errorf("espn: no league code for %q", competitionSlug)
 	}
 
 	res, err := c.http.Get(ctx, providers.Request{
 		Provider: "espn",
-		CacheKey: league + "/teams",
-		URL:      fmt.Sprintf("%s/%s/teams", baseURL, league),
+		CacheKey: competitionSlug + "/teams",
+		URL:      fmt.Sprintf("%s/%s/teams", baseURL, spec.Path),
 		MaxAge:   24 * time.Hour,
 		Headers:  map[string]string{"Accept": "application/json"},
 	})
