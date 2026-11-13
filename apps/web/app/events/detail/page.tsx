@@ -211,7 +211,7 @@ function EventHeader({ detail }: { detail: EventDetail }) {
           <p className="text-lg font-semibold">{event.home.name}</p>
         </div>
         <div className="text-center">
-          <p className="font-mono text-3xl font-semibold tracking-tight">
+          <p className="font-mono text-3xl font-bold tracking-tight">
             {score ?? "v"}
           </p>
           <StatusBadge event={event} />

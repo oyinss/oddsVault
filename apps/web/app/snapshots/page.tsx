@@ -113,7 +113,7 @@ function SnapshotsView() {
           <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
             Phase 4 · Snapshot history
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight">
             Every observation
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mist-400">

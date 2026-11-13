@@ -97,7 +97,7 @@ function SearchView() {
         <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
           Search · All sports
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+        <h1 className="mt-2 text-3xl font-bold tracking-tight">
           Find a fixture
         </h1>
 
@@ -197,7 +197,7 @@ function ResultRow({ event }: { event: EventItem }) {
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm text-mist-100">
+          <span className="block truncate text-sm font-semibold text-mist-100">
             {event.home.name} v {event.away.name}
           </span>
           <span className="mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-mist-500">

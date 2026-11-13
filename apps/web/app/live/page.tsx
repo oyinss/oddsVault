@@ -37,7 +37,7 @@ export default function LivePage() {
             <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
               Phase 1B · Live
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">
               Live &amp; today
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist-400">

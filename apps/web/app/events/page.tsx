@@ -92,7 +92,7 @@ function EventsView() {
             <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
               Phase 1A · Football{isToday ? ` · Today, ${formatDate(today)}` : ""}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               {isToday ? "Today's fixtures" : "Fixtures & results"}
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist-400">

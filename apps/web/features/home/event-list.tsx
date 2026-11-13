@@ -116,7 +116,7 @@ function CompetitionGroups({
               <span className="grid size-6 shrink-0 place-items-center rounded bg-white/[0.06] text-[10px] font-semibold text-mist-400">
                 {group.competition.slice(0, 1)}
               </span>
-              <h3 className="truncate text-sm font-medium text-mist-100">
+              <h3 className="truncate text-sm font-semibold text-mist-100">
                 {group.competition}
               </h3>
             </div>
@@ -268,7 +268,7 @@ function TeamLine({
       </span>
       {state === "live" || state === "finished" ? (
         <span
-          className={`ml-auto shrink-0 font-mono text-sm tabular-nums ${
+          className={`ml-auto shrink-0 font-mono text-sm font-semibold tabular-nums ${
             winner ? "text-mist-100" : "text-mist-400"
           }`}
         >
@@ -345,7 +345,7 @@ function OddsGroup({
           <span className="font-mono text-[9px] tracking-wider text-mist-500">
             {label}
           </span>
-          <span className="font-mono text-[12px] text-mist-100 tabular-nums">
+          <span className="font-mono text-[12px] font-semibold text-mist-100 tabular-nums">
             {value !== null ? value.toFixed(2) : "-"}
           </span>
         </span>

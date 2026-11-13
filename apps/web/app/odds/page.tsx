@@ -83,7 +83,7 @@ export default function OddsPage() {
             <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
               Odds · Captured prices
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">
               Bookmaker comparison
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mist-300">
@@ -223,7 +223,7 @@ function EventCard({ event, market }: { event: BoardEvent; market: string }) {
           href={`/events/detail?id=${event.event_id}`}
           className="group flex items-center gap-2"
         >
-          <span className="flex min-w-0 items-center gap-2 text-sm text-mist-100">
+          <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-mist-100">
             <TeamCrest
               src={absoluteAsset(event.home.crest_url)}
               name={event.home.name}
@@ -306,7 +306,7 @@ function PriceCell({
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="truncate text-[11px] text-mist-400">{label}</span>
-        <span className="font-mono text-sm tabular-nums text-mist-100">
+        <span className="font-mono text-sm font-semibold tabular-nums text-mist-100">
           {best ? best.odds.toFixed(2) : "-"}
         </span>
       </div>

@@ -43,7 +43,7 @@ export default function CornersPage() {
             <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
               Live · Corners
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">
               Corner pace board
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mist-300">
@@ -166,7 +166,7 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
           </span>
         </div>
         <span className="font-mono text-[10px] text-mist-500">
-          corners updated {formatAge(match.captured_at)}
+          corners {formatAge(match.captured_at)}
         </span>
       </header>
 
@@ -174,7 +174,7 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
         <div>
           <Link
             href={`/events/detail?id=${match.event_id}`}
-            className="text-sm text-mist-100 hover:text-turf-300"
+            className="text-sm font-semibold text-mist-100 hover:text-turf-300"
           >
             <span className="flex flex-wrap items-center gap-2">
               <TeamCrest

@@ -108,7 +108,9 @@ export function SiteHeader() {
                 <Link
                   key={item.label}
                   href={item.href}
-                  className={`relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] transition hover:bg-raised hover:text-mist-100 xl:px-3 xl:text-sm ${
+                  aria-label={item.label}
+                  title={item.label}
+                  className={`relative flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] font-semibold transition hover:bg-raised hover:text-mist-100 xl:px-2.5 xl:text-sm ${
                     isActive(item.href) ? "text-mist-100" : "text-mist-200"
                   }`}
                 >
@@ -117,7 +119,7 @@ export function SiteHeader() {
                     style={{ width: 12, height: 12 }}
                     className="shrink-0 opacity-80"
                   />
-                  {item.label}
+                  <span className="hidden xl:inline">{item.label}</span>
                   {item.locked && (
                     <FontAwesomeIcon
                       icon={faLock}
@@ -135,7 +137,7 @@ export function SiteHeader() {
               ) : (
                 <span
                   key={item.label}
-                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] text-mist-500 xl:px-3 xl:text-sm"
+                  className="flex cursor-not-allowed items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-semibold whitespace-nowrap text-mist-500 xl:px-2.5 xl:text-sm"
                   title="Available in a later phase"
                 >
                   <FontAwesomeIcon
@@ -166,7 +168,7 @@ export function SiteHeader() {
               />
             </Link>
             <ThemeToggle />
-            <span className="hidden rounded-full border border-line-strong px-3 py-1 font-mono text-[11px] tracking-widest text-mist-400 uppercase lg:inline-flex">
+            <span className="hidden rounded-full border border-line-strong px-3 py-1 font-mono text-[11px] tracking-widest whitespace-nowrap text-mist-400 uppercase 2xl:inline-flex">
               Phase 7
             </span>
             <button

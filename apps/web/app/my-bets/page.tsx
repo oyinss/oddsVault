@@ -132,7 +132,7 @@ export default function MyBetsPage() {
               <p className="font-mono text-[10px] tracking-[0.2em] text-turf-300 uppercase">
                 Phase 7 · Personal journal
               </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
                 My bets
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-mist-300">

@@ -1,7 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Manrope } from "next/font/google";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 
 import "./globals.css";
+
+// A geometric grotesque with a strong 600-800 range, close in feel to the
+// bookmaker sites this product sits next to.
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://oddsvault-web.pages.dev"),
@@ -64,7 +73,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-dvh antialiased">
+      <body className={`${manrope.variable} min-h-dvh antialiased`}>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         {children}
       </body>
