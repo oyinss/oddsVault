@@ -86,8 +86,16 @@ type liveResponse struct {
 	CapturedAt string  `json:"captured_at"`
 }
 
+type oddsResponse struct {
+	Home *float64 `json:"home"`
+	Draw *float64 `json:"draw"`
+	Away *float64 `json:"away"`
+}
+
 type eventResponse struct {
 	ID              int64           `json:"id"`
+	Sport           string          `json:"sport"`
+	SportName       string          `json:"sport_name"`
 	Competition     string          `json:"competition"`
 	CompetitionName string          `json:"competition_name"`
 	Season          *string         `json:"season"`
@@ -101,6 +109,7 @@ type eventResponse struct {
 	Away            teamResponse    `json:"away"`
 	Result          *resultResponse `json:"result"`
 	Live            *liveResponse   `json:"live"`
+	Odds            *oddsResponse   `json:"odds"`
 	UpdatedAt       string          `json:"updated_at"`
 }
 
@@ -111,7 +120,8 @@ const eventSelect = `
 	       r.home_score, r.away_score, r.home_score_ht, r.away_score_ht,
 	       r.provider, r.captured_at, e.updated_at,
 	       l.status, l.home_score, l.away_score, l.detail, l.provider, l.captured_at,
-	       hma.id, ama.id
+	       hma.id, ama.id, sp.slug, sp.name,
+	       odds.home::float8, odds.draw::float8, odds.away::float8
 	FROM events e
 	JOIN competitions c ON c.id = e.competition_id
 	LEFT JOIN seasons se ON se.id = e.season_id
@@ -124,7 +134,27 @@ const eventSelect = `
 	LEFT JOIN media_assets hma ON hma.entity_type = 'team' AND hma.entity_id = ht.id
 	                          AND hma.asset_type = 'team_logo' AND hma.active
 	LEFT JOIN media_assets ama ON ama.entity_type = 'team' AND ama.entity_id = at.id
-	                          AND ama.asset_type = 'team_logo' AND ama.active`
+	                          AND ama.asset_type = 'team_logo' AND ama.active
+	JOIN sports sp ON sp.id = e.sport_id
+	LEFT JOIN LATERAL (
+		SELECT
+			max(o.decimal_odds) FILTER (WHERE se.selection = 'home') AS home,
+			max(o.decimal_odds) FILTER (WHERE se.selection = 'draw') AS draw,
+			max(o.decimal_odds) FILTER (WHERE se.selection = 'away') AS away
+		FROM market_selections se
+		JOIN markets m ON m.id = se.market_id
+		JOIN market_types mt ON mt.id = m.market_type_id
+		JOIN LATERAL (
+			SELECT o.decimal_odds
+			FROM odds_snapshots o
+			WHERE o.selection_id = se.id
+			ORDER BY o.captured_at DESC
+			LIMIT 1
+		) o ON TRUE
+		WHERE m.event_id = e.id
+		  AND mt.slug = 'match_result'
+		  AND se.selection IN ('home', 'draw', 'away')
+	) odds ON TRUE`
 
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	if s.pool == nil {
@@ -150,6 +180,9 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		conditions = append(conditions, strings.Replace(condition, "?", "$"+strconv.Itoa(len(args)), 1))
 	}
 
+	if sport := q.Get("sport"); sport != "" {
+		add("sp.slug = ?", sport)
+	}
 	if slug := q.Get("competition"); slug != "" {
 		add("c.slug = ?", slug)
 	}
@@ -180,6 +213,18 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orderBy := "abs(e.start_date - CURRENT_DATE), e.start_date ASC"
+	switch q.Get("sort") {
+	case "live_first":
+		orderBy = "(e.status = 'live') DESC, e.start_date ASC NULLS LAST, COALESCE(e.start_time, e.start_date::timestamptz) ASC, e.id ASC"
+	case "kickoff_asc":
+		orderBy = "e.start_date ASC NULLS LAST, COALESCE(e.start_time, e.start_date::timestamptz) ASC, e.id ASC"
+	case "kickoff_desc":
+		orderBy = "e.start_date DESC NULLS LAST, COALESCE(e.start_time, e.start_date::timestamptz) DESC, e.id DESC"
+	case "competition":
+		orderBy = "c.name ASC, e.start_date ASC NULLS LAST, COALESCE(e.start_time, e.start_date::timestamptz) ASC"
+	case "odds":
+		orderBy = "odds.home DESC NULLS LAST, e.start_date ASC"
+	}
 	switch q.Get("status") {
 	case "finished":
 		orderBy = "e.start_date DESC NULLS LAST, e.id DESC"
@@ -297,6 +342,7 @@ func scanEvent(row rowScanner) (eventResponse, error) {
 	var liveDetail *string
 	var liveCaptured *time.Time
 	var homeCrest, awayCrest *int64
+	var oddsHome, oddsDraw, oddsAway *float64
 
 	err := row.Scan(
 		&item.ID, &item.Competition, &item.CompetitionName, &season,
@@ -306,7 +352,8 @@ func scanEvent(row rowScanner) (eventResponse, error) {
 		&homeScore, &awayScore, &homeHT, &awayHT,
 		&resultProvider, &resultCaptured, &updatedAt,
 		&liveStatus, &liveHome, &liveAway, &liveDetail, &liveProvider, &liveCaptured,
-		&homeCrest, &awayCrest,
+		&homeCrest, &awayCrest, &item.Sport, &item.SportName,
+		&oddsHome, &oddsDraw, &oddsAway,
 	)
 	if err != nil {
 		return eventResponse{}, err
@@ -336,6 +383,10 @@ func scanEvent(row rowScanner) (eventResponse, error) {
 			result.CapturedAt = &v
 		}
 		item.Result = result
+	}
+
+	if oddsHome != nil || oddsDraw != nil || oddsAway != nil {
+		item.Odds = &oddsResponse{Home: oddsHome, Draw: oddsDraw, Away: oddsAway}
 	}
 
 	if homeCrest != nil {

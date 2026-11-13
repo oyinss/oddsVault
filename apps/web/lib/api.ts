@@ -46,8 +46,16 @@ export type LiveView = {
   captured_at: string;
 };
 
+export type EventOdds = {
+  home: number | null;
+  draw: number | null;
+  away: number | null;
+};
+
 export type EventItem = {
   id: number;
+  sport: string;
+  sport_name: string;
   competition: string;
   competition_name: string;
   season: string | null;
@@ -61,6 +69,7 @@ export type EventItem = {
   away: EventTeam;
   result: EventResult | null;
   live: LiveView | null;
+  odds: EventOdds | null;
   updated_at: string;
 };
 
@@ -115,18 +124,22 @@ export async function getCompetitions(): Promise<Competition[]> {
 }
 
 export async function getEvents(options: {
+  sport?: string;
   status?: string;
   competition?: string;
   from?: string;
   to?: string;
+  sort?: string;
   limit?: number;
 } = {}): Promise<EventList> {
   const params = new URLSearchParams();
   params.set("limit", String(options.limit ?? 60));
+  if (options.sport) params.set("sport", options.sport);
   if (options.status) params.set("status", options.status);
   if (options.competition) params.set("competition", options.competition);
   if (options.from) params.set("from", options.from);
   if (options.to) params.set("to", options.to);
+  if (options.sort) params.set("sort", options.sort);
 
   try {
     const body = await getJSON<{ events: EventItem[] }>(
@@ -430,6 +443,30 @@ export async function getBetInsights(
   try {
     return await getJSON<BetInsights>(
       `/api/v1/my-bets/insights?min_sample=${minSample}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export type HomeSummary = {
+  sport: string;
+  date: string;
+  live: number;
+  today: number;
+  today_scheduled: number;
+  today_finished: number;
+  upcoming: number;
+  competitions: number;
+};
+
+export async function getHomeSummary(
+  sport: string,
+  date: string,
+): Promise<HomeSummary | null> {
+  try {
+    return await getJSON<HomeSummary>(
+      `/api/v1/home/summary?sport=${encodeURIComponent(sport)}&date=${encodeURIComponent(date)}`,
     );
   } catch {
     return null;

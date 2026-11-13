@@ -81,6 +81,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/events/{id}/prices", s.handleEventPrices)
 	mux.HandleFunc("GET /api/v1/analytics/odds-ranges", s.handleOddsRanges)
 	mux.HandleFunc("GET /api/v1/snapshots", s.handleSnapshots)
+	mux.HandleFunc("GET /api/v1/home/summary", s.handleHomeSummary)
 	mux.HandleFunc("GET /api/v1/admin/health", s.journalAuth(s.handleAdminHealth))
 	mux.HandleFunc("POST /api/v1/admin/journal/import-json", s.journalAuth(s.handleJournalImportJSON))
 	mux.HandleFunc("POST /api/v1/admin/journal/import-screenshots", s.journalAuth(s.handleJournalImportScreenshots))
