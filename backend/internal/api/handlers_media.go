@@ -177,3 +177,72 @@ func contentTypeFor(path string) string {
 		return "image/png"
 	}
 }
+
+// handleCompetitionLogo proxies a competition badge through our origin.
+func (s *Server) handleCompetitionLogo(w http.ResponseWriter, r *http.Request) {
+	if s.pool == nil {
+		writeError(w, r, http.StatusServiceUnavailable, "not_ready", "database is not configured")
+		return
+	}
+	slug := r.PathValue("slug")
+	if slug == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	var sourceURL string
+	err := s.pool.QueryRow(r.Context(), `
+		SELECT ma.source_url
+		FROM media_assets ma
+		JOIN competitions c ON c.id = ma.entity_id
+		WHERE ma.entity_type = 'competition' AND ma.asset_type = 'competition_logo'
+		  AND ma.active AND c.slug = $1
+		LIMIT 1`, slug).Scan(&sourceURL)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	parsed, err := url.Parse(sourceURL)
+	if err != nil || parsed.Scheme != "https" || !crestHosts[parsed.Hostname()] {
+		s.log.WarnContext(r.Context(), "refusing non-allowlisted competition logo host",
+			"host", parsed.Hostname(), "competition", slug)
+		http.NotFound(w, r)
+		return
+	}
+
+	cachePath := filepath.Join(crestCacheDir(), "competition-"+slug+filepath.Ext(parsed.Path))
+	if data, err := os.ReadFile(cachePath); err == nil && len(data) > 0 {
+		writeImage(w, contentTypeFor(cachePath), data)
+		return
+	}
+
+	client := &http.Client{Timeout: crestTimeout}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, sourceURL, nil)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	req.Header.Set("User-Agent", "OddsVault/0.1 (research)")
+	req.Header.Set("Accept", "image/*")
+
+	res, err := client.Do(req)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK || !strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
+		http.NotFound(w, r)
+		return
+	}
+
+	data, err := io.ReadAll(io.LimitReader(res.Body, crestMaxBytes))
+	if err != nil || len(data) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(cachePath), 0o755)
+	_ = os.WriteFile(cachePath, data, 0o644)
+	writeImage(w, res.Header.Get("Content-Type"), data)
+}

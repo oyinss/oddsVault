@@ -29,9 +29,11 @@ const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 export default function CornersPage() {
   const [line, setLine] = useState(10);
   const [sort, setSort] = useState<CornerSort>("remaining");
+  const [then, setThen] = useState<CornerSort | "">("");
+  const sortParam = then ? `${sort},${then}` : sort;
   const { data, loading, error, reload } = useApiData<LiveCorners | null>(
-    `live-corners:${line}:${sort}`,
-    () => getLiveCorners(line, sort),
+    `live-corners:${line}:${sortParam}`,
+    () => getLiveCorners(line, sortParam),
     { refreshMs: 30000 },
   );
 
@@ -79,29 +81,35 @@ export default function CornersPage() {
               </span>
               <select
                 value={sort}
+                onChange={(event) => setSort(event.target.value as CornerSort)}
+                className="bg-transparent font-mono text-sm text-mist-100 outline-none"
+              >
+                <option value="remaining" className="bg-ink-900">Most time left</option>
+                <option value="remaining_asc" className="bg-ink-900">Least time left</option>
+                <option value="projection" className="bg-ink-900">Highest projection</option>
+                <option value="pace" className="bg-ink-900">Highest pace</option>
+                <option value="corners" className="bg-ink-900">Most corners</option>
+                <option value="competition" className="bg-ink-900">Competition A-Z</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
+              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+                Then
+              </span>
+              <select
+                value={then}
                 onChange={(event) =>
-                  setSort(event.target.value as CornerSort)
+                  setThen(event.target.value as CornerSort | "")
                 }
                 className="bg-transparent font-mono text-sm text-mist-100 outline-none"
               >
-                <option value="remaining" className="bg-ink-900">
-                  Most time left
-                </option>
-                <option value="remaining_asc" className="bg-ink-900">
-                  Least time left
-                </option>
-                <option value="projection" className="bg-ink-900">
-                  Highest projection
-                </option>
-                <option value="pace" className="bg-ink-900">
-                  Highest pace
-                </option>
-                <option value="corners" className="bg-ink-900">
-                  Most corners
-                </option>
-                <option value="competition" className="bg-ink-900">
-                  Competition A-Z
-                </option>
+                <option value="" className="bg-ink-900">None</option>
+                <option value="remaining" className="bg-ink-900">Most time left</option>
+                <option value="remaining_asc" className="bg-ink-900">Least time left</option>
+                <option value="projection" className="bg-ink-900">Highest projection</option>
+                <option value="pace" className="bg-ink-900">Highest pace</option>
+                <option value="corners" className="bg-ink-900">Most corners</option>
+                <option value="competition" className="bg-ink-900">Competition A-Z</option>
               </select>
             </label>
             <button
@@ -201,7 +209,11 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
-            <CompetitionFlag iso={match.competition_country} />
+            <CompetitionMark
+              logo={match.competition_logo}
+              iso={match.competition_country}
+              name={match.competition}
+            />
             {match.competition}
           </span>
           <span className="flex items-center gap-1.5 font-mono text-[11px] text-red-300">
@@ -307,7 +319,29 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
   );
 }
 
-function CompetitionFlag({ iso }: { iso: string | null }) {
+function CompetitionMark({
+  logo,
+  iso,
+  name,
+}: {
+  logo: string | null;
+  iso: string | null;
+  name: string;
+}) {
+  const logoSrc = logo ? absoluteAsset(logo) : null;
+  if (logoSrc) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoSrc}
+        alt=""
+        width={16}
+        height={16}
+        title={name}
+        className="size-4 shrink-0 object-contain"
+      />
+    );
+  }
   const src = flagUrl(iso);
   if (!src) return null;
   return (
@@ -317,6 +351,7 @@ function CompetitionFlag({ iso }: { iso: string | null }) {
       alt=""
       width={16}
       height={11}
+      title={name}
       className="h-[11px] w-[16px] shrink-0 rounded-[2px] object-cover"
     />
   );

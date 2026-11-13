@@ -193,3 +193,22 @@ func (im *Importer) SetTeamLogoIfMissing(ctx context.Context, teamID int64, prov
 	}
 	return nil
 }
+
+// SetCompetitionLogoIfMissing attaches a competition badge when none exists.
+func (im *Importer) SetCompetitionLogoIfMissing(ctx context.Context, competitionSlug, provider, logoURL string) error {
+	if logoURL == "" {
+		return nil
+	}
+	_, err := im.pool.Exec(ctx, `
+		INSERT INTO media_assets
+			(entity_type, entity_id, asset_type, source_provider, source_url, license_metadata)
+		SELECT 'competition', c.id, 'competition_logo', $2, $3,
+		       jsonb_build_object('provider', $2::text, 'terms', 'unverified')
+		FROM competitions c WHERE c.slug = $1
+		ON CONFLICT (entity_type, entity_id, asset_type) DO NOTHING`,
+		competitionSlug, provider, logoURL)
+	if err != nil {
+		return fmt.Errorf("set competition logo if missing: %w", err)
+	}
+	return nil
+}

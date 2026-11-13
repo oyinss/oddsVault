@@ -119,6 +119,9 @@ func (f *Football) RunOnexbetLive(ctx context.Context) error {
 				errs = append(errs, err)
 			}
 		}
+		if err := f.importer.SetCompetitionLogoIfMissing(ctx, stored.CompetitionSlug, "onexbet", event.LeagueLogoURL); err != nil {
+			errs = append(errs, err)
+		}
 
 		if event.HomeCorners != nil && event.AwayCorners != nil {
 			if err := f.importer.SaveCorners(ctx, stored.EventID, "onexbet",

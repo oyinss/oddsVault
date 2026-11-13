@@ -20,6 +20,8 @@ type liveCornerMatch struct {
 	EventID            int64      `json:"event_id"`
 	Competition        string     `json:"competition"`
 	CompetitionCountry *string    `json:"competition_country"`
+	CompetitionSlug    string     `json:"competition_slug"`
+	CompetitionLogo    *string    `json:"competition_logo"`
 	Kickoff            string     `json:"kickoff"`
 	Home               cornerTeam `json:"home"`
 	Away               cornerTeam `json:"away"`
@@ -93,7 +95,12 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := s.pool.Query(r.Context(), `
-		SELECT e.id, c.name, co.iso2,
+		SELECT e.id, c.name, co.iso2, c.slug,
+		       EXISTS (
+		           SELECT 1 FROM media_assets ma
+		           WHERE ma.entity_type = 'competition' AND ma.entity_id = c.id
+		             AND ma.asset_type = 'competition_logo' AND ma.active
+		       ) AS has_logo,
 		       COALESCE(e.start_time, e.start_date::timestamptz),
 		       ht.id, ht.name, at.id, at.name,
 		       l.home_score, l.away_score,
@@ -125,7 +132,8 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		var clock string
 		var kickoff time.Time
 		var capturedAt *time.Time
-		if err := rows.Scan(&m.EventID, &m.Competition, &m.CompetitionCountry, &kickoff,
+		var hasLogo bool
+		if err := rows.Scan(&m.EventID, &m.Competition, &m.CompetitionCountry, &m.CompetitionSlug, &hasLogo, &kickoff,
 			&m.Home.ID, &m.Home.Name, &m.Away.ID, &m.Away.Name,
 			&m.HomeScore, &m.AwayScore,
 			&clock, &capturedAt, &m.HomeCorners, &m.AwayCorners); err != nil {
@@ -134,6 +142,10 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if hasLogo {
+			logo := "/api/v1/competitions/" + m.CompetitionSlug + "/logo"
+			m.CompetitionLogo = &logo
+		}
 		m.Kickoff = kickoff.UTC().Format(time.RFC3339)
 		m.Clock = clock
 		m.Minute = parseMinute(clock)
@@ -153,13 +165,29 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Sorting is the operator's choice. The default puts the most time left
-	// first: a match at 88 minutes is the least useful to join.
-	sortBy := r.URL.Query().Get("sort")
-	if sortBy == "" {
-		sortBy = "remaining"
+	// Sorting is the operator's choice and can be layered: "competition,remaining"
+	// groups by competition first, then by time. Stable passes applied from the
+	// least significant key to the most produce that order.
+	sortRaw := r.URL.Query().Get("sort")
+	if sortRaw == "" {
+		sortRaw = "remaining"
 	}
 
+	intDesc := func(value func(m liveCornerMatch) *int) func(i, j int) bool {
+		return func(i, j int) bool {
+			left, right := value(matches[i]), value(matches[j])
+			switch {
+			case left == nil && right == nil:
+				return matches[i].EventID < matches[j].EventID
+			case left == nil:
+				return false
+			case right == nil:
+				return true
+			default:
+				return *left > *right
+			}
+		}
+	}
 	floatDesc := func(value func(m liveCornerMatch) *float64) func(i, j int) bool {
 		return func(i, j int) bool {
 			left, right := value(matches[i]), value(matches[j])
@@ -176,9 +204,9 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	switch sortBy {
-	case "remaining_asc", "kickoff":
-		sort.SliceStable(matches, func(i, j int) bool {
+	comparators := map[string]func(i, j int) bool{
+		"remaining": intDesc(func(m liveCornerMatch) *int { return m.RemainingMins }),
+		"remaining_asc": func(i, j int) bool {
 			left, right := matches[i].RemainingMins, matches[j].RemainingMins
 			switch {
 			case left == nil && right == nil:
@@ -190,48 +218,33 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 			default:
 				return *left < *right
 			}
-		})
-	case "projection":
-		sort.SliceStable(matches, floatDesc(func(m liveCornerMatch) *float64 { return m.ProjectedTotal }))
-	case "pace":
-		sort.SliceStable(matches, floatDesc(func(m liveCornerMatch) *float64 { return m.CornersPerMin }))
-	case "corners":
-		sort.SliceStable(matches, func(i, j int) bool {
-			left, right := matches[i].TotalCorners, matches[j].TotalCorners
-			switch {
-			case left == nil && right == nil:
-				return matches[i].EventID < matches[j].EventID
-			case left == nil:
-				return false
-			case right == nil:
-				return true
-			default:
-				return *left > *right
-			}
-		})
-	case "competition":
-		sort.SliceStable(matches, func(i, j int) bool {
+		},
+		"kickoff":    func(i, j int) bool { return matches[i].Kickoff < matches[j].Kickoff },
+		"projection": floatDesc(func(m liveCornerMatch) *float64 { return m.ProjectedTotal }),
+		"pace":       floatDesc(func(m liveCornerMatch) *float64 { return m.CornersPerMin }),
+		"corners":    intDesc(func(m liveCornerMatch) *int { return m.TotalCorners }),
+		"competition": func(i, j int) bool {
 			if matches[i].Competition == matches[j].Competition {
 				return matches[i].Kickoff < matches[j].Kickoff
 			}
 			return matches[i].Competition < matches[j].Competition
-		})
-	default: // remaining: most time left first
-		sortBy = "remaining"
-		sort.SliceStable(matches, func(i, j int) bool {
-			left, right := matches[i].RemainingMins, matches[j].RemainingMins
-			switch {
-			case left == nil && right == nil:
-				return matches[i].Kickoff < matches[j].Kickoff
-			case left == nil:
-				return false
-			case right == nil:
-				return true
-			default:
-				return *left > *right
-			}
-		})
+		},
 	}
+
+	var applied []string
+	for _, key := range strings.Split(sortRaw, ",") {
+		key = strings.TrimSpace(key)
+		if _, ok := comparators[key]; ok {
+			applied = append(applied, key)
+		}
+	}
+	if len(applied) == 0 {
+		applied = []string{"remaining"}
+	}
+	for index := len(applied) - 1; index >= 0; index-- {
+		sort.SliceStable(matches, comparators[applied[index]])
+	}
+	sortBy := strings.Join(applied, ",")
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"generated_at": time.Now().UTC().Format(time.RFC3339),

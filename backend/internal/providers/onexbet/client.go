@@ -47,6 +47,7 @@ type Event struct {
 	AwayCorners     *int
 	HomeLogoURL     string
 	AwayLogoURL     string
+	LeagueLogoURL   string
 }
 
 type payload struct {
@@ -60,6 +61,7 @@ type payload struct {
 		Away     string   `json:"O2"`
 		HomeIMG  []string `json:"O1IMG"`
 		AwayIMG  []string `json:"O2IMG"`
+		ChampIMG string   `json:"CHIMG"`
 		Start    int64    `json:"S"`
 		SC       struct {
 			FS struct {
@@ -131,6 +133,7 @@ func (c *Client) FetchLive(ctx context.Context) ([]Event, error) {
 		}
 		event.HomeLogoURL = teamLogoURL(raw.HomeIMG)
 		event.AwayLogoURL = teamLogoURL(raw.AwayIMG)
+		event.LeagueLogoURL = champLogoURL(raw.ChampIMG)
 
 		// Some events report the score per period only.
 		if event.HomeScore == nil && event.AwayScore == nil {
@@ -197,6 +200,19 @@ func teamLogoURL(files []string) string {
 		return ""
 	}
 	return "https://1xbet.ng/sfiles/logo_teams/" + strings.TrimSpace(files[0])
+}
+
+// champLogoURL builds a competition badge URL. The provider serves both the
+// .png it names and a smaller .webp, so the webp is requested.
+func champLogoURL(file string) string {
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return ""
+	}
+	if dot := strings.LastIndex(file, "."); dot > 0 {
+		file = file[:dot]
+	}
+	return "https://1xbet.ng/sfiles/logo-champ/" + file + ".webp"
 }
 
 func parseStat(raw string) *int {

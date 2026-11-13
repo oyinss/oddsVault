@@ -500,7 +500,9 @@ export async function getHomeSummary(
 export type LiveCornerMatch = {
   event_id: number;
   competition: string;
+  competition_slug: string;
   competition_country: string | null;
+  competition_logo: string | null;
   kickoff: string;
   home: { id: number; name: string; crest_url: string | null };
   away: { id: number; name: string; crest_url: string | null };
@@ -531,6 +533,7 @@ export type LiveCorners = {
 export type CornerSort =
   | "remaining"
   | "remaining_asc"
+  | "kickoff"
   | "projection"
   | "pace"
   | "corners"
@@ -538,7 +541,7 @@ export type CornerSort =
 
 export async function getLiveCorners(
   line: number,
-  sort: CornerSort = "remaining",
+  sort: string = "remaining",
 ): Promise<LiveCorners | null> {
   try {
     return await getJSON<LiveCorners>(

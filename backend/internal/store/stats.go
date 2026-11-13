@@ -209,9 +209,10 @@ func (im *Importer) LiveCornerCandidates(ctx context.Context, limit int) ([]Live
 
 // EventTeams identifies a matched event and its two team ids.
 type EventTeams struct {
-	EventID    int64
-	HomeTeamID int64
-	AwayTeamID int64
+	EventID         int64
+	HomeTeamID      int64
+	AwayTeamID      int64
+	CompetitionSlug string
 }
 
 // FindEventByTeamNames matches an event by both team names and a nearby date.
@@ -226,8 +227,9 @@ func (im *Importer) FindEventByTeamNames(ctx context.Context, sportSlug, home, a
 
 	var out EventTeams
 	err := im.pool.QueryRow(ctx, `
-		SELECT e.id, hp.team_id, ap.team_id
+		SELECT e.id, hp.team_id, ap.team_id, c.slug
 		FROM events e
+		JOIN competitions c ON c.id = e.competition_id
 		JOIN sports sp ON sp.id = e.sport_id
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN teams ht ON ht.id = hp.team_id AND ht.sport_id = sp.id
@@ -238,7 +240,7 @@ func (im *Importer) FindEventByTeamNames(ctx context.Context, sportSlug, home, a
 		  AND at.name_key = $3
 		  AND e.start_date BETWEEN $4::date - 1 AND $4::date + 1
 		ORDER BY abs(e.start_date - $4::date), e.id
-		LIMIT 1`, sportSlug, homeKey, awayKey, day).Scan(&out.EventID, &out.HomeTeamID, &out.AwayTeamID)
+		LIMIT 1`, sportSlug, homeKey, awayKey, day).Scan(&out.EventID, &out.HomeTeamID, &out.AwayTeamID, &out.CompetitionSlug)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return nil, nil
@@ -261,8 +263,9 @@ func (im *Importer) FindEventByPartialTeams(ctx context.Context, sportSlug, home
 
 	var out EventTeams
 	err := im.pool.QueryRow(ctx, `
-		SELECT e.id, hp.team_id, ap.team_id
+		SELECT e.id, hp.team_id, ap.team_id, c.slug
 		FROM events e
+		JOIN competitions c ON c.id = e.competition_id
 		JOIN sports sp ON sp.id = e.sport_id
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN teams ht ON ht.id = hp.team_id AND ht.sport_id = sp.id
@@ -278,7 +281,7 @@ func (im *Importer) FindEventByPartialTeams(ctx context.Context, sportSlug, home
 		ORDER BY abs(e.start_date - $4::date),
 		         abs(extract(epoch FROM (COALESCE(e.start_time, e.start_date::timestamptz) - $4::timestamptz))),
 		         e.id
-		LIMIT 1`, sportSlug, homeKey, awayKey, start).Scan(&out.EventID, &out.HomeTeamID, &out.AwayTeamID)
+		LIMIT 1`, sportSlug, homeKey, awayKey, start).Scan(&out.EventID, &out.HomeTeamID, &out.AwayTeamID, &out.CompetitionSlug)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
 			return nil, nil
