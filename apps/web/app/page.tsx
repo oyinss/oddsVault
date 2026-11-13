@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   faArrowRight,
+  faCalendarDay,
   faCalendarDays,
   faRotateRight,
+  faTowerBroadcast,
+  faTrophy,
+  type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -113,11 +117,16 @@ export default function HomePage() {
               </div>
             </div>
 
-            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:w-[330px]">
-              <HeroStat label="Live" value={summary?.live ?? 0} tone="text-red-300" />
-              <HeroStat label="Today" value={summary?.today ?? 0} />
-              <HeroStat label="Upcoming" value={summary?.upcoming ?? 0} />
-              <HeroStat label="Competitions" value={summary?.competitions ?? 0} />
+            <dl className="grid grid-cols-2 gap-2 lg:w-[340px]">
+              <HeroStat
+                label="Live"
+                value={summary?.live ?? 0}
+                tone="text-red-300"
+                icon={faTowerBroadcast}
+              />
+              <HeroStat label="Today" value={summary?.today ?? 0} icon={faCalendarDay} />
+              <HeroStat label="Upcoming" value={summary?.upcoming ?? 0} icon={faCalendarDays} />
+              <HeroStat label="Comps" value={summary?.competitions ?? 0} icon={faTrophy} />
             </dl>
           </div>
         </section>
@@ -172,6 +181,14 @@ export default function HomePage() {
                   Unable to load events.
                 </p>
                 <p className="mt-1 text-xs text-mist-400">{error}</p>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-flag-400/40 px-3 py-1.5 text-xs font-semibold text-flag-400 transition hover:bg-flag-400/10"
+                >
+                  <FontAwesomeIcon icon={faRotateRight} className="size-3" />
+                  Try again
+                </button>
               </div>
             ) : loading && events.length === 0 ? (
               <LoadingNote label={`Loading ${selectedSport.label.toLowerCase()} games...`} />
@@ -208,15 +225,23 @@ function HeroStat({
   label,
   value,
   tone,
+  icon,
 }: {
   label: string;
   value: number;
   tone?: string;
+  icon: IconDefinition;
 }) {
   return (
     <div className="rounded-xl border border-line bg-ink-950/55 px-3 py-2.5 backdrop-blur">
-      <dt className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-        {label}
+      <dt className="flex items-center gap-1.5 overflow-hidden">
+        <FontAwesomeIcon
+          icon={icon}
+          className="size-2.5 shrink-0 text-mist-500"
+        />
+        <span className="truncate font-mono text-[9px] tracking-wider text-mist-500 uppercase">
+          {label}
+        </span>
       </dt>
       <dd className={`mt-0.5 font-mono text-xl tabular-nums ${tone ?? "text-mist-100"}`}>
         {value}

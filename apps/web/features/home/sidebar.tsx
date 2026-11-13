@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowRight,
+  faCalendarDay,
+  faCalendarDays,
+  faChartSimple,
+  faTicket,
+  faTowerBroadcast,
+  faTrophy,
+  faWandMagicSparkles,
+  type IconDefinition,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -39,16 +49,23 @@ export function HomeSidebar({
 function Panel({
   title,
   href,
+  icon,
   children,
 }: {
   title: string;
   href?: string;
+  icon: IconDefinition;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-2xl border border-line bg-ink-900/60 p-4">
       <header className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-mist-100">{title}</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-mist-100">
+          <span className="grid size-6 place-items-center rounded-md bg-white/[0.06] text-mist-400">
+            <FontAwesomeIcon icon={icon} className="size-2.5" />
+          </span>
+          {title}
+        </h2>
         {href && (
           <Link
             href={href}
@@ -66,22 +83,33 @@ function Panel({
 
 function Glance({ summary }: { summary: HomeSummary | null }) {
   const stats = [
-    { label: "Live games", value: summary?.live ?? 0, tone: "text-red-300" },
-    { label: "Today", value: summary?.today ?? 0, tone: "text-mist-100" },
-    { label: "Upcoming", value: summary?.upcoming ?? 0, tone: "text-mist-100" },
-    { label: "Competitions", value: summary?.competitions ?? 0, tone: "text-mist-100" },
+    {
+      label: "Live games",
+      value: summary?.live ?? 0,
+      tone: "text-red-300",
+      icon: faTowerBroadcast,
+    },
+    { label: "Today", value: summary?.today ?? 0, tone: "text-mist-100", icon: faCalendarDay },
+    { label: "Upcoming", value: summary?.upcoming ?? 0, tone: "text-mist-100", icon: faCalendarDays },
+    { label: "Comps", value: summary?.competitions ?? 0, tone: "text-mist-100", icon: faTrophy },
   ];
 
   return (
-    <Panel title="Today at a glance" href="/events">
+    <Panel title="Today at a glance" href="/events" icon={faChartSimple}>
       <dl className="grid grid-cols-2 gap-2">
         {stats.map((stat) => (
           <div
             key={stat.label}
             className="rounded-xl border border-line bg-ink-950/50 px-3 py-2.5"
           >
-            <dt className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-              {stat.label}
+            <dt className="flex items-center gap-1.5 overflow-hidden">
+              <FontAwesomeIcon
+                icon={stat.icon}
+                className="size-2.5 shrink-0 text-mist-500"
+              />
+              <span className="truncate font-mono text-[9px] tracking-wider text-mist-500 uppercase">
+                {stat.label}
+              </span>
             </dt>
             <dd className={`mt-0.5 font-mono text-xl tabular-nums ${stat.tone}`}>
               {stat.value}
@@ -110,7 +138,7 @@ function MyBets() {
   const winRate = settled > 0 && summary ? summary.won / settled : 0;
 
   return (
-    <Panel title="My bets" href="/my-bets">
+    <Panel title="My bets" href="/my-bets" icon={faTicket}>
       {!loaded ? (
         <p className="text-xs text-mist-500">Loading journal...</p>
       ) : !summary || summary.bets === 0 ? (
@@ -172,7 +200,7 @@ function ModelPicks() {
   const rows = picks?.picks.slice(0, 3) ?? [];
 
   return (
-    <Panel title="Model picks" href="/model-picks">
+    <Panel title="Model picks" href="/model-picks" icon={faWandMagicSparkles}>
       {!loaded ? (
         <p className="text-xs text-mist-500">Loading picks...</p>
       ) : rows.length === 0 ? (
@@ -216,7 +244,7 @@ function ModelPicks() {
 function Highlights({ sport, events }: { sport: string; events: EventItem[] }) {
   const icon = sportBySlug(sport).icon;
   return (
-    <Panel title="Upcoming highlights" href="/events">
+    <Panel title="Upcoming highlights" href="/events" icon={faCalendarDays}>
       {events.length === 0 ? (
         <p className="text-xs text-mist-500">No upcoming fixtures found.</p>
       ) : (
