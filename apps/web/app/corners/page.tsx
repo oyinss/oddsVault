@@ -92,7 +92,7 @@ export default function CornersPage() {
               are looking at on the bookmaker.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
               <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-mist-500 uppercase">
                 <FontAwesomeIcon icon={faRulerHorizontal} className="size-3" />
@@ -149,7 +149,7 @@ export default function CornersPage() {
                 <option value="competition" className="bg-ink-900">Competition A-Z</option>
               </select>
             </label>
-            <div className="relative min-w-[200px] flex-1">
+            <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:flex-1">
               <FontAwesomeIcon
                 icon={faMagnifyingGlass}
                 className="pointer-events-none absolute top-1/2 left-3 size-3 -translate-y-1/2 text-mist-500"
@@ -454,7 +454,7 @@ function MatchCard({
         </div>
       )}
 
-      <div className="grid gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="grid min-w-0 gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div>
           <Link
             href={`/events/detail?id=${match.event_id}`}
@@ -501,9 +501,9 @@ function MatchCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:w-[360px]">
+        <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:w-[360px] sm:gap-2">
           <Metric
-            label="Pace / min"
+            label="Pace"
             icon={faGaugeHigh}
             hint="Corners per minute so far: total corners divided by minutes played. Before the 15th minute the rate is too noisy to show."
             value={
@@ -513,7 +513,7 @@ function MatchCard({
             }
           />
           <Metric
-            label="Projected"
+            label="Proj."
             icon={faChartLine}
             hint="Current corners divided by minutes played, multiplied by 90. A straight extrapolation of the match so far, not a prediction."
             value={
@@ -523,7 +523,7 @@ function MatchCard({
             }
           />
           <Metric
-            label={`Needed ${line}`}
+            label={`Need ${line}`}
             icon={faBullseye}
             hint={`Corners still needed to clear the selected line of ${line}, and the per-minute rate required for the rest of the match.`}
             value={match.needed !== null ? String(match.needed) : "-"}
@@ -637,7 +637,7 @@ function Metric({
   note?: string;
 }) {
   return (
-    <div className="rounded-lg border border-line bg-ink-950/40 px-2.5 py-1.5">
+    <div className="min-w-0 rounded-lg border border-line bg-ink-950/40 px-2 py-1.5 sm:px-2.5">
       <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-wide text-mist-500 uppercase">
         <FontAwesomeIcon icon={icon} className="size-2.5 shrink-0" />
         <span className="truncate">{label}</span>
