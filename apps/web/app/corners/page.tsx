@@ -5,11 +5,15 @@ import { useState } from "react";
 import {
   faArrowDownWideShort,
   faArrowsRotate,
+  faBullseye,
+  faChartLine,
   faCircleInfo,
   faFlag,
+  faGaugeHigh,
   faLayerGroup,
   faRulerHorizontal,
   faTriangleExclamation,
+  type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -211,7 +215,7 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
         : "border-line";
 
   return (
-    <article className={`overflow-hidden rounded-2xl border ${tone}`}>
+    <article className={`rounded-2xl border ${tone}`}>
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
@@ -282,9 +286,11 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:w-[300px]">
+        <div className="grid grid-cols-3 gap-2 sm:w-[360px]">
           <Metric
             label="Pace / min"
+            icon={faGaugeHigh}
+            hint="Corners per minute so far: total corners divided by minutes played. Before the 15th minute the rate is too noisy to show."
             value={
               match.corners_per_minute !== null
                 ? match.corners_per_minute.toFixed(2)
@@ -293,6 +299,8 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
           />
           <Metric
             label="Projected"
+            icon={faChartLine}
+            hint="Current corners divided by minutes played, multiplied by 90. A straight extrapolation of the match so far, not a prediction."
             value={
               match.projected_total !== null
                 ? match.projected_total.toFixed(1)
@@ -300,7 +308,9 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
             }
           />
           <Metric
-            label={`Needed for ${line}`}
+            label={`Needed ${line}`}
+            icon={faBullseye}
+            hint={`Corners still needed to clear the selected line of ${line}, and the per-minute rate required for the rest of the match.`}
             value={match.needed !== null ? String(match.needed) : "-"}
             note={
               match.needed_per_minute !== null
@@ -399,23 +409,47 @@ function CornersCell({
 
 function Metric({
   label,
+  icon,
+  hint,
   value,
   note,
 }: {
   label: string;
+  icon: IconDefinition;
+  hint: string;
   value: string;
   note?: string;
 }) {
   return (
     <div className="rounded-lg border border-line bg-ink-950/40 px-2.5 py-1.5">
-      <p className="font-mono text-[9px] tracking-wide text-mist-500 uppercase">
-        {label}
+      <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-wide text-mist-500 uppercase">
+        <FontAwesomeIcon icon={icon} className="size-2.5 shrink-0" />
+        <span className="truncate">{label}</span>
+        <Hint text={hint} />
       </p>
       <p className="font-mono text-sm tabular-nums text-mist-100">{value}</p>
       {note ? (
         <p className="font-mono text-[9px] text-mist-500">{note}</p>
       ) : null}
     </div>
+  );
+}
+
+/** Small hover/focus explanation attached to a metric label. */
+function Hint({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex shrink-0" tabIndex={0} title={text}>
+      <FontAwesomeIcon
+        icon={faCircleInfo}
+        className="size-2.5 text-mist-500 transition group-hover:text-mist-200 group-focus:text-mist-200"
+      />
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-56 -translate-x-1/2 rounded-lg border border-line-strong bg-ink-900 p-2.5 text-[10px] leading-relaxed font-normal tracking-normal text-mist-300 normal-case opacity-0 shadow-2xl transition-opacity group-hover:opacity-100 group-focus:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
   );
 }
 
