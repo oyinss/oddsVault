@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/oyins/oddsvault/backend/internal/normalize"
@@ -30,7 +31,7 @@ type eventRow struct {
 	Away    string
 	Kickoff time.Time
 	Score   bool
-	ESPN    bool
+	Trusted bool
 }
 
 // Run merges duplicates when apply is true, otherwise it only reports them.
@@ -73,7 +74,7 @@ func duplicates(ctx context.Context, pool *pgxpool.Pool) ([][]eventRow, error) {
 		       (l.home_score IS NOT NULL AND l.away_score IS NOT NULL),
 		       EXISTS (
 		           SELECT 1 FROM event_provider_ids p
-		           WHERE p.event_id = e.id AND p.provider = 'espn'
+		           WHERE p.event_id = e.id AND p.provider IN ('espn', 'fotmob')
 		       )
 		FROM events e
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
@@ -91,7 +92,7 @@ func duplicates(ctx context.Context, pool *pgxpool.Pool) ([][]eventRow, error) {
 	var all []eventRow
 	for rows.Next() {
 		var item eventRow
-		if err := rows.Scan(&item.ID, &item.Home, &item.Away, &item.Kickoff, &item.Score, &item.ESPN); err != nil {
+		if err := rows.Scan(&item.ID, &item.Home, &item.Away, &item.Kickoff, &item.Score, &item.Trusted); err != nil {
 			return nil, err
 		}
 		all = append(all, item)
@@ -149,14 +150,16 @@ func teamKey(name string) string {
 }
 
 func choose(group []eventRow) (eventRow, []eventRow) {
+	// A fixture whose teams came from ESPN or FotMob is the better keeper: the
+	// bookmaker spells sides differently and would orphan corner rows.
 	keeper := group[0]
 	for _, item := range group[1:] {
 		switch {
-		case item.Score && !keeper.Score:
+		case item.Trusted && !keeper.Trusted:
 			keeper = item
-		case item.Score == keeper.Score && item.ESPN && !keeper.ESPN:
+		case item.Trusted == keeper.Trusted && item.Score && !keeper.Score:
 			keeper = item
-		case item.Score == keeper.Score && item.ESPN == keeper.ESPN && item.ID < keeper.ID:
+		case item.Trusted == keeper.Trusted && item.Score == keeper.Score && item.ID < keeper.ID:
 			keeper = item
 		}
 	}
@@ -190,21 +193,57 @@ func merge(ctx context.Context, pool *pgxpool.Pool, keepID, dropID int64) error 
 		return fmt.Errorf("move provider ids: %w", err)
 	}
 
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO team_match_stats (event_id, team_id, corners, provider, captured_at)
-		SELECT $1, team_id, corners, provider, captured_at
-		FROM team_match_stats WHERE event_id = $2
-		ON CONFLICT (event_id, team_id) DO UPDATE SET
-			corners = COALESCE(team_match_stats.corners, EXCLUDED.corners),
-			provider = CASE WHEN team_match_stats.corners IS NULL
-			                THEN EXCLUDED.provider ELSE team_match_stats.provider END,
-			captured_at = GREATEST(team_match_stats.captured_at, EXCLUDED.captured_at)`,
-		keepID, dropID); err != nil {
-		return fmt.Errorf("move corners: %w", err)
+	// Corners move by role, not by team id: the two events can hold different
+	// team rows for the same side.
+	homeKeep, awayKeep, err := participantTeams(ctx, tx, keepID)
+	if err != nil {
+		return err
+	}
+	homeDrop, awayDrop, err := participantTeams(ctx, tx, dropID)
+	if err != nil {
+		return err
+	}
+	pairs := [][2]int64{}
+	if homeKeep != 0 && homeDrop != 0 {
+		pairs = append(pairs, [2]int64{homeDrop, homeKeep})
+	}
+	if awayKeep != 0 && awayDrop != 0 {
+		pairs = append(pairs, [2]int64{awayDrop, awayKeep})
+	}
+	for _, pair := range pairs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO team_match_stats (event_id, team_id, corners, provider, captured_at)
+			SELECT $1, $2, corners, provider, captured_at
+			FROM team_match_stats WHERE event_id = $3 AND team_id = $4
+			ON CONFLICT (event_id, team_id) DO UPDATE SET
+				corners = COALESCE(team_match_stats.corners, EXCLUDED.corners),
+				provider = CASE WHEN team_match_stats.corners IS NULL
+				                THEN EXCLUDED.provider ELSE team_match_stats.provider END,
+				captured_at = GREATEST(team_match_stats.captured_at, EXCLUDED.captured_at)`,
+			keepID, pair[1], dropID, pair[0]); err != nil {
+			return fmt.Errorf("move corners: %w", err)
+		}
 	}
 
 	if _, err := tx.Exec(ctx, `DELETE FROM events WHERE id = $1`, dropID); err != nil {
 		return fmt.Errorf("delete duplicate: %w", err)
 	}
 	return tx.Commit(ctx)
+}
+
+func participantTeams(ctx context.Context, tx pgx.Tx, eventID int64) (home, away int64, err error) {
+	var homeID, awayID *int64
+	if err := tx.QueryRow(ctx, `
+		SELECT max(team_id) FILTER (WHERE role = 'home'),
+		       max(team_id) FILTER (WHERE role = 'away')
+		FROM event_participants WHERE event_id = $1`, eventID).Scan(&homeID, &awayID); err != nil {
+		return 0, 0, fmt.Errorf("read participants: %w", err)
+	}
+	if homeID != nil {
+		home = *homeID
+	}
+	if awayID != nil {
+		away = *awayID
+	}
+	return home, away, nil
 }

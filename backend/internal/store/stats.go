@@ -287,9 +287,16 @@ func (im *Importer) FindEventByPartialTeams(ctx context.Context, sportSlug, home
 		WHERE sp.slug = $1
 		  AND e.start_date BETWEEN $4::date - 1 AND $4::date + 1
 		  AND (
-		      (ht.name_key = $2 AND (at.name_key = $3 OR left(at.name_key, 5) = left($3, 5)))
+		      (ht.name_key = $2 AND (at.name_key = $3 OR left(at.name_key, 5) = left($3, 5)
+		          -- "Ireland U21" inside "Republic of Ireland U21": a shorter
+		          -- name with a qualifier is the same side.
+		          OR (position(' ' in $3) > 0 AND at.name_key LIKE '% ' || $3)
+		          -- and the reverse: the provider sends the longer spelling.
+		          OR (position(' ' in at.name_key) > 0 AND $3 LIKE '% ' || at.name_key)))
 		      OR
-		      (at.name_key = $3 AND (ht.name_key = $2 OR left(ht.name_key, 5) = left($2, 5)))
+		      (at.name_key = $3 AND (ht.name_key = $2 OR left(ht.name_key, 5) = left($2, 5)
+		          OR (position(' ' in $2) > 0 AND ht.name_key LIKE '% ' || $2)
+		          OR (position(' ' in ht.name_key) > 0 AND $2 LIKE '% ' || ht.name_key)))
 		  )
 		ORDER BY abs(e.start_date - $4::date),
 		         abs(extract(epoch FROM (COALESCE(e.start_time, e.start_date::timestamptz) - $4::timestamptz))),
