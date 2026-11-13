@@ -68,6 +68,11 @@ func (im *Importer) applyLiveState(ctx context.Context, state providers.LiveStat
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 
+	provider := state.Provider
+	if provider == "" {
+		provider = "espn"
+	}
+
 	sportSlug := state.Sport
 	if sportSlug == "" {
 		sportSlug = "football"
@@ -103,17 +108,17 @@ func (im *Importer) applyLiveState(ctx context.Context, state providers.LiveStat
 		teamCache:     teamCache,
 	}
 
-	homeID, err := t.resolveTeam(ctx, "espn", state.HomeName)
+	homeID, err := t.resolveTeam(ctx, provider, state.HomeName)
 	if err != nil {
 		return liveSkipped, err
 	}
-	awayID, err := t.resolveTeam(ctx, "espn", state.AwayName)
+	awayID, err := t.resolveTeam(ctx, provider, state.AwayName)
 	if err != nil {
 		return liveSkipped, err
 	}
 
 	fixture := providers.Fixture{
-		Provider:        "espn",
+		Provider:        provider,
 		ProviderEventID: state.ProviderEventID,
 		CompetitionSlug: state.CompetitionSlug,
 		SeasonName:      season.Name,
@@ -154,31 +159,32 @@ func (im *Importer) applyLiveState(ctx context.Context, state providers.LiveStat
 	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE events SET
-			identity_status = 'confirmed',
+			identity_status = CASE WHEN $5 = 'espn' THEN 'confirmed' ELSE 'provisional' END,
 			start_time = $2,
 			start_date = ($2 AT TIME ZONE $4)::date,
 			start_time_local = to_char($2 AT TIME ZONE $4, 'HH24:MI'),
 			status = CASE WHEN status = 'finished' THEN 'finished' ELSE $3 END
 		WHERE id = $1`,
-		eventID, state.StartUTC, string(state.Status), timezone); err != nil {
+		eventID, state.StartUTC, string(state.Status), timezone, provider); err != nil {
 		return liveSkipped, fmt.Errorf("update event from espn: %w", err)
 	}
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO event_provider_ids
 			(event_id, provider, provider_event_id, observed_start_time, observed_status, match_method)
-		VALUES ($1, 'espn', $2, $3, $4, 'espn_id')
+		VALUES ($1, $5, $2, $3, $4,
+		        CASE WHEN $5 = 'espn' THEN 'espn_id' ELSE 'provider_id' END)
 		ON CONFLICT (provider, provider_event_id) DO UPDATE SET
 			observed_start_time = EXCLUDED.observed_start_time,
 			observed_status = EXCLUDED.observed_status`,
-		eventID, state.ProviderEventID, state.StartUTC, string(state.Status)); err != nil {
-		return liveSkipped, fmt.Errorf("link espn id: %w", err)
+		eventID, state.ProviderEventID, state.StartUTC, string(state.Status), provider); err != nil {
+		return liveSkipped, fmt.Errorf("link provider id: %w", err)
 	}
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO event_live_states
 			(event_id, provider, status, home_score, away_score, detail, captured_at)
-		VALUES ($1, 'espn', $2, $3, $4, NULLIF($5, ''), now())
+		VALUES ($1, $6, $2, $3, $4, NULLIF($5, ''), now())
 		ON CONFLICT (event_id) DO UPDATE SET
 			provider = EXCLUDED.provider,
 			status = EXCLUDED.status,
@@ -186,7 +192,7 @@ func (im *Importer) applyLiveState(ctx context.Context, state providers.LiveStat
 			away_score = EXCLUDED.away_score,
 			detail = COALESCE(EXCLUDED.detail, event_live_states.detail),
 			captured_at = now()`,
-		eventID, string(state.Status), state.HomeScore, state.AwayScore, state.Detail); err != nil {
+		eventID, string(state.Status), state.HomeScore, state.AwayScore, state.Detail, provider); err != nil {
 		return liveSkipped, fmt.Errorf("upsert live state: %w", err)
 	}
 
@@ -261,4 +267,41 @@ func (im *Importer) EventsInWindow(ctx context.Context, from, to time.Time) (int
 		return 0, fmt.Errorf("count events in window: %w", err)
 	}
 	return count, nil
+}
+
+// EventLinkedToProvider reports whether an event already carries this
+// provider's id, which is the only case where its live state may be refreshed
+// from that provider.
+func (im *Importer) EventLinkedToProvider(ctx context.Context, eventID int64, provider string) (bool, error) {
+	var exists bool
+	err := im.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM event_provider_ids
+			WHERE event_id = $1 AND provider = $2
+		)`, eventID, provider).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check provider link: %w", err)
+	}
+	return exists, nil
+}
+
+// RefreshLiveState updates the clock and score of a live event from the
+// provider that owns it.
+func (im *Importer) RefreshLiveState(ctx context.Context, eventID int64, provider, detail string, home, away *int) error {
+	_, err := im.pool.Exec(ctx, `
+		INSERT INTO event_live_states
+			(event_id, provider, status, home_score, away_score, detail, captured_at)
+		VALUES ($1, $2, 'live', $3, $4, $5, now())
+		ON CONFLICT (event_id) DO UPDATE SET
+			provider = EXCLUDED.provider,
+			status = 'live',
+			home_score = EXCLUDED.home_score,
+			away_score = EXCLUDED.away_score,
+			detail = EXCLUDED.detail,
+			captured_at = now()`,
+		eventID, provider, home, away, detail)
+	if err != nil {
+		return fmt.Errorf("refresh live state: %w", err)
+	}
+	return nil
 }

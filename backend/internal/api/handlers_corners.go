@@ -40,7 +40,7 @@ type liveCornerMatch struct {
 // minutePattern only accepts a clock written with a minute mark, so a
 // descriptive provider string like "Fri, November 13th at 12:00 PM EST" cannot
 // be mistaken for the 13th minute.
-var minutePattern = regexp.MustCompile(`(\d{1,3})(?:\+\d{1,2})?\s*['\x{2019}]`)
+var minutePattern = regexp.MustCompile(`(\d{1,3})(?:\+\d{1,2})?[\s\x{200e}\x{200f}]*['\x{2019}]`)
 
 // parseMinute reads the elapsed minute from a provider clock. Only a clock with
 // a minute mark is trusted: "HT" is treated as 45, anything else stays unknown.

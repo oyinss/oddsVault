@@ -3,6 +3,9 @@ package store
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/oyins/oddsvault/backend/internal/normalize"
 )
 
 // StatsCandidate is a finished event whose provider stats are still missing.
@@ -202,4 +205,45 @@ func (im *Importer) LiveCornerCandidates(ctx context.Context, limit int) ([]Live
 		out = append(out, item)
 	}
 	return out, rows.Err()
+}
+
+// EventTeams identifies a matched event and its two team ids.
+type EventTeams struct {
+	EventID    int64
+	HomeTeamID int64
+	AwayTeamID int64
+}
+
+// FindEventByTeamNames matches an event by both team names and a nearby date.
+// It returns nil when the pairing is not stored, so a second provider can fill
+// statistics without ever creating a fixture.
+func (im *Importer) FindEventByTeamNames(ctx context.Context, sportSlug, home, away string, day time.Time) (*EventTeams, error) {
+	_, homeKey := normalize.Resolve(home)
+	_, awayKey := normalize.Resolve(away)
+	if homeKey == "" || awayKey == "" {
+		return nil, nil
+	}
+
+	var out EventTeams
+	err := im.pool.QueryRow(ctx, `
+		SELECT e.id, hp.team_id, ap.team_id
+		FROM events e
+		JOIN sports sp ON sp.id = e.sport_id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN teams ht ON ht.id = hp.team_id AND ht.sport_id = sp.id
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		JOIN teams at ON at.id = ap.team_id AND at.sport_id = sp.id
+		WHERE sp.slug = $1
+		  AND ht.name_key = $2
+		  AND at.name_key = $3
+		  AND e.start_date BETWEEN $4::date - 1 AND $4::date + 1
+		ORDER BY abs(e.start_date - $4::date), e.id
+		LIMIT 1`, sportSlug, homeKey, awayKey, day).Scan(&out.EventID, &out.HomeTeamID, &out.AwayTeamID)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("match event by teams: %w", err)
+	}
+	return &out, nil
 }
