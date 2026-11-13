@@ -501,6 +501,7 @@ export type LiveCornerMatch = {
   event_id: number;
   competition: string;
   competition_country: string | null;
+  kickoff: string;
   home: { id: number; name: string; crest_url: string | null };
   away: { id: number; name: string; crest_url: string | null };
   home_score: number | null;
@@ -522,13 +523,19 @@ export type LiveCornerMatch = {
 export type LiveCorners = {
   generated_at: string;
   line: number;
+  sort: string;
   count: number;
   matches: LiveCornerMatch[];
 };
 
-export async function getLiveCorners(line: number): Promise<LiveCorners | null> {
+export async function getLiveCorners(
+  line: number,
+  sort: "kickoff" | "projection" = "kickoff",
+): Promise<LiveCorners | null> {
   try {
-    return await getJSON<LiveCorners>(`/api/v1/corners/live?line=${line}`);
+    return await getJSON<LiveCorners>(
+      `/api/v1/corners/live?line=${line}&sort=${sort}`,
+    );
   } catch {
     return null;
   }

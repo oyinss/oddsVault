@@ -27,9 +27,10 @@ const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 
 export default function CornersPage() {
   const [line, setLine] = useState(10);
+  const [sort, setSort] = useState<"kickoff" | "projection">("kickoff");
   const { data, loading, error, reload } = useApiData<LiveCorners | null>(
-    `live-corners:${line}`,
-    () => getLiveCorners(line),
+    `live-corners:${line}:${sort}`,
+    () => getLiveCorners(line, sort),
     { refreshMs: 30000 },
   );
 
@@ -69,6 +70,25 @@ export default function CornersPage() {
                     {option}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
+              <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+                Sort
+              </span>
+              <select
+                value={sort}
+                onChange={(event) =>
+                  setSort(event.target.value as "kickoff" | "projection")
+                }
+                className="bg-transparent font-mono text-sm text-mist-100 outline-none"
+              >
+                <option value="kickoff" className="bg-ink-900">
+                  Earliest kickoff
+                </option>
+                <option value="projection" className="bg-ink-900">
+                  Highest projection
+                </option>
               </select>
             </label>
             <button
@@ -146,6 +166,15 @@ export default function CornersPage() {
   );
 }
 
+function kickoffClock(iso: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.valueOf())) return "-";
+  return at.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
   const tone =
     match.pace === "above"
@@ -165,6 +194,9 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
           <span className="flex items-center gap-1.5 font-mono text-[11px] text-red-300">
             <span className="size-1.5 animate-pulse rounded-full bg-red-400" />
             {match.clock || "live"}
+          </span>
+          <span className="font-mono text-[10px] text-mist-500">
+            kickoff {kickoffClock(match.kickoff)}
           </span>
         </div>
         <span className="font-mono text-[10px] text-mist-500">
