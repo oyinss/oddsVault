@@ -43,12 +43,13 @@ type Stats struct {
 }
 
 type candidate struct {
-	selectionID int64
-	marketType  string
-	line        *float64
-	selection   string
-	homeScore   int
-	awayScore   int
+	selectionID  int64
+	marketType   string
+	line         *float64
+	selection    string
+	homeScore    int
+	awayScore    int
+	totalCorners *int
 }
 
 // Run settles every selection whose event has a verified final score.
@@ -56,7 +57,8 @@ func (e *Engine) Run(ctx context.Context) (Stats, error) {
 	var stats Stats
 
 	rows, err := e.pool.Query(ctx, `
-		SELECT se.id, mt.slug, m.line, se.selection, r.home_score, r.away_score
+		SELECT se.id, mt.slug, m.line, se.selection, r.home_score, r.away_score,
+		       (SELECT sum(tms.corners)::int FROM team_match_stats tms WHERE tms.event_id = e.id)
 		FROM market_selections se
 		JOIN markets m ON m.id = se.market_id
 		JOIN market_types mt ON mt.id = m.market_type_id
@@ -74,7 +76,7 @@ func (e *Engine) Run(ctx context.Context) (Stats, error) {
 	var candidates []candidate
 	for rows.Next() {
 		var c candidate
-		if err := rows.Scan(&c.selectionID, &c.marketType, &c.line, &c.selection, &c.homeScore, &c.awayScore); err != nil {
+		if err := rows.Scan(&c.selectionID, &c.marketType, &c.line, &c.selection, &c.homeScore, &c.awayScore, &c.totalCorners); err != nil {
 			return stats, fmt.Errorf("scan settleable selection: %w", err)
 		}
 		candidates = append(candidates, c)
@@ -232,6 +234,27 @@ func evaluate(c candidate) (status, actual, detail, reason string) {
 			return hitOrMiss(both), actual, "both teams scored", ""
 		case "no":
 			return hitOrMiss(!both), actual, "not both teams scored", ""
+		default:
+			return "not_gradable", actual, "", "unsupported_selection"
+		}
+
+	case "total_corners":
+		if c.totalCorners == nil {
+			return "needs_data", actual, "", "corners_unavailable"
+		}
+		if c.line == nil {
+			return "not_gradable", actual, "", "missing_line"
+		}
+		total := float64(*c.totalCorners)
+		actual = fmt.Sprintf("%d corners", *c.totalCorners)
+		if total == *c.line {
+			return "push", actual, fmt.Sprintf("corners %.0f equals line %g", total, *c.line), "push_rule"
+		}
+		switch c.selection {
+		case "over":
+			return hitOrMiss(total > *c.line), actual, fmt.Sprintf("corners %.0f", total), ""
+		case "under":
+			return hitOrMiss(total < *c.line), actual, fmt.Sprintf("corners %.0f", total), ""
 		default:
 			return "not_gradable", actual, "", "unsupported_selection"
 		}

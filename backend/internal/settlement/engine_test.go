@@ -93,6 +93,47 @@ func TestEvaluate(t *testing.T) {
 	}
 }
 
+func TestEvaluateCorners(t *testing.T) {
+	line := 9.5
+	exact := 10.0
+	ten := 10
+
+	tests := []struct {
+		name   string
+		c      candidate
+		status string
+	}{
+		{
+			name:   "over 9.5 with ten corners",
+			c:      candidate{marketType: "total_corners", selection: "over", line: &line, totalCorners: &ten},
+			status: "hit",
+		},
+		{
+			name:   "under 9.5 with ten corners",
+			c:      candidate{marketType: "total_corners", selection: "under", line: &line, totalCorners: &ten},
+			status: "miss",
+		},
+		{
+			name:   "integer line pushes when exact",
+			c:      candidate{marketType: "total_corners", selection: "over", line: &exact, totalCorners: &ten},
+			status: "push",
+		},
+		{
+			name:   "missing corner data",
+			c:      candidate{marketType: "total_corners", selection: "under", line: &line},
+			status: "needs_data",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			status, _, _, _ := evaluate(tc.c)
+			if status != tc.status {
+				t.Fatalf("status = %q, want %q", status, tc.status)
+			}
+		})
+	}
+}
+
 func TestEvaluateMissingLine(t *testing.T) {
 	status, _, _, reason := evaluate(candidate{marketType: "total_goals", selection: "over", homeScore: 1, awayScore: 1})
 	if status != "not_gradable" || reason != "missing_line" {

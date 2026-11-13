@@ -78,6 +78,7 @@ build_backend() {
         (cd "$ROOT/backend" && go build -o "$BIN/settlement-worker" ./cmd/settlement-worker)
         (cd "$ROOT/backend" && go build -o "$BIN/bookmaker-collector" ./cmd/bookmaker-collector)
         (cd "$ROOT/backend" && go build -o "$BIN/import-bets" ./cmd/import-bets)
+        (cd "$ROOT/backend" && go build -o "$BIN/model-picks" ./cmd/model-picks)
     fi
 }
 

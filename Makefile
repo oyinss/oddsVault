@@ -14,7 +14,7 @@ LOCAL_DB := ./scripts/local-db.sh
 CORS_ALLOWED_ORIGINS ?= http://localhost:3000
 
 .DEFAULT_GOAL := help
-.PHONY: help db-check db-init db-start db-stop db-status db-reset db-psql migrate migrate-status sync settle odds import-bets import-odds api workers test vet fmt web-install web-dev web-build web-preview tunnel pages-login pages-create pages-deploy pages-origin journal-lock journal-token check
+.PHONY: help db-check db-init db-start db-stop db-status db-reset db-psql migrate migrate-status sync settle model-picks odds import-bets import-odds api workers test vet fmt web-install web-dev web-build web-preview tunnel pages-login pages-create pages-deploy pages-origin journal-lock journal-token check
 
 help:
 	@echo "OddsVault"
@@ -32,7 +32,8 @@ help:
 	@echo "  make migrate        apply pending migrations"
 	@echo "  make migrate-status list applied and pending migrations"
 	@echo "  make sync           import football fixtures and results once"
-	@echo "  make settle         settle selections against finished results"
+	@echo "  make settle         settle selections against finished results once"
+	@echo "  make model-picks    freeze one set of strategy picks from settled history"
 	@echo "  make odds           capture live bookmaker prices once"
 	@echo "  make import-bets FILE=path  import a bookmaker bet-history export"
 	@echo "  make import-odds FILE=path  import a browser odds capture"
@@ -124,6 +125,9 @@ restore-test:
 
 api:
 	cd backend && DATABASE_URL="$(DATABASE_URL)" CORS_ALLOWED_ORIGINS="$(CORS_ALLOWED_ORIGINS)" go run ./cmd/api
+
+model-picks:
+	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/model-picks
 
 workers:
 	cd backend && DATABASE_URL="$(DATABASE_URL)" go run ./cmd/sports-sync & \

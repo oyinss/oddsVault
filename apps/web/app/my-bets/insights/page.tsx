@@ -17,6 +17,7 @@ const FAMILY_LABELS: Record<string, string> = {
   corners_total: "Corners total",
   corners_handicap: "Corners handicap",
   total_goals: "Total goals",
+  total_corners: "Total corners",
   both_teams_to_score: "BTTS",
   match_result: "Match result",
   handicap: "Handicap",

@@ -6,10 +6,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   formatMoney,
+  getModelPicks,
   getMyBets,
   type BetSummary,
   type EventItem,
   type HomeSummary,
+  type ModelPicks as ModelPicksResponse,
 } from "@/lib/api";
 import { useEffect, useState } from "react";
 import { eventTimeLabel, eventDayLabel } from "@/features/home/format";
@@ -150,14 +152,63 @@ function MyBets() {
   );
 }
 
+const SELECTION_LABEL: Record<string, string> = {
+  home: "Home",
+  draw: "Draw",
+  away: "Away",
+};
+
 function ModelPicks() {
+  const [picks, setPicks] = useState<ModelPicksResponse | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    void getModelPicks().then((value) => {
+      setPicks(value);
+      setLoaded(true);
+    });
+  }, []);
+
+  const rows = picks?.picks.slice(0, 3) ?? [];
+
   return (
-    <Panel title="Model picks">
-      <p className="text-sm text-mist-300">No model picks yet.</p>
-      <p className="mt-1 text-xs leading-relaxed text-mist-500">
-        Picks will appear here once a strategy has frozen pre-kickoff
-        recommendations. Nothing is generated to fill the space.
-      </p>
+    <Panel title="Model picks" href="/model-picks">
+      {!loaded ? (
+        <p className="text-xs text-mist-500">Loading picks...</p>
+      ) : rows.length === 0 ? (
+        <>
+          <p className="text-sm text-mist-300">No qualifying picks.</p>
+          <p className="mt-1 text-xs leading-relaxed text-mist-500">
+            {picks?.run_id
+              ? "The latest run found no price where settled history beats the implied probability. Nothing is invented to fill the space."
+              : "No strategy run yet. Picks appear only after a run freezes pre-kickoff prices."}
+          </p>
+        </>
+      ) : (
+        <ul className="space-y-2.5">
+          {rows.map((pick) => (
+            <li key={pick.id}>
+              <Link
+                href={`/events/detail?id=${pick.event_id}`}
+                className="block rounded-lg px-1 py-1 transition hover:bg-white/[0.03]"
+              >
+                <span className="block truncate text-xs text-mist-200">
+                  {pick.home_name} v {pick.away_name}
+                </span>
+                <span className="mt-0.5 flex items-baseline justify-between gap-2">
+                  <span className="truncate font-mono text-[10px] text-mist-500">
+                    {SELECTION_LABEL[pick.selection] ?? pick.selection} @{" "}
+                    {pick.odds.toFixed(2)} · n={pick.samples}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] text-turf-300">
+                    +{(pick.edge * 100).toFixed(1)}%
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </Panel>
   );
 }

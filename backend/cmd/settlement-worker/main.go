@@ -59,7 +59,11 @@ func runOnce() error {
 		return fmt.Errorf("database unreachable: %w", err)
 	}
 
-	_, err = settlement.New(pool, logger).Run(ctx)
+	engine := settlement.New(pool, logger)
+	if _, err := engine.Run(ctx); err != nil {
+		return err
+	}
+	_, err = engine.SettleModelBets(ctx)
 	return err
 }
 
@@ -71,6 +75,14 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, _ config
 			Every: 10 * time.Minute,
 			Run: func(ctx context.Context) error {
 				_, err := engine.Run(ctx)
+				return err
+			},
+		},
+		{
+			Name:  "settle_model_bets",
+			Every: 10 * time.Minute,
+			Run: func(ctx context.Context) error {
+				_, err := engine.SettleModelBets(ctx)
 				return err
 			},
 		},

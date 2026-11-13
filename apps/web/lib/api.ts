@@ -473,6 +473,45 @@ export async function getHomeSummary(
   }
 }
 
+export type ModelPick = {
+  id: number;
+  run_id: number;
+  event_id: number;
+  sport: string;
+  competition: string;
+  home_name: string;
+  away_name: string;
+  kickoff: string;
+  market_type: string;
+  selection: string;
+  odds: number;
+  status: "pending" | "won" | "lost" | "void" | "partial" | "unknown";
+  locked_at: string;
+  samples: number;
+  hit_rate: number;
+  implied: number;
+  edge: number;
+  strategy_slug: string;
+  strategy_version: number;
+  data_cutoff_at: string;
+};
+
+export type ModelPicks = {
+  picks: ModelPick[];
+  data_cutoff_at: string | null;
+  run_id: number | null;
+  strategy: string;
+  count: number;
+};
+
+export async function getModelPicks(): Promise<ModelPicks | null> {
+  try {
+    return await getJSON<ModelPicks>("/api/v1/model-picks");
+  } catch {
+    return null;
+  }
+}
+
 export type AdminHealth = {
   generated_at: string;
   database: { reachable: boolean; latency_ms: number };

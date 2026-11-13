@@ -28,6 +28,30 @@ TimeoutStopSec=20
 WantedBy=default.target
 EOF
 
+cat >"$UNIT_DIR/oddsvault-model-picks.service" <<EOF
+[Unit]
+Description=OddsVault model picks run
+Wants=oddsvault.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=$ROOT
+EnvironmentFile=-$ROOT/.env
+ExecStart=$ROOT/.local/bin/model-picks
+EOF
+
+cat >"$UNIT_DIR/oddsvault-model-picks.timer" <<EOF
+[Unit]
+Description=Refresh OddsVault model picks
+
+[Timer]
+OnCalendar=*-*-* 00/6:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
 cat >"$UNIT_DIR/oddsvault-backup.service" <<EOF
 [Unit]
 Description=OddsVault database backup
@@ -53,6 +77,7 @@ EOF
 
 systemctl --user daemon-reload
 systemctl --user enable --now oddsvault-backup.timer
+systemctl --user enable --now oddsvault-model-picks.timer
 
 if [ "${SKIP_RUNTIME:-0}" != "1" ]; then
     systemctl --user enable --now oddsvault.service
