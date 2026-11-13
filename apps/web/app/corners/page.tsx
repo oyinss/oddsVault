@@ -5,6 +5,8 @@ import { useState } from "react";
 import {
   faArrowDownWideShort,
   faArrowsRotate,
+  faBell,
+  faBellSlash,
   faBullseye,
   faChartLine,
   faCircleInfo,
@@ -30,6 +32,7 @@ import {
   type LiveCorners,
 } from "@/lib/api";
 import { useApiData } from "@/lib/use-api";
+import { useCornerAlerts } from "@/features/corners/use-corner-alerts";
 
 const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 
@@ -45,6 +48,7 @@ export default function CornersPage() {
   );
 
   const matches = data?.matches ?? [];
+  const alerts = useCornerAlerts(matches, line);
 
   return (
     <>
@@ -133,10 +137,28 @@ export default function CornersPage() {
           </div>
         </div>
 
-        <p className="mt-3 font-mono text-[10px] tracking-widest text-mist-500 uppercase">
-          {data?.generated_at ? formatAge(data.generated_at) : "not loaded"} ·{" "}
-          {matches.length} live {matches.length === 1 ? "match" : "matches"}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <p className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+            {data?.generated_at ? formatAge(data.generated_at) : "not loaded"} ·{" "}
+            {matches.length} live {matches.length === 1 ? "match" : "matches"}
+          </p>
+          {alerts.permission !== "granted" && (
+            <button
+              type="button"
+              onClick={() => void alerts.requestPermission()}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 font-mono text-[10px] tracking-widest text-mist-300 uppercase transition hover:border-turf-400/40 hover:text-turf-300"
+              title="Alerts fire while this page is open"
+            >
+              <FontAwesomeIcon icon={faBell} className="size-2.5" />
+              {alerts.permission === "unsupported"
+                ? "alerts on this page only"
+                : "enable corner alerts"}
+            </button>
+          )}
+          <span className="font-mono text-[10px] text-mist-500">
+            {alerts.watches.length} watched
+          </span>
+        </div>
 
         {error ? (
           <div className="mt-6 rounded-2xl border border-flag-400/30 bg-flag-400/[0.04] p-6">
@@ -160,7 +182,17 @@ export default function CornersPage() {
         ) : (
           <div className="mt-6 space-y-3">
             {matches.map((match) => (
-              <MatchCard key={match.event_id} match={match} line={line} />
+              <MatchCard
+                key={match.event_id}
+                match={match}
+                line={line}
+                watched={alerts.isWatched(match.event_id)}
+                threshold={
+                  alerts.watches.find((watch) => watch.eventId === match.event_id)
+                    ?.threshold ?? null
+                }
+                onToggle={() => void alerts.toggle(match)}
+              />
             ))}
           </div>
         )}
@@ -192,6 +224,21 @@ export default function CornersPage() {
             </li>
           </ul>
         </section>
+        {alerts.notice && (
+          <div className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-start gap-3 rounded-xl border border-turf-400/40 bg-ink-900 px-4 py-3 shadow-2xl">
+            <FontAwesomeIcon icon={faBell} className="mt-0.5 size-3.5 text-turf-300" />
+            <p className="flex-1 text-xs leading-relaxed text-mist-200">
+              {alerts.notice}
+            </p>
+            <button
+              type="button"
+              onClick={alerts.dismissNotice}
+              className="font-mono text-[10px] tracking-widest text-mist-500 uppercase hover:text-mist-200"
+            >
+              close
+            </button>
+          </div>
+        )}
       </main>
     </>
   );
@@ -206,7 +253,19 @@ function kickoffClock(iso: string): string {
   });
 }
 
-function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
+function MatchCard({
+  match,
+  line,
+  watched,
+  threshold,
+  onToggle,
+}: {
+  match: LiveCornerMatch;
+  line: number;
+  watched: boolean;
+  threshold: number | null;
+  onToggle: () => void;
+}) {
   const tone =
     match.pace === "above"
       ? "border-turf-400/40 bg-turf-500/[0.06]"
@@ -324,6 +383,7 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
       <footer className="flex items-center justify-between gap-2 border-t border-line px-4 py-2">
         <PaceBadge pace={match.pace} line={line} />
         <span className="font-mono text-[10px] text-mist-500">
+          {watched && threshold !== null ? `alert at ${threshold} corners · ` : ""}
           {match.total_corners === null
             ? "corners not published by provider"
             : match.remaining_minutes !== null
