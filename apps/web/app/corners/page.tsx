@@ -146,17 +146,17 @@ export default function CornersPage() {
             <button
               type="button"
               onClick={() => void alerts.requestPermission()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 font-mono text-[10px] tracking-widest text-mist-300 uppercase transition hover:border-turf-400/40 hover:text-turf-300"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-turf-400/40 bg-turf-500/10 px-3 py-1.5 font-mono text-[10px] tracking-widest text-turf-200 uppercase transition hover:bg-turf-500/20"
               title="Alerts fire while this page is open"
             >
-              <FontAwesomeIcon icon={faBell} className="size-2.5" />
+              <FontAwesomeIcon icon={faBell} className="size-3" />
               {alerts.permission === "unsupported"
                 ? "alerts on this page only"
                 : "enable corner alerts"}
             </button>
           )}
           <span className="font-mono text-[10px] text-mist-500">
-            {alerts.watches.length} watched
+            {alerts.watches.length} watched · use the bell on a match to add one
           </span>
         </div>
 
@@ -293,9 +293,32 @@ function MatchCard({
             kickoff {kickoffClock(match.kickoff)}
           </span>
         </div>
-        <span className="font-mono text-[10px] text-mist-500">
-          corners {formatAge(match.captured_at)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-mist-500">
+            corners {formatAge(match.captured_at)}
+          </span>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-pressed={watched}
+            title={
+              watched
+                ? `Alert at ${threshold} corners. Click to stop watching.`
+                : "Alert me when the total corners reaches the line"
+            }
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[9px] tracking-widest uppercase transition ${
+              watched
+                ? "border-turf-400/40 bg-turf-500/10 text-turf-300"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon
+              icon={watched ? faBell : faBellSlash}
+              className="size-2.5"
+            />
+            {watched && threshold !== null ? `alert ${threshold}` : "notify"}
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

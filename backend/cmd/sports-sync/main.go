@@ -18,6 +18,7 @@ import (
 
 	"github.com/oyins/oddsvault/backend/internal/config"
 	"github.com/oyins/oddsvault/backend/internal/database"
+	"github.com/oyins/oddsvault/backend/internal/dedupe"
 	"github.com/oyins/oddsvault/backend/internal/logging"
 	"github.com/oyins/oddsvault/backend/internal/providers"
 	"github.com/oyins/oddsvault/backend/internal/store"
@@ -331,6 +332,20 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Name:  "sync_all_live_soccer",
 			Every: 2 * time.Minute,
 			Run:   football.RunAllLive,
+		},
+		{
+			Name:  "dedupe_live_events",
+			Every: 10 * time.Minute,
+			Run: func(ctx context.Context) error {
+				result, err := dedupe.Run(ctx, pool, true)
+				if err != nil {
+					return err
+				}
+				if result.Merged > 0 {
+					log.Info("duplicate live events merged", slog.Int("merged", result.Merged))
+				}
+				return nil
+			},
 		},
 		{
 			Name:  "sync_missing_logos",
