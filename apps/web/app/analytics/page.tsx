@@ -132,14 +132,14 @@ function RangesTable({ ranges }: { ranges: OddsRanges }) {
         <Stat
           label="Hit rate"
           value={
-            ranges.settled > 0 ? `${(ranges.total.hit_rate * 100).toFixed(1)}%` : "—"
+            ranges.settled > 0 ? `${(ranges.total.hit_rate * 100).toFixed(1)}%` : "-"
           }
           hint={`${ranges.total.hits} hits · ${ranges.total.misses} misses`}
         />
         <Stat label="Excluded" value={String(ranges.excluded)} hint="push/void/missing" />
         <Stat
           label="Average odds"
-          value={ranges.total.avg_odds ? ranges.total.avg_odds.toFixed(2) : "—"}
+          value={ranges.total.avg_odds ? ranges.total.avg_odds.toFixed(2) : "-"}
         />
       </dl>
 
@@ -165,7 +165,7 @@ function RangesTable({ ranges }: { ranges: OddsRanges }) {
                 return (
                   <tr key={bucket.low}>
                     <td className="px-4 py-2.5 font-mono text-xs text-mist-200">
-                      {bucket.low.toFixed(2)}–{bucket.high.toFixed(2)}
+                      {bucket.low.toFixed(2)}-{bucket.high.toFixed(2)}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-xs">
                       {settled}

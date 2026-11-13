@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://oddsvault-web.pages.dev"),
-  title: "OddsVault — Sports Odds Intelligence",
+  title: "OddsVault - Sports Odds Intelligence",
   description:
     "Timestamped bookmaker odds, verified results and versioned settlement, kept as immutable history.",
   manifest: "/manifest.webmanifest",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "OddsVault",
-    title: "OddsVault — Sports Odds Intelligence",
+    title: "OddsVault - Sports Odds Intelligence",
     description:
       "Timestamped bookmaker odds, verified results and versioned settlement, kept as immutable history.",
     images: [
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "OddsVault — Sports Odds Intelligence",
+    title: "OddsVault - Sports Odds Intelligence",
     description:
       "Timestamped bookmaker odds, verified results and versioned settlement, kept as immutable history.",
     images: ["/og.png"],

@@ -158,7 +158,7 @@ export default function HealthPage() {
                   </span>,
                   String(run.records_received),
                   String(run.records_inserted),
-                  run.error_message ?? "—",
+                  run.error_message ?? "-",
                 ])}
               />
             </Section>

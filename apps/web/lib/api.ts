@@ -533,7 +533,7 @@ export async function getOddsRanges(
 }
 
 export function formatMoney(value: number | null, currency = "NGN"): string {
-  if (value === null || Number.isNaN(value)) return "—";
+  if (value === null || Number.isNaN(value)) return "-";
   return `${currency} ${value.toLocaleString("en-NG", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

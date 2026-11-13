@@ -136,7 +136,7 @@ function InsightsView() {
                   `${(row.rate * 100).toFixed(1)}% (${row.won + row.lost})`,
                   row.verified > 0
                     ? `${row.verified}${row.disagreements ? ` · ${row.disagreements} disagree` : ""}`
-                    : "—",
+                    : "-",
                 ])}
               />
             </Section>
@@ -158,7 +158,7 @@ function InsightsView() {
               <Table
                 head={["Odds range", "Legs", "Won", "Lost", "Rate"]}
                 rows={data.odds_buckets.map((row) => [
-                  `${row.low.toFixed(2)}–${(row.high ?? row.low + 0.25).toFixed(2)}`,
+                  `${row.low.toFixed(2)}-${(row.high ?? row.low + 0.25).toFixed(2)}`,
                   String(row.legs),
                   String(row.won),
                   String(row.lost),
@@ -196,7 +196,7 @@ function InsightsView() {
                         {row.event_raw}
                       </p>
                       <p className="mt-1 font-mono text-[11px] text-mist-500">
-                        {capitalise(row.side)} {row.line ?? "—"} · provider{" "}
+                        {capitalise(row.side)} {row.line ?? "-"} · provider{" "}
                         {row.provider_status} · verified {row.verified_status} ·{" "}
                         {row.note}
                       </p>

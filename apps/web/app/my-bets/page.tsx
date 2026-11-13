@@ -276,7 +276,7 @@ export default function MyBetsPage() {
         <p className="mt-6 max-w-3xl text-[11px] leading-relaxed text-mist-500">
           Leg descriptions are stored exactly as the bookmaker published them
           (for example “Corners A - Corners B”). Market and selection stay
-          unresolved until a verified mapping exists — the journal never guesses
+          unresolved until a verified mapping exists - the journal never guesses
           what was bet. P/L is the provider&apos;s settled return; an
           accumulator&apos;s result is not allocated to individual legs.
         </p>
@@ -324,7 +324,7 @@ function DayCard({
       <p className="mt-0.5 text-[11px] text-mist-400">
         {day.bets} {day.bets === 1 ? "bet" : "bets"} · {day.won} won ·{" "}
         {day.winRate === null
-          ? "— win rate"
+          ? "- win rate"
           : `${(day.winRate * 100).toFixed(1)}% win rate`}
         <span className="text-mist-500"> ({day.settled} settled)</span>
       </p>
@@ -494,7 +494,7 @@ function PerformancePanel({
           label="ROI"
           value={
             summary.roi === null
-              ? "—"
+              ? "-"
               : `${summary.roi >= 0 ? "+" : ""}${summary.roi.toFixed(1)}%`
           }
         />
@@ -502,7 +502,7 @@ function PerformancePanel({
           label="Win rate"
           value={
             summary.winRate === null
-              ? "—"
+              ? "-"
               : `${(summary.winRate * 100).toFixed(1)}%`
           }
           hint={`${summary.settled} settled`}

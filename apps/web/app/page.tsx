@@ -30,12 +30,12 @@ const FOUNDATION = [
 ];
 
 const PHASES = [
-  { name: "Phase 0 — Foundation", state: "Done", active: false },
-  { name: "Phase 1A — Football fixtures & results", state: "Done", active: false },
-  { name: "Phase 1B — Live scores", state: "Active", active: true },
-  { name: "Phase 2 — Odds capture", state: "Partial", active: false },
-  { name: "Phase 3 — Football settlement", state: "Planned", active: false },
-  { name: "Phase 4 — Sports visual UI", state: "Planned", active: false },
+  { name: "Phase 0 - Foundation", state: "Done", active: false },
+  { name: "Phase 1A - Football fixtures & results", state: "Done", active: false },
+  { name: "Phase 1B - Live scores", state: "Active", active: true },
+  { name: "Phase 2 - Odds capture", state: "Partial", active: false },
+  { name: "Phase 3 - Football settlement", state: "Planned", active: false },
+  { name: "Phase 4 - Sports visual UI", state: "Planned", active: false },
 ];
 
 const RULES = [
@@ -45,7 +45,7 @@ const RULES = [
   },
   {
     title: "Missing stays missing",
-    body: "Unavailable values are NULL or an explicit state such as needs_data — never a fabricated zero.",
+    body: "Unavailable values are NULL or an explicit state such as needs_data - never a fabricated zero.",
   },
   {
     title: "Snapshots are immutable",
@@ -83,7 +83,7 @@ export default function HomePage() {
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-mist-300 sm:text-lg">
               OddsVault captures real bookmaker odds as immutable snapshots,
               settles supported markets deterministically once events finish,
-              and keeps the whole history queryable — so analysis can only ever
+              and keeps the whole history queryable - so analysis can only ever
               move forward.
             </p>
 
@@ -152,13 +152,13 @@ export default function HomePage() {
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="text-mist-500">Build</dt>
                   <dd className="font-mono text-[12px] text-mist-200">
-                    {health?.reachable ? health.version : "—"}
+                    {health?.reachable ? health.version : "-"}
                   </dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="text-mist-500">Uptime</dt>
                   <dd className="font-mono text-[12px] text-mist-200">
-                    {health?.reachable ? formatUptime(health.uptimeSeconds) : "—"}
+                    {health?.reachable ? formatUptime(health.uptimeSeconds) : "-"}
                   </dd>
                 </div>
               </dl>
@@ -211,7 +211,7 @@ export default function HomePage() {
               </h2>
               <p className="mt-2 max-w-md text-sm leading-relaxed text-mist-400">
                 One proven pipeline before the next. Football ingestion, then a
-                single collector, then settlement — not twelve half-features.
+                single collector, then settlement - not twelve half-features.
               </p>
 
               <ol className="mt-8 space-y-3">
@@ -270,7 +270,7 @@ export default function HomePage() {
       </main>
 
       <footer className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-xs text-mist-500 sm:flex-row sm:items-center sm:justify-between">
-        <p>OddsVault — sports odds intelligence platform.</p>
+        <p>OddsVault - sports odds intelligence platform.</p>
         <p className="font-mono">Go · PostgreSQL + TimescaleDB · Next.js</p>
       </footer>
     </>

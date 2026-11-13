@@ -204,7 +204,7 @@ function EventsView() {
         <p className="mt-6 max-w-3xl text-[11px] leading-relaxed text-mist-500">
           Kickoff times are converted from the provider&apos;s UTC instant to
           your device timezone; venue-local time is labelled local when no UTC
-          time exists. Missing scores are shown as “—”, never as 0. Events
+          time exists. Missing scores are shown as “-”, never as 0. Events
           matched only by competition, participants and date are marked
           provisional until a provider with real ids confirms them.
         </p>
@@ -215,7 +215,7 @@ function EventsView() {
 
 function EventRow({ event }: { event: EventItem }) {
   const scoreline = event.result
-    ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
+    ? `${event.result.home_score ?? "-"} - ${event.result.away_score ?? "-"}`
     : null;
   const when = kickoff(event);
   const today = new Date().toISOString().slice(0, 10);

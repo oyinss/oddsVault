@@ -98,9 +98,9 @@ function LiveCard({ event }: { event: EventItem }) {
   const isLive = event.status === "live" || event.live?.status === "live";
   const finished = event.status === "finished" || Boolean(event.result);
   const score = event.result
-    ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
+    ? `${event.result.home_score ?? "-"} - ${event.result.away_score ?? "-"}`
     : isLive && event.live
-      ? `${event.live.home_score ?? "—"} – ${event.live.away_score ?? "—"}`
+      ? `${event.live.home_score ?? "-"} - ${event.live.away_score ?? "-"}`
       : null;
   const statusLabel = isLive
     ? (event.live?.detail ?? "LIVE")

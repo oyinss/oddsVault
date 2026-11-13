@@ -36,7 +36,7 @@ export function BetCard({ bet }: { bet: PersonalBet }) {
         <Metric label="Stake" value={formatMoney(bet.stake, bet.currency)} />
         <Metric
           label="Odds"
-          value={bet.combined_odds !== null ? bet.combined_odds.toFixed(3) : "—"}
+          value={bet.combined_odds !== null ? bet.combined_odds.toFixed(3) : "-"}
         />
         <Metric
           label={settled ? "Return" : "Potential"}
@@ -44,7 +44,7 @@ export function BetCard({ bet }: { bet: PersonalBet }) {
         />
         <Metric
           label="P/L"
-          value={profit === null ? "—" : formatMoney(profit, bet.currency)}
+          value={profit === null ? "-" : formatMoney(profit, bet.currency)}
           tone={profit === null ? "muted" : profit >= 0 ? "good" : "bad"}
         />
       </dl>
@@ -118,7 +118,7 @@ function LegRow({ leg }: { leg: BetLeg }) {
       </p>
 
       <p className="pl-7 font-mono text-[11px] text-mist-200 sm:pl-0 sm:text-right">
-        {leg.odds_taken !== null ? leg.odds_taken.toFixed(2) : "—"}
+        {leg.odds_taken !== null ? leg.odds_taken.toFixed(2) : "-"}
       </p>
     </li>
   );

@@ -191,7 +191,7 @@ function EventHeader({ detail }: { detail: EventDetail }) {
   const { event } = detail;
   const when = kickoff(event);
   const score = event.result
-    ? `${event.result.home_score ?? "—"} – ${event.result.away_score ?? "—"}`
+    ? `${event.result.home_score ?? "-"} - ${event.result.away_score ?? "-"}`
     : null;
 
   return (
@@ -255,8 +255,8 @@ function EventHeader({ detail }: { detail: EventDetail }) {
           <dd className="mt-1 text-mist-200">
             {event.result?.home_score_ht !== null &&
             event.result?.home_score_ht !== undefined
-              ? `${event.result.home_score_ht} – ${event.result.away_score_ht}`
-              : "—"}
+              ? `${event.result.home_score_ht} - ${event.result.away_score_ht}`
+              : "-"}
           </dd>
         </div>
       </dl>
@@ -272,7 +272,7 @@ function EventHeader({ detail }: { detail: EventDetail }) {
           {event.live.status === "live" ? (
             <>
               Live from {event.live.provider}:{" "}
-              {event.live.home_score ?? "—"}–{event.live.away_score ?? "—"}
+              {event.live.home_score ?? "-"}-{event.live.away_score ?? "-"}
               {event.live.detail ? ` · ${event.live.detail}` : ""} ·{" "}
               {formatAge(event.live.captured_at)}
             </>
@@ -337,7 +337,7 @@ function SelectionRow({ selection }: { selection: SelectionView }) {
 
       <div className="flex items-center gap-4">
         <span className="font-mono text-sm text-mist-100">
-          {selection.decimal_odds ?? "—"}
+          {selection.decimal_odds ?? "-"}
         </span>
         <SettlementChip status={selection.settlement_status} />
       </div>
@@ -376,7 +376,7 @@ function MovementSection({ markets }: { markets: MovementMarket[] }) {
       <h2 className="text-sm font-semibold tracking-tight">Price movement</h2>
       <p className="mt-1 text-xs text-mist-500">
         Every captured observation, in order. Opening is the first stored price,
-        current the latest — never overwritten.
+        current the latest - never overwritten.
       </p>
 
       {markets.length === 0 ? (
@@ -456,7 +456,7 @@ function MovementRow({ selection }: { selection: MovementSelection }) {
 
 function Sparkline({ series }: { series: MovementPoint[] }) {
   if (series.length < 2) {
-    return <span className="w-24 font-mono text-[10px] text-mist-500">—</span>;
+    return <span className="w-24 font-mono text-[10px] text-mist-500">-</span>;
   }
   const values = series.map((point) => point.odds);
   const min = Math.min(...values);
@@ -540,7 +540,7 @@ function MarketPrices({
                   if (!price) {
                     return (
                       <span key={book.slug} className="font-mono text-xs text-mist-600">
-                        —
+                        -
                       </span>
                     );
                   }

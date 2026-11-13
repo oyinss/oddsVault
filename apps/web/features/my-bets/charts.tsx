@@ -278,7 +278,7 @@ export function WinRateGauge({
       </svg>
       <div className="absolute inset-0 grid place-items-center">
         <span className="font-mono text-[11px] font-semibold text-mist-100">
-          {value === null ? "—" : `${(value * 100).toFixed(0)}%`}
+          {value === null ? "-" : `${(value * 100).toFixed(0)}%`}
         </span>
       </div>
     </div>

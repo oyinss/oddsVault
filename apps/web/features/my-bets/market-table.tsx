@@ -113,7 +113,7 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                       }`}
                     >
                       {row.winRate === null
-                        ? "—"
+                        ? "-"
                         : `${(row.winRate * 100).toFixed(1)}% (${row.settled})`}
                     </span>
                   </td>
@@ -123,7 +123,7 @@ export function MarketTable({ rows }: { rows: MarketRow[] }) {
                         className="text-mist-500"
                         title="No single-leg slips on this line; an accumulator's result cannot be split across its legs."
                       >
-                        —
+                        -
                       </span>
                     ) : (
                       <span

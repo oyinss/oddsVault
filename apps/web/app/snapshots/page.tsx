@@ -115,7 +115,7 @@ function SnapshotsView() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mist-400">
             Raw captured prices, newest first. Nothing here is aggregated or
-            overwritten — opening/current views are derived from these rows.
+            overwritten - opening/current views are derived from these rows.
           </p>
         </div>
 
@@ -254,7 +254,7 @@ function Filter({
 
 function SettlementChip({ status }: { status: string | null }) {
   if (!status) {
-    return <span className="font-mono text-[10px] text-mist-600">—</span>;
+    return <span className="font-mono text-[10px] text-mist-600">-</span>;
   }
   const tone =
     status === "hit"

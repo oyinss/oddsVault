@@ -180,9 +180,9 @@ func (s *Server) handleBetInsights(w http.ResponseWriter, r *http.Request) {
 	if rows, err := s.pool.Query(r.Context(), `
 		SELECT CASE
 		         WHEN stake < 5000 THEN 'under 5k'
-		         WHEN stake < 10000 THEN '5k–10k'
-		         WHEN stake < 20000 THEN '10k–20k'
-		         WHEN stake < 50000 THEN '20k–50k'
+		         WHEN stake < 10000 THEN '5k-10k'
+		         WHEN stake < 20000 THEN '10k-20k'
+		         WHEN stake < 50000 THEN '20k-50k'
 		         ELSE '50k+'
 		       END AS bucket,
 		       count(*)::int, COALESCE(sum(stake), 0)::float8,
