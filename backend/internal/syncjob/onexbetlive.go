@@ -39,11 +39,17 @@ func (f *Football) RunOnexbetLive(ctx context.Context) error {
 			continue
 		}
 		if stored != nil {
+			// Even when the fixture is already stored, this keeps the
+			// competition's country current for the flag shown on a row.
+			if _, err := f.importer.EnsureCompetitionByOnexbet(ctx, "football",
+				event.LeagueID, event.LeagueName, event.CountryName); err != nil {
+				errs = append(errs, err)
+			}
 			existing[event.ProviderEventID] = true
 			continue
 		}
 
-		slug, err := f.importer.EnsureCompetitionByOnexbet(ctx, "football", event.LeagueID, event.LeagueName)
+		slug, err := f.importer.EnsureCompetitionByOnexbet(ctx, "football", event.LeagueID, event.LeagueName, event.CountryName)
 		if err != nil {
 			errs = append(errs, err)
 			continue

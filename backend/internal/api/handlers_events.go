@@ -93,28 +93,30 @@ type oddsResponse struct {
 }
 
 type eventResponse struct {
-	ID              int64           `json:"id"`
-	Sport           string          `json:"sport"`
-	SportName       string          `json:"sport_name"`
-	Competition     string          `json:"competition"`
-	CompetitionName string          `json:"competition_name"`
-	Season          *string         `json:"season"`
-	StartDate       *string         `json:"start_date"`
-	StartTime       *string         `json:"start_time"`
-	StartTimeLocal  *string         `json:"start_time_local"`
-	Status          string          `json:"status"`
-	Round           *string         `json:"round"`
-	IdentityStatus  string          `json:"identity_status"`
-	Home            teamResponse    `json:"home"`
-	Away            teamResponse    `json:"away"`
-	Result          *resultResponse `json:"result"`
-	Live            *liveResponse   `json:"live"`
-	Odds            *oddsResponse   `json:"odds"`
-	UpdatedAt       string          `json:"updated_at"`
+	ID              int64  `json:"id"`
+	Sport           string `json:"sport"`
+	SportName       string `json:"sport_name"`
+	Competition     string `json:"competition"`
+	CompetitionName string `json:"competition_name"`
+	// ISO2 of the competition's country, used for the flag on a row.
+	CompetitionCountry *string         `json:"competition_country"`
+	Season             *string         `json:"season"`
+	StartDate          *string         `json:"start_date"`
+	StartTime          *string         `json:"start_time"`
+	StartTimeLocal     *string         `json:"start_time_local"`
+	Status             string          `json:"status"`
+	Round              *string         `json:"round"`
+	IdentityStatus     string          `json:"identity_status"`
+	Home               teamResponse    `json:"home"`
+	Away               teamResponse    `json:"away"`
+	Result             *resultResponse `json:"result"`
+	Live               *liveResponse   `json:"live"`
+	Odds               *oddsResponse   `json:"odds"`
+	UpdatedAt          string          `json:"updated_at"`
 }
 
 const eventSelect = `
-	SELECT e.id, c.slug, c.name, se.name, e.start_date, e.start_time, e.start_time_local,
+	SELECT e.id, c.slug, c.name, co.iso2, se.name, e.start_date, e.start_time, e.start_time_local,
 	       e.status, e.round_label, e.identity_status,
 	       ht.id, ht.name, ht.slug, at.id, at.name, at.slug,
 	       r.home_score, r.away_score, r.home_score_ht, r.away_score_ht,
@@ -124,6 +126,7 @@ const eventSelect = `
 	       odds.home::float8, odds.draw::float8, odds.away::float8
 	FROM events e
 	JOIN competitions c ON c.id = e.competition_id
+	LEFT JOIN countries co ON co.id = c.country_id
 	LEFT JOIN seasons se ON se.id = e.season_id
 	JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 	JOIN teams ht ON ht.id = hp.team_id
@@ -347,7 +350,7 @@ func scanEvent(row rowScanner) (eventResponse, error) {
 	var oddsHome, oddsDraw, oddsAway *float64
 
 	err := row.Scan(
-		&item.ID, &item.Competition, &item.CompetitionName, &season,
+		&item.ID, &item.Competition, &item.CompetitionName, &item.CompetitionCountry, &season,
 		&startDate, &startTime, &startTimeLocal, &item.Status, &round, &item.IdentityStatus,
 		&item.Home.ID, &item.Home.Name, &item.Home.Slug,
 		&item.Away.ID, &item.Away.Name, &item.Away.Slug,

@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { TeamCrest } from "@/components/team-crest";
 import {
   absoluteAsset,
+  flagUrl,
   type EventItem,
   type EventTeam,
 } from "@/lib/api";
@@ -113,9 +114,10 @@ function CompetitionGroups({
         >
           <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="grid size-6 shrink-0 place-items-center rounded bg-white/[0.06] text-[10px] font-semibold text-mist-400">
-                {group.competition.slice(0, 1)}
-              </span>
+              <GroupMark
+                competition={group.competition}
+                country={group.events[0]?.competition_country ?? null}
+              />
               <h3 className="truncate text-sm font-semibold text-mist-100">
                 {group.competition}
               </h3>
@@ -146,6 +148,33 @@ function CompetitionGroups({
         </section>
       ))}
     </div>
+  );
+}
+
+function GroupMark({
+  competition,
+  country,
+}: {
+  competition: string;
+  country: string | null;
+}) {
+  const src = flagUrl(country);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        width={20}
+        height={14}
+        className="h-[14px] w-5 shrink-0 rounded-[2px] object-cover"
+      />
+    );
+  }
+  return (
+    <span className="grid size-6 shrink-0 place-items-center rounded bg-white/[0.06] text-[10px] font-semibold text-mist-400">
+      {competition.slice(0, 1)}
+    </span>
   );
 }
 

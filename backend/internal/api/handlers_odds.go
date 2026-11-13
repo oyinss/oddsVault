@@ -46,16 +46,17 @@ type boardTeam struct {
 }
 
 type boardEvent struct {
-	EventID         int64       `json:"event_id"`
-	Sport           string      `json:"sport"`
-	Competition     string      `json:"competition"`
-	CompetitionSlug string      `json:"competition_slug"`
-	Home            boardTeam   `json:"home"`
-	Away            boardTeam   `json:"away"`
-	Kickoff         string      `json:"kickoff"`
-	Status          string      `json:"status"`
-	Lines           []boardLine `json:"lines"`
-	LastCapturedAt  *string     `json:"last_captured_at"`
+	EventID            int64       `json:"event_id"`
+	Sport              string      `json:"sport"`
+	Competition        string      `json:"competition"`
+	CompetitionSlug    string      `json:"competition_slug"`
+	CompetitionCountry *string     `json:"competition_country"`
+	Home               boardTeam   `json:"home"`
+	Away               boardTeam   `json:"away"`
+	Kickoff            string      `json:"kickoff"`
+	Status             string      `json:"status"`
+	Lines              []boardLine `json:"lines"`
+	LastCapturedAt     *string     `json:"last_captured_at"`
 }
 
 // handleOddsBoard returns the newest captured price per bookmaker for one
@@ -130,7 +131,7 @@ func (s *Server) handleOddsBoard(w http.ResponseWriter, r *http.Request) {
 // so the board never lists a fixture it cannot price.
 func (s *Server) boardEvents(ctx context.Context, sport, competition, market string, limit int) ([]boardEvent, []int64, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT e.id, sp.slug, c.name, c.slug,
+		SELECT e.id, sp.slug, c.name, c.slug, co.iso2,
 		       ht.id, ht.name, at.id, at.name,
 		       COALESCE(e.start_time, e.start_date::timestamptz) AS kickoff,
 		       e.status,
@@ -147,6 +148,7 @@ func (s *Server) boardEvents(ctx context.Context, sport, competition, market str
 		FROM events e
 		JOIN sports sp ON sp.id = e.sport_id
 		JOIN competitions c ON c.id = e.competition_id
+		LEFT JOIN countries co ON co.id = c.country_id
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN teams ht ON ht.id = hp.team_id
 		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
@@ -173,7 +175,7 @@ func (s *Server) boardEvents(ctx context.Context, sport, competition, market str
 		var e boardEvent
 		var kickoff time.Time
 		var homeHasLogo, awayHasLogo bool
-		if err := rows.Scan(&e.EventID, &e.Sport, &e.Competition, &e.CompetitionSlug,
+		if err := rows.Scan(&e.EventID, &e.Sport, &e.Competition, &e.CompetitionSlug, &e.CompetitionCountry,
 			&e.Home.ID, &e.Home.Name, &e.Away.ID, &e.Away.Name,
 			&kickoff, &e.Status, &homeHasLogo, &awayHasLogo); err != nil {
 			return nil, nil, err

@@ -15,6 +15,7 @@ import { SiteHeader } from "@/components/site-header";
 import { TeamCrest } from "@/components/team-crest";
 import {
   absoluteAsset,
+  flagUrl,
   formatAge,
   getLiveCorners,
   type LiveCornerMatch,
@@ -157,7 +158,8 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
     <article className={`overflow-hidden rounded-2xl border ${tone}`}>
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
+          <span className="flex items-center gap-1.5 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
+            <CompetitionFlag iso={match.competition_country} />
             {match.competition}
           </span>
           <span className="flex items-center gap-1.5 font-mono text-[11px] text-red-300">
@@ -244,6 +246,21 @@ function MatchCard({ match, line }: { match: LiveCornerMatch; line: number }) {
         </span>
       </footer>
     </article>
+  );
+}
+
+function CompetitionFlag({ iso }: { iso: string | null }) {
+  const src = flagUrl(iso);
+  if (!src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      width={16}
+      height={11}
+      className="h-[11px] w-[16px] shrink-0 rounded-[2px] object-cover"
+    />
   );
 }
 

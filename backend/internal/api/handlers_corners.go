@@ -17,24 +17,25 @@ type cornerTeam struct {
 }
 
 type liveCornerMatch struct {
-	EventID        int64      `json:"event_id"`
-	Competition    string     `json:"competition"`
-	Home           cornerTeam `json:"home"`
-	Away           cornerTeam `json:"away"`
-	HomeScore      *int       `json:"home_score"`
-	AwayScore      *int       `json:"away_score"`
-	Clock          string     `json:"clock"`
-	Minute         *int       `json:"minute"`
-	HomeCorners    *int       `json:"home_corners"`
-	AwayCorners    *int       `json:"away_corners"`
-	TotalCorners   *int       `json:"total_corners"`
-	ProjectedTotal *float64   `json:"projected_total"`
-	CornersPerMin  *float64   `json:"corners_per_minute"`
-	RemainingMins  *int       `json:"remaining_minutes"`
-	Needed         *int       `json:"needed"`
-	NeededPerMin   *float64   `json:"needed_per_minute"`
-	CapturedAt     *string    `json:"captured_at"`
-	Pace           string     `json:"pace"`
+	EventID            int64      `json:"event_id"`
+	Competition        string     `json:"competition"`
+	CompetitionCountry *string    `json:"competition_country"`
+	Home               cornerTeam `json:"home"`
+	Away               cornerTeam `json:"away"`
+	HomeScore          *int       `json:"home_score"`
+	AwayScore          *int       `json:"away_score"`
+	Clock              string     `json:"clock"`
+	Minute             *int       `json:"minute"`
+	HomeCorners        *int       `json:"home_corners"`
+	AwayCorners        *int       `json:"away_corners"`
+	TotalCorners       *int       `json:"total_corners"`
+	ProjectedTotal     *float64   `json:"projected_total"`
+	CornersPerMin      *float64   `json:"corners_per_minute"`
+	RemainingMins      *int       `json:"remaining_minutes"`
+	Needed             *int       `json:"needed"`
+	NeededPerMin       *float64   `json:"needed_per_minute"`
+	CapturedAt         *string    `json:"captured_at"`
+	Pace               string     `json:"pace"`
 }
 
 // minutePattern only accepts a clock written with a minute mark, so a
@@ -91,13 +92,14 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := s.pool.Query(r.Context(), `
-		SELECT e.id, c.name,
+		SELECT e.id, c.name, co.iso2,
 		       ht.id, ht.name, at.id, at.name,
 		       l.home_score, l.away_score,
 		       COALESCE(l.detail, ''), l.captured_at,
 		       hs.corners, as_.corners
 		FROM events e
 		JOIN competitions c ON c.id = e.competition_id
+		LEFT JOIN countries co ON co.id = c.country_id
 		JOIN sports sp ON sp.id = e.sport_id
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN teams ht ON ht.id = hp.team_id
@@ -120,7 +122,7 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		var m liveCornerMatch
 		var clock string
 		var capturedAt *time.Time
-		if err := rows.Scan(&m.EventID, &m.Competition,
+		if err := rows.Scan(&m.EventID, &m.Competition, &m.CompetitionCountry,
 			&m.Home.ID, &m.Home.Name, &m.Away.ID, &m.Away.Name,
 			&m.HomeScore, &m.AwayScore,
 			&clock, &capturedAt, &m.HomeCorners, &m.AwayCorners); err != nil {

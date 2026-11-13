@@ -15,6 +15,7 @@ import { SiteHeader } from "@/components/site-header";
 import { TeamCrest } from "@/components/team-crest";
 import {
   absoluteAsset,
+  flagUrl,
   formatAge,
   getOddsBoard,
   type BoardEvent,
@@ -205,7 +206,17 @@ function EventCard({ event, market }: { event: BoardEvent; market: string }) {
     <article className="overflow-hidden rounded-2xl border border-line bg-ink-900/40">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
+          <span className="flex items-center gap-1.5 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
+            {flagUrl(event.competition_country) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={flagUrl(event.competition_country) ?? undefined}
+                alt=""
+                width={16}
+                height={11}
+                className="h-[11px] w-[16px] shrink-0 rounded-[2px] object-cover"
+              />
+            ) : null}
             {event.competition}
           </span>
           <span className="font-mono text-[11px] text-mist-400">

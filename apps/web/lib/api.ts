@@ -58,6 +58,7 @@ export type EventItem = {
   sport_name: string;
   competition: string;
   competition_name: string;
+  competition_country: string | null;
   season: string | null;
   start_date: string | null;
   start_time: string | null;
@@ -349,6 +350,7 @@ export type SnapshotRow = {
   event_id: number;
   competition: string;
   competition_name: string;
+  competition_country: string | null;
   home: string;
   away: string;
   start_date: string | null;
@@ -498,6 +500,7 @@ export async function getHomeSummary(
 export type LiveCornerMatch = {
   event_id: number;
   competition: string;
+  competition_country: string | null;
   home: { id: number; name: string; crest_url: string | null };
   away: { id: number; name: string; crest_url: string | null };
   home_score: number | null;
@@ -573,6 +576,7 @@ export type BoardEvent = {
   sport: string;
   competition: string;
   competition_slug: string;
+  competition_country: string | null;
   home: { id: number; name: string; crest_url: string | null };
   away: { id: number; name: string; crest_url: string | null };
   kickoff: string;
@@ -739,6 +743,12 @@ export async function getOddsRanges(
   } catch {
     return null;
   }
+}
+
+/** Same-origin flag URL for an ISO2 country code. */
+export function flagUrl(iso: string | null | undefined): string | null {
+  if (!iso || iso.length !== 2) return null;
+  return absoluteAsset(`/api/v1/flags/${iso.toLowerCase()}`);
 }
 
 export function formatMoney(value: number | null, currency = "NGN"): string {

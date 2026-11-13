@@ -22,6 +22,7 @@ var crestHosts = map[string]bool{
 	"a.espncdn.com":       true,
 	"r2.thesportsdb.com":  true,
 	"www.thesportsdb.com": true,
+	"flagcdn.com":         true,
 }
 
 func crestCacheDir() string {
@@ -29,6 +30,52 @@ func crestCacheDir() string {
 		return dir
 	}
 	return filepath.Join(os.TempDir(), "oddsvault-crests")
+}
+
+// handleFlag proxies a country flag through our own origin, so the browser
+// never calls a third party and the static export works behind the same proxy.
+func (s *Server) handleFlag(w http.ResponseWriter, r *http.Request) {
+	iso := strings.ToLower(r.PathValue("iso"))
+	if len(iso) != 2 || iso[0] < 'a' || iso[0] > 'z' || iso[1] < 'a' || iso[1] > 'z' {
+		writeError(w, r, http.StatusBadRequest, "invalid_iso", "iso must be a two-letter country code")
+		return
+	}
+
+	cachePath := filepath.Join(crestCacheDir(), "flag-"+iso+".png")
+	if data, err := os.ReadFile(cachePath); err == nil && len(data) > 0 {
+		writeImage(w, "image/png", data)
+		return
+	}
+
+	sourceURL := "https://flagcdn.com/w40/" + iso + ".png"
+	client := &http.Client{Timeout: crestTimeout}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, sourceURL, nil)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	req.Header.Set("User-Agent", "OddsVault/0.1 (research)")
+	req.Header.Set("Accept", "image/*")
+
+	res, err := client.Do(req)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK || !strings.HasPrefix(res.Header.Get("Content-Type"), "image/") {
+		http.NotFound(w, r)
+		return
+	}
+
+	data, err := io.ReadAll(io.LimitReader(res.Body, crestMaxBytes))
+	if err != nil || len(data) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(cachePath), 0o755)
+	_ = os.WriteFile(cachePath, data, 0o644)
+	writeImage(w, "image/png", data)
 }
 
 // handleTeamCrest proxies a team logo through our own origin and caches the

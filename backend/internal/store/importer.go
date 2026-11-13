@@ -555,13 +555,50 @@ func (im *Importer) EnsureCompetitionByFotmob(ctx context.Context, sportSlug str
 	return slug, nil
 }
 
+// EnsureCountry resolves a provider country name to a reference row, creating
+// one when it is genuinely unknown. The ISO code stays empty in that case: a
+// guessed flag is worse than no flag.
+func (im *Importer) EnsureCountry(ctx context.Context, name string) (int64, error) {
+	display, key := normalize.Resolve(name)
+	if key == "" {
+		return 0, nil
+	}
+	slug := normalize.Slug(key)
+
+	var id int64
+	err := im.pool.QueryRow(ctx, `SELECT id FROM countries WHERE slug = $1`, slug).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if err != pgx.ErrNoRows {
+		return 0, fmt.Errorf("lookup country %q: %w", name, err)
+	}
+
+	err = im.pool.QueryRow(ctx, `
+		INSERT INTO countries (name, slug) VALUES ($1, $2)
+		ON CONFLICT (slug) DO UPDATE SET name = countries.name
+		RETURNING id`, display, slug).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("create country %q: %w", name, err)
+	}
+	return id, nil
+}
+
 // EnsureCompetitionByOnexbet resolves a 1xBet league id to a canonical
 // competition slug, creating a reference row the first time the league is seen.
-func (im *Importer) EnsureCompetitionByOnexbet(ctx context.Context, sportSlug string, leagueID int64, name string) (string, error) {
+func (im *Importer) EnsureCompetitionByOnexbet(ctx context.Context, sportSlug string, leagueID int64, name, countryName string) (string, error) {
 	var slug string
 	err := im.pool.QueryRow(ctx,
 		`SELECT slug FROM competitions WHERE onexbet_league_id = $1`, leagueID).Scan(&slug)
 	if err == nil {
+		// Backfill the country on rows created before flags were tracked.
+		if countryName != "" {
+			if countryID, countryErr := im.EnsureCountry(ctx, countryName); countryErr == nil && countryID != 0 {
+				_, _ = im.pool.Exec(ctx, `
+					UPDATE competitions SET country_id = $2
+					WHERE onexbet_league_id = $1 AND country_id IS NULL`, leagueID, countryID)
+			}
+		}
 		return slug, nil
 	}
 	if err != pgx.ErrNoRows {
@@ -578,12 +615,20 @@ func (im *Importer) EnsureCompetitionByOnexbet(ctx context.Context, sportSlug st
 		slug = fmt.Sprintf("onexbet-%d", leagueID)
 	}
 
+	var countryID *int64
+	if countryName != "" {
+		if id, countryErr := im.EnsureCountry(ctx, countryName); countryErr == nil && id != 0 {
+			countryID = &id
+		}
+	}
+
 	if _, err := im.pool.Exec(ctx, `
-		INSERT INTO competitions (sport_id, name, slug, type, onexbet_league_id)
-		SELECT id, $2, $3, 'league', $4 FROM sports WHERE slug = $1
+		INSERT INTO competitions (sport_id, name, slug, type, onexbet_league_id, country_id)
+		SELECT id, $2, $3, 'league', $4, $5 FROM sports WHERE slug = $1
 		ON CONFLICT (sport_id, slug) DO UPDATE SET
-			onexbet_league_id = COALESCE(competitions.onexbet_league_id, EXCLUDED.onexbet_league_id)`,
-		sportSlug, display, slug, leagueID); err != nil {
+			onexbet_league_id = COALESCE(competitions.onexbet_league_id, EXCLUDED.onexbet_league_id),
+			country_id = COALESCE(competitions.country_id, EXCLUDED.country_id)`,
+		sportSlug, display, slug, leagueID, countryID); err != nil {
 		return "", fmt.Errorf("create competition from 1xbet %d: %w", leagueID, err)
 	}
 
