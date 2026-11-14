@@ -131,6 +131,8 @@ func (f *Football) RunOnexbetLive(ctx context.Context) error {
 				continue
 			}
 			corners++
+			_ = f.importer.RecordCornerSnapshot(ctx, stored.EventID,
+				parseClockMinute(event.Clock), *event.HomeCorners, *event.AwayCorners)
 		}
 	}
 

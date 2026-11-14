@@ -157,6 +157,55 @@ function InsightsView() {
             </Section>
 
             <Section
+              title="Corner projection accuracy"
+              note="Our projected total against the final count, one snapshot per match per period. Bias is projected minus actual; positive means we were too high."
+            >
+              <Table
+                head={["Minute", "Matches", "Bias", "Avg error"]}
+                rows={(data.corner_calibration ?? []).map((row) => [
+                  row.bucket,
+                  String(row.samples),
+                  `${row.bias >= 0 ? "+" : ""}${row.bias.toFixed(1)}`,
+                  row.mae.toFixed(1),
+                ])}
+              />
+            </Section>
+
+            <Section
+              title="When you bet"
+              note="Live legs grouped by the minute they were placed, with the average minutes still to play."
+            >
+              <Table
+                head={["Placed", "Legs", "Won", "Lost", "Rate", "Minutes left"]}
+                rows={(data.bet_timing ?? []).map((row) => [
+                  row.bucket,
+                  String(row.legs),
+                  String(row.won),
+                  String(row.lost),
+                  `${(row.rate * 100).toFixed(1)}% (${row.won + row.lost})`,
+                  row.avg_minutes_left.toFixed(0),
+                ])}
+              />
+            </Section>
+
+            <Section
+              title="By bettor"
+              note="Emife above NGN 2,500, Oyins at NGN 2,500 and below. Agent picks will appear here too."
+            >
+              <Table
+                head={["Bettor", "Slips", "Staked", "P / L", "ROI", "W / L"]}
+                rows={(data.bettors ?? []).map((row) => [
+                  row.label,
+                  String(row.bets),
+                  formatMoney(row.staked),
+                  formatMoney(row.profit_loss),
+                  `${(row.roi * 100).toFixed(1)}%`,
+                  `${row.won}W / ${row.lost}L`,
+                ])}
+              />
+            </Section>
+
+            <Section
               title="What changes the outcome"
               note="Slip-level patterns: bet type, time of day and slip size. Each row shows its own slip count."
             >

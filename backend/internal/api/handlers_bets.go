@@ -41,6 +41,7 @@ type betResponse struct {
 	ActualReturn    *float64         `json:"actual_return"`
 	ProfitLoss      *float64         `json:"profit_loss"`
 	Source          string           `json:"source"`
+	PlacedBy        *string          `json:"placed_by"`
 	Legs            []betLegResponse `json:"legs"`
 }
 
@@ -80,7 +81,8 @@ func (s *Server) handleMyBets(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.pool.Query(r.Context(), `
 		SELECT pb.id, pb.external_id, b.name, pb.currency, pb.placed_at, pb.placed_at_raw, pb.bet_type,
 		       pb.stake::float8, pb.combined_odds::float8, pb.potential_return::float8,
-		       pb.status, pb.actual_return::float8, pb.profit_loss::float8, pb.source
+		       pb.status, pb.actual_return::float8, pb.profit_loss::float8, pb.source,
+		       pb.placed_by
 		FROM personal_bets pb
 		JOIN bookmakers b ON b.id = pb.bookmaker_id
 		ORDER BY pb.placed_at DESC NULLS LAST, pb.id DESC`)
@@ -99,7 +101,8 @@ func (s *Server) handleMyBets(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(
 			&item.ID, &item.ExternalID, &item.Bookmaker, &item.Currency, &placedAt,
 			&item.PlacedAtRaw, &item.BetType, &item.Stake, &item.CombinedOdds, &item.PotentialReturn,
-			&item.Status, &item.ActualReturn, &item.ProfitLoss, &item.Source); err != nil {
+			&item.Status, &item.ActualReturn, &item.ProfitLoss, &item.Source,
+			&item.PlacedBy); err != nil {
 			s.log.ErrorContext(r.Context(), "scan bet", "error", err.Error())
 			writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load bets")
 			return

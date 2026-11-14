@@ -248,6 +248,7 @@ export type PersonalBet = {
   actual_return: number | null;
   profit_loss: number | null;
   source: string;
+  placed_by: string | null;
   legs: BetLeg[];
 };
 
@@ -449,6 +450,30 @@ export type BetInsights = {
     rate: number;
     verified: number;
   }>;
+  corner_calibration?: Array<{
+    bucket: string;
+    samples: number;
+    bias: number;
+    mae: number;
+  }>;
+  bet_timing?: Array<{
+    bucket: string;
+    legs: number;
+    won: number;
+    lost: number;
+    rate: number;
+    avg_minutes_left: number;
+  }>;
+  bettors?: Array<{
+    label: string;
+    bets: number;
+    staked: number;
+    returned: number;
+    profit_loss: number;
+    won: number;
+    lost: number;
+    roi: number;
+  }>;
   disagreements: Array<{
     leg_id: number;
     event_raw: string;
@@ -514,6 +539,11 @@ export type LiveCornerMatch = {
   away_corners: number | null;
   total_corners: number | null;
   projected_total: number | null;
+  projection_low: number | null;
+  projection_high: number | null;
+  line_gap: number | null;
+  model_risk: boolean;
+  model_risk_reason?: string;
   corners_per_minute: number | null;
   remaining_minutes: number | null;
   needed: number | null;

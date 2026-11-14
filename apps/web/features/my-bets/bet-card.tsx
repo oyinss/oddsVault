@@ -23,6 +23,11 @@ export function BetCard({ bet }: { bet: PersonalBet }) {
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-mist-100">
               {bet.bet_type ?? "Bet"} · #{bet.external_id}
+              {bet.placed_by ? (
+                <span className="ml-2 rounded bg-white/[0.08] px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-mist-400 uppercase">
+                  {bet.placed_by}
+                </span>
+              ) : null}
             </p>
             <p className="mt-0.5 font-mono text-[11px] text-mist-500">
               {placedLabel(bet.placed_at)} · {bet.bookmaker}

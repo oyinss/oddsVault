@@ -79,6 +79,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/teams/{id}/crest", s.handleTeamCrest)
 	mux.HandleFunc("GET /api/v1/flags/{iso}", s.handleFlag)
 	mux.HandleFunc("GET /api/v1/competitions/{slug}/logo", s.handleCompetitionLogo)
+	mux.HandleFunc("GET /api/v1/events/{id}/corners", s.handleEventCornerHistory)
 	mux.HandleFunc("GET /api/v1/events/{id}/movement", s.handleEventMovement)
 	mux.HandleFunc("GET /api/v1/events/{id}/prices", s.handleEventPrices)
 	mux.HandleFunc("GET /api/v1/analytics/odds-ranges", s.handleOddsRanges)

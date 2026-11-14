@@ -33,6 +33,11 @@ type liveCornerMatch struct {
 	AwayCorners        *int       `json:"away_corners"`
 	TotalCorners       *int       `json:"total_corners"`
 	ProjectedTotal     *float64   `json:"projected_total"`
+	ProjectionLow      *float64   `json:"projection_low"`
+	ProjectionHigh     *float64   `json:"projection_high"`
+	LineGap            *float64   `json:"line_gap"`
+	ModelRisk          bool       `json:"model_risk"`
+	ModelRiskReason    string     `json:"model_risk_reason,omitempty"`
 	CornersPerMin      *float64   `json:"corners_per_minute"`
 	RemainingMins      *int       `json:"remaining_minutes"`
 	Needed             *int       `json:"needed"`
@@ -282,6 +287,23 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 		remaining = 0
 	}
 	m.RemainingMins = &remaining
+
+	// A point projection hides how thin four corners in sixteen minutes is.
+	// Show the range a Poisson process would produce for the remaining time.
+	lambdaRemaining := perMinute * float64(remaining)
+	spread := 1.28 * math.Sqrt(math.Max(lambdaRemaining, 0.01))
+	low := float64(total) + math.Max(0, lambdaRemaining-spread)
+	high := float64(total) + lambdaRemaining + spread
+	m.ProjectionLow = ptrFloat(round2(low))
+	m.ProjectionHigh = ptrFloat(round2(high))
+	m.LineGap = ptrFloat(round2(perMinute*90 - line))
+
+	// Early bursts regress. Flag a projection that is far above the line before
+	// the half-hour mark as model risk, not as value.
+	if *m.Minute < 30 && perMinute*90 > line*1.4 {
+		m.ModelRisk = true
+		m.ModelRiskReason = "early projection: the sample is still small"
+	}
 
 	needed := int(math.Ceil(line)) - total
 	if needed < 0 {

@@ -310,3 +310,30 @@ func (im *Importer) FindEventByPartialTeams(ctx context.Context, sportSlug, home
 	}
 	return &out, nil
 }
+
+// RecordCornerSnapshot stores what the board showed while a match was live.
+// Identical total and minute pairs are skipped, so the history stays compact
+// while still showing when each corner arrived.
+func (im *Importer) RecordCornerSnapshot(ctx context.Context, eventID int64, minute *int, home, away int) error {
+	total := home + away
+	var projected *float64
+	if minute != nil && *minute >= 15 {
+		value := float64(total) / float64(*minute) * 90
+		projected = &value
+	}
+
+	if _, err := im.pool.Exec(ctx, `
+		INSERT INTO corner_snapshots
+			(event_id, minute, home_corners, away_corners, total_corners, projected_total)
+		SELECT $1, $2, $3, $4, $5, $6
+		WHERE NOT EXISTS (
+			SELECT 1 FROM corner_snapshots
+			WHERE event_id = $1
+			  AND total_corners = $5
+			  AND minute IS NOT DISTINCT FROM $2
+		)`,
+		eventID, minute, home, away, total, projected); err != nil {
+		return fmt.Errorf("record corner snapshot: %w", err)
+	}
+	return nil
+}

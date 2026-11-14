@@ -41,6 +41,10 @@ func (f *Football) RunLiveCorners(ctx context.Context) error {
 			continue
 		}
 		saved++
+		if stats.HomeCorners != nil && stats.AwayCorners != nil {
+			_ = f.importer.RecordCornerSnapshot(ctx, candidate.EventID,
+				parseClockMinute(stats.Detail), *stats.HomeCorners, *stats.AwayCorners)
+		}
 	}
 
 	f.log.Info("live corners refreshed", "matches", len(candidates), "saved", saved)

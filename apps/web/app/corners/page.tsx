@@ -521,6 +521,11 @@ function MatchCard({
                 ? match.projected_total.toFixed(1)
                 : "-"
             }
+            note={
+              match.projection_low !== null && match.projection_high !== null
+                ? `${match.projection_low.toFixed(0)}-${match.projection_high.toFixed(0)} likely`
+                : undefined
+            }
           />
           <Metric
             label={`Need ${line}`}
@@ -536,8 +541,19 @@ function MatchCard({
         </div>
       </div>
 
-      <footer className="flex items-center justify-between gap-2 border-t border-line px-4 py-2">
-        <PaceBadge pace={match.pace} line={line} />
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
+        <span className="flex flex-wrap items-center gap-2">
+          <PaceBadge pace={match.pace} line={line} />
+          {match.model_risk && (
+            <span
+              className="inline-flex items-center gap-1 rounded border border-flag-400/40 px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-flag-400 uppercase"
+              title={match.model_risk_reason}
+            >
+              <FontAwesomeIcon icon={faTriangleExclamation} className="size-2.5" />
+              early projection
+            </span>
+          )}
+        </span>
         <span className="font-mono text-[10px] text-mist-500">
           {watched && threshold !== null ? `alert at ${threshold} corners · ` : ""}
           {match.total_corners === null

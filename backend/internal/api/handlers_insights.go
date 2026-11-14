@@ -60,6 +60,33 @@ type insightFactorGroup struct {
 	Rows  []insightFactor `json:"rows"`
 }
 
+type insightCalibration struct {
+	Bucket  string  `json:"bucket"`
+	Samples int     `json:"samples"`
+	Bias    float64 `json:"bias"`
+	MAE     float64 `json:"mae"`
+}
+
+type insightTiming struct {
+	Bucket         string  `json:"bucket"`
+	Legs           int     `json:"legs"`
+	Won            int     `json:"won"`
+	Lost           int     `json:"lost"`
+	Rate           float64 `json:"rate"`
+	AvgMinutesLeft float64 `json:"avg_minutes_left"`
+}
+
+type insightBettor struct {
+	Label    string  `json:"label"`
+	Bets     int     `json:"bets"`
+	Staked   float64 `json:"staked"`
+	Returned float64 `json:"returned"`
+	PL       float64 `json:"profit_loss"`
+	Won      int     `json:"won"`
+	Lost     int     `json:"lost"`
+	ROI      float64 `json:"roi"`
+}
+
 type insightDisagreement struct {
 	LegID    int64    `json:"leg_id"`
 	EventRaw string   `json:"event_raw"`
@@ -319,15 +346,132 @@ func (s *Server) handleBetInsights(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// How wrong were the projections? One snapshot per event per minute bucket
+	// keeps the poll frequency from weighting the result.
+	calibration := make([]insightCalibration, 0, 8)
+	if rows, err := s.pool.Query(r.Context(), `
+		WITH finals AS (
+			SELECT s.event_id, sum(s.corners)::float8 AS final
+			FROM team_match_stats s
+			JOIN events e ON e.id = s.event_id AND e.status = 'finished'
+			GROUP BY 1
+			HAVING count(*) >= 2
+		),
+		snaps AS (
+			SELECT cs.event_id, cs.projected_total,
+			       CASE WHEN cs.minute < 20 THEN '15-19'
+			            WHEN cs.minute < 30 THEN '20-29'
+			            WHEN cs.minute < 45 THEN '30-44'
+			            WHEN cs.minute < 60 THEN '45-59'
+			            WHEN cs.minute < 75 THEN '60-74'
+			            ELSE '75+' END AS bucket,
+			       row_number() OVER (
+			           PARTITION BY cs.event_id,
+			           CASE WHEN cs.minute < 20 THEN '15-19'
+			                WHEN cs.minute < 30 THEN '20-29'
+			                WHEN cs.minute < 45 THEN '30-44'
+			                WHEN cs.minute < 60 THEN '45-59'
+			                WHEN cs.minute < 75 THEN '60-74'
+			                ELSE '75+' END
+			           ORDER BY cs.captured_at
+			       ) AS rn
+			FROM corner_snapshots cs
+			WHERE cs.projected_total IS NOT NULL
+		)
+		SELECT snaps.bucket, count(*)::int,
+		       avg(snaps.projected_total - finals.final)::float8,
+		       avg(abs(snaps.projected_total - finals.final))::float8
+		FROM snaps
+		JOIN finals ON finals.event_id = snaps.event_id
+		WHERE snaps.rn = 1
+		GROUP BY snaps.bucket
+		ORDER BY snaps.bucket`); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var item insightCalibration
+			if err := rows.Scan(&item.Bucket, &item.Samples, &item.Bias, &item.MAE); err != nil {
+				continue
+			}
+			calibration = append(calibration, item)
+		}
+	}
+
+	// When were the legs placed? Minute is derived from the stored kickoff, so
+	// only legs linked to an event can answer it.
+	timing := make([]insightTiming, 0, 8)
+	if rows, err := s.pool.Query(r.Context(), `
+		WITH placed AS (
+			SELECT l.leg_status,
+			       (EXTRACT(EPOCH FROM (b.placed_at - e.start_time)) / 60)::float8 AS minute
+			FROM personal_bet_legs l
+			JOIN personal_bets b ON b.id = l.personal_bet_id
+			JOIN events e ON e.id = l.event_id
+			WHERE b.placed_at IS NOT NULL AND e.start_time IS NOT NULL
+			  AND l.leg_status IN ('won', 'lost')
+		)
+		SELECT CASE WHEN minute < 0 THEN 'pre-match'
+		            WHEN minute < 15 THEN '0-14'
+		            WHEN minute < 30 THEN '15-29'
+		            WHEN minute < 45 THEN '30-44'
+		            WHEN minute < 60 THEN '45-59'
+		            WHEN minute < 75 THEN '60-74'
+		            ELSE '75+' END AS bucket,
+		       count(*)::int,
+		       count(*) FILTER (WHERE leg_status = 'won')::int,
+		       count(*) FILTER (WHERE leg_status = 'lost')::int,
+		       avg(GREATEST(90 - minute, 0))::float8
+		FROM placed
+		GROUP BY 1
+		ORDER BY 1`); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var item insightTiming
+			if err := rows.Scan(&item.Bucket, &item.Legs, &item.Won, &item.Lost,
+				&item.AvgMinutesLeft); err != nil {
+				continue
+			}
+			item.Rate = rate(item.Won, item.Lost)
+			timing = append(timing, item)
+		}
+	}
+
+	bettors := make([]insightBettor, 0, 4)
+	if rows, err := s.pool.Query(r.Context(), `
+		SELECT COALESCE(placed_by, 'unknown'), count(*)::int,
+		       COALESCE(sum(stake), 0)::float8,
+		       COALESCE(sum(actual_return), 0)::float8,
+		       COALESCE(sum(profit_loss), 0)::float8,
+		       count(*) FILTER (WHERE status = 'won')::int,
+		       count(*) FILTER (WHERE status = 'lost')::int
+		FROM personal_bets
+		GROUP BY 1
+		ORDER BY 2 DESC`); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var item insightBettor
+			if err := rows.Scan(&item.Label, &item.Bets, &item.Staked,
+				&item.Returned, &item.PL, &item.Won, &item.Lost); err != nil {
+				continue
+			}
+			if item.Staked > 0 {
+				item.ROI = item.PL / item.Staked
+			}
+			bettors = append(bettors, item)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
-		"min_sample":    minSample,
-		"overall":       overall,
-		"lines":         lines,
-		"competitions":  competitions,
-		"odds_buckets":  odds,
-		"stakes":        stakes,
-		"disagreements": disagreements,
-		"factors":       factors,
-		"fixtures":      fixtures,
+		"min_sample":         minSample,
+		"overall":            overall,
+		"lines":              lines,
+		"competitions":       competitions,
+		"odds_buckets":       odds,
+		"stakes":             stakes,
+		"disagreements":      disagreements,
+		"factors":            factors,
+		"fixtures":           fixtures,
+		"corner_calibration": calibration,
+		"bet_timing":         timing,
+		"bettors":            bettors,
 	})
 }

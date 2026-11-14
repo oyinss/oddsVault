@@ -40,6 +40,7 @@ type bet struct {
 	Odds            string `json:"odds"`
 	PotentialReturn string `json:"potential_return"`
 	StatusText      string `json:"status_text"`
+	PlacedBy        string `json:"placed_by"`
 	Legs            []leg  `json:"legs"`
 }
 
@@ -148,6 +149,15 @@ func importBet(ctx context.Context, pool *pgxpool.Pool, bookmakerID int64, doc e
 	stake := parseDecimal(item.Stake)
 	odds := parseDecimal(item.Odds)
 	potential := parseDecimal(item.PotentialReturn)
+	placedBy := strings.TrimSpace(item.PlacedBy)
+	if placedBy == "" {
+		// House rule: above NGN 2,500 is Emife, otherwise Oyins.
+		if stake != nil && *stake > 2500 {
+			placedBy = "emife"
+		} else {
+			placedBy = "oyins"
+		}
+	}
 	status := normalizeStatus(item.StatusText)
 	actual, profit := outcome(status, stake, potential)
 	placedAt, placedRaw := parsePlacedAt(item.PlacedAt)
@@ -166,11 +176,11 @@ func importBet(ctx context.Context, pool *pgxpool.Pool, bookmakerID int64, doc e
 		if err := tx.QueryRow(ctx, `
 			INSERT INTO personal_bets
 				(bookmaker_id, external_id, currency, placed_at, placed_at_raw, bet_type,
-				 stake, combined_odds, potential_return, status, actual_return, profit_loss, source, raw)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+				 stake, combined_odds, potential_return, status, actual_return, profit_loss, source, raw, placed_by)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 			RETURNING id`,
 			bookmakerID, item.ExternalID, doc.Currency, placedAt, placedRaw, item.BetType,
-			stake, odds, potential, status, actual, profit, doc.Source, snapshot).Scan(&existingID); err != nil {
+			stake, odds, potential, status, actual, profit, doc.Source, snapshot, placedBy).Scan(&existingID); err != nil {
 			return false, false, fmt.Errorf("insert bet: %w", err)
 		}
 		if err := insertVersion(ctx, tx, existingID, 1, snapshot); err != nil {
@@ -194,10 +204,11 @@ func importBet(ctx context.Context, pool *pgxpool.Pool, bookmakerID int64, doc e
 			UPDATE personal_bets SET
 				currency = $2, placed_at = $3, placed_at_raw = $4, bet_type = $5,
 				stake = $6, combined_odds = $7, potential_return = $8, status = $9,
-				actual_return = $10, profit_loss = $11, source = $12, raw = $13
+				actual_return = $10, profit_loss = $11, source = $12, raw = $13,
+				placed_by = COALESCE(personal_bets.placed_by, $14)
 			WHERE id = $1`,
 			existingID, doc.Currency, placedAt, placedRaw, item.BetType,
-			stake, odds, potential, status, actual, profit, doc.Source, snapshot); err != nil {
+			stake, odds, potential, status, actual, profit, doc.Source, snapshot, placedBy); err != nil {
 			return false, true, fmt.Errorf("update bet: %w", err)
 		}
 		if err := insertVersion(ctx, tx, existingID, version, snapshot); err != nil {
