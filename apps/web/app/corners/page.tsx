@@ -693,7 +693,7 @@ function MatchCard({
             <Link
               href={`/corners/detail?id=${match.event_id}&line=${line}`}
               title={`${match.bet_history.legs} linked corner legs from your journal on this league or these teams. Over ${match.bet_history.over_won}W-${match.bet_history.over_lost}L, Under ${match.bet_history.under_won}W-${match.bet_history.under_lost}L.`}
-              className="inline-flex items-center gap-1.5 rounded border border-line px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-mist-300 uppercase transition hover:border-turf-400/40 hover:text-turf-200"
+              className="inline-flex items-center gap-1.5 rounded border border-line px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest text-mist-200 uppercase transition hover:border-turf-400/40 hover:text-turf-100"
             >
               <FontAwesomeIcon
                 icon={faClockRotateLeft}
