@@ -560,6 +560,73 @@ export type LiveCorners = {
   matches: LiveCornerMatch[];
 };
 
+export type CornerFormMatch = {
+  event_id: number;
+  date: string;
+  opponent: string;
+  home: boolean;
+  corners_for: number;
+  corners_against: number;
+  total_corners: number;
+};
+
+export type CornerTeamForm = {
+  team: { id: number; name: string; slug: string; crest_url: string | null };
+  matches: CornerFormMatch[];
+  sample: number;
+  avg_for: number;
+  avg_against: number;
+  avg_total: number;
+  over_rates: Record<string, number>;
+};
+
+export type CornerMetrics = {
+  event_id: number;
+  competition: string;
+  clock: string;
+  minute: number | null;
+  home_score: number | null;
+  away_score: number | null;
+  home_corners: number | null;
+  away_corners: number | null;
+  total_corners: number | null;
+  projected_total: number | null;
+  projection_low: number | null;
+  projection_high: number | null;
+  line_gap: number | null;
+  model_risk: boolean;
+  model_risk_reason?: string;
+  corners_per_minute: number | null;
+  remaining_minutes: number | null;
+  needed: number | null;
+  needed_per_minute: number | null;
+  captured_at: string | null;
+  pace: "above" | "below" | "on_pace" | "unknown";
+};
+
+export type CornerContext = {
+  event: EventDetail["event"];
+  line: number;
+  metrics: CornerMetrics | null;
+  home_form: CornerTeamForm;
+  away_form: CornerTeamForm;
+  points: Array<{ minute: number | null; total_corners: number; captured_at: string }>;
+  coverage_note: string;
+};
+
+export async function getCornerContext(
+  id: string,
+  line: number,
+): Promise<CornerContext | null> {
+  try {
+    return await getJSON<CornerContext>(
+      `/api/v1/events/${id}/corner-context?line=${line}`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export type CornerSort =
   | "remaining"
   | "remaining_asc"

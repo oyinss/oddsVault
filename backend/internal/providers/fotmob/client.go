@@ -136,12 +136,14 @@ type statGroup struct {
 	Stats []statEntry `json:"stats"`
 }
 
+type statPeriod struct {
+	Stats []statGroup `json:"stats"`
+}
+
 type detailsPayload struct {
 	Content struct {
 		Stats struct {
-			Periods map[string]struct {
-				Stats []statGroup `json:"stats"`
-			} `json:"Periods"`
+			Periods map[string]statPeriod `json:"Periods"`
 		} `json:"stats"`
 	} `json:"content"`
 }
@@ -164,17 +166,48 @@ func (c *Client) FetchCorners(ctx context.Context, matchID int64) (Corners, erro
 		return Corners{}, fmt.Errorf("fotmob: decode match %d: %w", matchID, err)
 	}
 
-	for _, period := range doc.Content.Stats.Periods {
-		for _, group := range period.Stats {
-			for _, stat := range group.Stats {
-				if !strings.EqualFold(stat.Title, "Corners") || len(stat.Stats) < 2 {
-					continue
-				}
-				return Corners{Home: toInt(stat.Stats[0]), Away: toInt(stat.Stats[1])}, nil
-			}
+	// A finished match publishes "All", "FirstHalf" and "SecondHalf". Reading
+	// whichever period a Go map yields first would silently record first-half
+	// corners as the match total, so "All" is required before any fallback.
+	periods := doc.Content.Stats.Periods
+	if all, ok := periods["All"]; ok {
+		if corners, found := cornersInPeriod(all); found {
+			return corners, nil
 		}
 	}
+	// Some in-play payloads only publish the current period. Sum the halves
+	// rather than presenting one half as the whole match.
+	var home, away int
+	var sawHalf bool
+	for _, key := range []string{"FirstHalf", "SecondHalf"} {
+		period, ok := periods[key]
+		if !ok {
+			continue
+		}
+		corners, found := cornersInPeriod(period)
+		if !found || corners.Home == nil || corners.Away == nil {
+			return Corners{}, nil
+		}
+		home += *corners.Home
+		away += *corners.Away
+		sawHalf = true
+	}
+	if sawHalf {
+		return Corners{Home: &home, Away: &away}, nil
+	}
 	return Corners{}, nil
+}
+
+func cornersInPeriod(period statPeriod) (Corners, bool) {
+	for _, group := range period.Stats {
+		for _, stat := range group.Stats {
+			if !strings.EqualFold(stat.Title, "Corners") || len(stat.Stats) < 2 {
+				continue
+			}
+			return Corners{Home: toInt(stat.Stats[0]), Away: toInt(stat.Stats[1])}, true
+		}
+	}
+	return Corners{}, false
 }
 
 func toInt(value any) *int {

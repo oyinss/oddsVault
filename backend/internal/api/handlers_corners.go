@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"math"
 	"net/http"
 	"regexp"
@@ -99,78 +100,16 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		line = parsed
 	}
 
-	rows, err := s.pool.Query(r.Context(), `
-		SELECT e.id, c.name, co.iso2, c.slug,
-		       EXISTS (
-		           SELECT 1 FROM media_assets ma
-		           WHERE ma.entity_type = 'competition' AND ma.entity_id = c.id
-		             AND ma.asset_type = 'competition_logo' AND ma.active
-		       ) AS has_logo,
-		       COALESCE(e.start_time, e.start_date::timestamptz),
-		       ht.id, ht.name, at.id, at.name,
-		       l.home_score, l.away_score,
-		       COALESCE(l.detail, ''), l.captured_at,
-		       hs.corners, as_.corners
-		FROM events e
-		JOIN competitions c ON c.id = e.competition_id
-		LEFT JOIN countries co ON co.id = c.country_id
-		JOIN sports sp ON sp.id = e.sport_id
-		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
-		JOIN teams ht ON ht.id = hp.team_id
-		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
-		JOIN teams at ON at.id = ap.team_id
-		LEFT JOIN event_live_states l ON l.event_id = e.id
-		LEFT JOIN team_match_stats hs ON hs.event_id = e.id AND hs.team_id = hp.team_id
-		LEFT JOIN team_match_stats as_ ON as_.event_id = e.id AND as_.team_id = ap.team_id
+	matches, err := s.queryCornerMatches(r.Context(), cornerMatchSelect+`
 		WHERE e.status = 'live'
 		  AND sp.slug = 'football'
 		  -- A live match whose state has not been refreshed recently is a
 		  -- stale row, not a game in progress.
 		  AND l.captured_at > now() - interval '15 minutes'
 		ORDER BY COALESCE(e.start_time, e.start_date::timestamptz) ASC
-		LIMIT 300`)
+		LIMIT 300`, line)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "live corners", "error", err.Error())
-		writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load live corners")
-		return
-	}
-	defer rows.Close()
-
-	matches := make([]liveCornerMatch, 0, 16)
-	for rows.Next() {
-		var m liveCornerMatch
-		var clock string
-		var kickoff time.Time
-		var capturedAt *time.Time
-		var hasLogo bool
-		if err := rows.Scan(&m.EventID, &m.Competition, &m.CompetitionCountry, &m.CompetitionSlug, &hasLogo, &kickoff,
-			&m.Home.ID, &m.Home.Name, &m.Away.ID, &m.Away.Name,
-			&m.HomeScore, &m.AwayScore,
-			&clock, &capturedAt, &m.HomeCorners, &m.AwayCorners); err != nil {
-			s.log.ErrorContext(r.Context(), "scan live corner", "error", err.Error())
-			writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load live corners")
-			return
-		}
-
-		if hasLogo {
-			logo := "/api/v1/competitions/" + m.CompetitionSlug + "/logo"
-			m.CompetitionLogo = &logo
-		}
-		m.Kickoff = kickoff.UTC().Format(time.RFC3339)
-		m.Clock = clock
-		m.Minute = parseMinute(clock)
-		m.Home.CrestURL = crestPath(m.Home.ID)
-		m.Away.CrestURL = crestPath(m.Away.ID)
-		if capturedAt != nil {
-			formatted := capturedAt.UTC().Format(time.RFC3339)
-			m.CapturedAt = &formatted
-		}
-
-		applyCornerMetrics(&m, line)
-		matches = append(matches, m)
-	}
-	if err := rows.Err(); err != nil {
-		s.log.ErrorContext(r.Context(), "iterate live corners", "error", err.Error())
 		writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load live corners")
 		return
 	}
@@ -263,6 +202,92 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		"count":        len(matches),
 		"matches":      matches,
 	})
+}
+
+// cornerMatchSelect is the column list shared by the live board and the match
+// detail page, so both show the same numbers from the same joins.
+const cornerMatchSelect = `
+		SELECT e.id, c.name, co.iso2, c.slug,
+		       EXISTS (
+		           SELECT 1 FROM media_assets ma
+		           WHERE ma.entity_type = 'competition' AND ma.entity_id = c.id
+		             AND ma.asset_type = 'competition_logo' AND ma.active
+		       ) AS has_logo,
+		       COALESCE(e.start_time, e.start_date::timestamptz),
+		       ht.id, ht.name, at.id, at.name,
+		       l.home_score, l.away_score,
+		       COALESCE(l.detail, ''), l.captured_at,
+		       hs.corners, as_.corners
+		FROM events e
+		JOIN competitions c ON c.id = e.competition_id
+		LEFT JOIN countries co ON co.id = c.country_id
+		JOIN sports sp ON sp.id = e.sport_id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN teams ht ON ht.id = hp.team_id
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		JOIN teams at ON at.id = ap.team_id
+		LEFT JOIN event_live_states l ON l.event_id = e.id
+		LEFT JOIN team_match_stats hs ON hs.event_id = e.id AND hs.team_id = hp.team_id
+		LEFT JOIN team_match_stats as_ ON as_.event_id = e.id AND as_.team_id = ap.team_id
+		`
+
+// queryCornerMatches runs one corner query and derives the metrics for each
+// row. Callers pass the WHERE/ORDER tail and the line.
+func (s *Server) queryCornerMatches(ctx context.Context, sql string, line float64, args ...any) ([]liveCornerMatch, error) {
+	rows, err := s.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matches := make([]liveCornerMatch, 0, 16)
+	for rows.Next() {
+		var m liveCornerMatch
+		var clock string
+		var kickoff time.Time
+		var capturedAt *time.Time
+		var hasLogo bool
+		if err := rows.Scan(&m.EventID, &m.Competition, &m.CompetitionCountry, &m.CompetitionSlug, &hasLogo, &kickoff,
+			&m.Home.ID, &m.Home.Name, &m.Away.ID, &m.Away.Name,
+			&m.HomeScore, &m.AwayScore,
+			&clock, &capturedAt, &m.HomeCorners, &m.AwayCorners); err != nil {
+			return nil, err
+		}
+
+		if hasLogo {
+			logo := "/api/v1/competitions/" + m.CompetitionSlug + "/logo"
+			m.CompetitionLogo = &logo
+		}
+		m.Kickoff = kickoff.UTC().Format(time.RFC3339)
+		m.Clock = clock
+		m.Minute = parseMinute(clock)
+		m.Home.CrestURL = crestPath(m.Home.ID)
+		m.Away.CrestURL = crestPath(m.Away.ID)
+		if capturedAt != nil {
+			formatted := capturedAt.UTC().Format(time.RFC3339)
+			m.CapturedAt = &formatted
+		}
+
+		applyCornerMetrics(&m, line)
+		matches = append(matches, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return matches, nil
+}
+
+// cornerMatch loads one event with the same metrics the board shows.
+func (s *Server) cornerMatch(ctx context.Context, eventID int64, line float64) (*liveCornerMatch, error) {
+	matches, err := s.queryCornerMatches(ctx, cornerMatchSelect+`
+		WHERE e.id = $1`, line, eventID)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) == 0 {
+		return nil, nil
+	}
+	return &matches[0], nil
 }
 
 func ptrFloat(v float64) *float64 { return &v }

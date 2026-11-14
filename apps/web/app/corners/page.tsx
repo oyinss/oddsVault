@@ -467,7 +467,8 @@ function MatchCard({
       <div className="grid min-w-0 gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div>
           <Link
-            href={`/events/detail?id=${match.event_id}`}
+            href={`/corners/detail?id=${match.event_id}&line=${line}`}
+            title="Open match detail"
             className="text-sm font-semibold text-mist-100 hover:text-turf-300"
           >
             <span className="flex flex-wrap items-center gap-2">
@@ -564,13 +565,21 @@ function MatchCard({
             </span>
           )}
         </span>
-        <span className="font-mono text-[10px] text-mist-500">
+        <span className="flex items-center gap-3 font-mono text-[10px] text-mist-500">
+          <Link
+            href={`/corners/detail?id=${match.event_id}&line=${line}`}
+            className="text-turf-300 hover:text-turf-200"
+          >
+            details
+          </Link>
+          <span>
           {watched && threshold !== null ? `alert at ${threshold} corners · ` : ""}
           {match.total_corners === null
             ? "corners not published by provider"
             : match.remaining_minutes !== null
               ? `${match.remaining_minutes} min left`
               : "clock unavailable"}
+          </span>
         </span>
       </footer>
     </article>

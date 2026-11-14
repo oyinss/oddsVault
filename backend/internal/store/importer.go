@@ -549,9 +549,21 @@ func (im *Importer) EnsureCompetitionByFotmob(ctx context.Context, sportSlug str
 		return "", fmt.Errorf("create competition from fotmob %d: %w", leagueID, err)
 	}
 
+	// Two FotMob league ids can share one competition name. The upsert then
+	// keeps the first id, so resolving by the new id alone would fail. Fall back
+	// to the slug that was just written.
 	if err := im.pool.QueryRow(ctx,
-		`SELECT slug FROM competitions WHERE fotmob_league_id = $1`, leagueID).Scan(&slug); err != nil {
+		`SELECT slug FROM competitions WHERE fotmob_league_id = $1`, leagueID).Scan(&slug); err == nil {
+		return slug, nil
+	} else if err != pgx.ErrNoRows {
 		return "", fmt.Errorf("resolve competition from fotmob %d: %w", leagueID, err)
+	}
+
+	if err := im.pool.QueryRow(ctx, `
+		SELECT c.slug FROM competitions c
+		JOIN sports sp ON sp.id = c.sport_id
+		WHERE sp.slug = $1 AND c.slug = $2`, sportSlug, slug).Scan(&slug); err != nil {
+		return "", fmt.Errorf("resolve competition slug %q: %w", slug, err)
 	}
 	return slug, nil
 }

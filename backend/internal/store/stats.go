@@ -337,3 +337,108 @@ func (im *Importer) RecordCornerSnapshot(ctx context.Context, eventID int64, min
 	}
 	return nil
 }
+
+// BoardTeamKeys maps the canonical and alias name keys of every team that is
+// live or playing in the next day to its team id. Only these teams need recent
+// history, so the backfill never crawls the whole world.
+func (im *Importer) BoardTeamKeys(ctx context.Context) (map[string]int64, error) {
+	rows, err := im.pool.Query(ctx, `
+		WITH board AS (
+			SELECT DISTINCT ep.team_id
+			FROM events e
+			JOIN sports sp ON sp.id = e.sport_id
+			JOIN event_participants ep ON ep.event_id = e.id
+			WHERE sp.slug = 'football'
+			  AND (
+			    (e.status = 'live' AND EXISTS (
+			        SELECT 1 FROM event_live_states l
+			        WHERE l.event_id = e.id
+			          AND l.captured_at > now() - interval '15 minutes'))
+			    OR (e.status = 'scheduled'
+			        AND COALESCE(e.start_time, e.start_date::timestamptz)
+			            BETWEEN now() AND now() + interval '24 hours')
+			  )
+		)
+		SELECT t.id, t.name_key FROM teams t JOIN board b ON b.team_id = t.id
+		UNION
+		SELECT a.team_id, a.alias_key FROM team_aliases a JOIN board b ON b.team_id = a.team_id`)
+	if err != nil {
+		return nil, fmt.Errorf("list board team keys: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string]int64, 512)
+	for rows.Next() {
+		var teamID int64
+		var key string
+		if err := rows.Scan(&teamID, &key); err != nil {
+			return nil, err
+		}
+		if key == "" {
+			continue
+		}
+		// The first owner wins when two teams share a key: an ambiguous key is
+		// not evidence, and a wrong link is worse than a missed one.
+		if _, exists := out[key]; !exists {
+			out[key] = teamID
+		}
+	}
+	return out, rows.Err()
+}
+
+// EventsWithCornerStats returns the subset of event ids that already hold a
+// corner count for both teams.
+func (im *Importer) EventsWithCornerStats(ctx context.Context, eventIDs []int64) (map[int64]bool, error) {
+	out := make(map[int64]bool, len(eventIDs))
+	if len(eventIDs) == 0 {
+		return out, nil
+	}
+	rows, err := im.pool.Query(ctx, `
+		SELECT event_id
+		FROM team_match_stats
+		WHERE event_id = ANY($1) AND corners IS NOT NULL
+		GROUP BY event_id
+		HAVING count(*) >= 2`, eventIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list events with corner stats: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out[id] = true
+	}
+	return out, rows.Err()
+}
+
+// EventsByProviderIDs resolves provider match ids to the stored event and its
+// two team ids. It is exact: the provider id is the identity, not a name.
+func (im *Importer) EventsByProviderIDs(ctx context.Context, provider string, ids []string) (map[string]EventTeams, error) {
+	out := make(map[string]EventTeams, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := im.pool.Query(ctx, `
+		SELECT p.provider_event_id, e.id, hp.team_id, ap.team_id, c.slug
+		FROM event_provider_ids p
+		JOIN events e ON e.id = p.event_id
+		JOIN competitions c ON c.id = e.competition_id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		WHERE p.provider = $1 AND p.provider_event_id = ANY($2)`, provider, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list events by provider ids: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var providerID string
+		var item EventTeams
+		if err := rows.Scan(&providerID, &item.EventID, &item.HomeTeamID, &item.AwayTeamID, &item.CompetitionSlug); err != nil {
+			return nil, err
+		}
+		out[providerID] = item
+	}
+	return out, rows.Err()
+}

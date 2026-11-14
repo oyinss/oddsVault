@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/oyins/oddsvault/backend/internal/competitions"
@@ -21,6 +22,9 @@ type Football struct {
 	importer *store.Importer
 	log      *slog.Logger
 	now      func() time.Time
+	// formMisses remembers matches a provider lists without statistics, so a
+	// bounded backfill does not spend its request budget on them twice.
+	formMisses sync.Map
 }
 
 // NewFootball builds the football sync job.
