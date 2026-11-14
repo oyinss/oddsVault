@@ -484,3 +484,44 @@ func (im *Importer) LiveFotmobCandidates(ctx context.Context, limit int) ([]Live
 	}
 	return out, rows.Err()
 }
+
+// JournalCornerLeg is one corner-total leg from the personal bet journal with
+// the fixture identity it resolved to. Only legs linked to an event can be
+// attributed to a league or team.
+type JournalCornerLeg struct {
+	EventID       int64
+	Side          string
+	Status        string
+	CompetitionID int64
+	HomeTeamID    int64
+	AwayTeamID    int64
+}
+
+// JournalCornerLegs lists every linked corner-total leg. The journal is small,
+// so the board aggregates in memory instead of running a query per match.
+func (im *Importer) JournalCornerLegs(ctx context.Context) ([]JournalCornerLeg, error) {
+	rows, err := im.pool.Query(ctx, `
+		SELECT l.event_id, l.market_side, l.leg_status,
+		       e.competition_id, hp.team_id, ap.team_id
+		FROM personal_bet_legs l
+		JOIN events e ON e.id = l.event_id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		WHERE l.market_family = 'corners_total'
+		  AND l.market_side IN ('over', 'under')`)
+	if err != nil {
+		return nil, fmt.Errorf("list journal corner legs: %w", err)
+	}
+	defer rows.Close()
+
+	var out []JournalCornerLeg
+	for rows.Next() {
+		var item JournalCornerLeg
+		if err := rows.Scan(&item.EventID, &item.Side, &item.Status,
+			&item.CompetitionID, &item.HomeTeamID, &item.AwayTeamID); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

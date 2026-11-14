@@ -121,6 +121,13 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 	history := &cornerBetHistory{}
 	if competitionID, err := s.eventCompetitionID(r.Context(), id); err == nil {
 		if record, err := s.cornerBetsByCompetition(r.Context(), competitionID); err == nil {
+			// Legs whose fixture never resolved can still be attributed to a
+			// league when their competition text is an exact identity match.
+			if leagueOnly, err := s.leagueOnlyCornerLegs(r.Context()); err == nil {
+				for _, leg := range leagueOnly[competitionID] {
+					addLeagueLeg(record, leg)
+				}
+			}
 			history.Competition = record
 		} else {
 			s.log.ErrorContext(r.Context(), "competition bet history", "error", err.Error())
@@ -137,6 +144,11 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 		s.log.ErrorContext(r.Context(), "away bet history", "error", err.Error())
 	}
 	if journal, err := s.cornerJournalCounts(r.Context()); err == nil {
+		if leagueOnly, legErr := s.leagueOnlyCornerLegs(r.Context()); legErr == nil {
+			for _, legs := range leagueOnly {
+				journal.LeagueLegs += len(legs)
+			}
+		}
 		history.Journal = journal
 	} else {
 		s.log.ErrorContext(r.Context(), "journal corner counts", "error", err.Error())

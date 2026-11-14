@@ -228,9 +228,12 @@ function YourBets({ history }: { history: CornerBetHistory | null }) {
       (row.record?.over.legs ?? 0) + (row.record?.under.legs ?? 0) > 0,
   );
 
+  const attached = history.journal
+    ? history.journal.linked_legs + (history.journal.league_legs ?? 0)
+    : 0;
   const coverage =
     history.journal && history.journal.corner_legs > 0
-      ? `${history.journal.linked_legs} of ${history.journal.corner_legs} corner legs in your journal are linked to a stored match. A slip whose fixture could not be matched cannot appear under a team.`
+      ? `${attached} of ${history.journal.corner_legs} corner legs are attached to a match or an exactly named league. A slip whose fixture could not be identified cannot appear under a team.`
       : null;
 
   if (!anyLegs) {

@@ -551,6 +551,20 @@ export type LiveCornerMatch = {
   needed_per_minute: number | null;
   captured_at: string | null;
   pace: "above" | "below" | "on_pace" | "unknown";
+  bet_history?: {
+    legs: number;
+    won: number;
+    lost: number;
+    void: number;
+    open: number;
+    unsettled: number;
+    over_won: number;
+    over_lost: number;
+    under_won: number;
+    under_lost: number;
+    league: boolean;
+    teams: boolean;
+  } | null;
 };
 
 export type LiveCorners = {
@@ -604,6 +618,20 @@ export type CornerMetrics = {
   needed_per_minute: number | null;
   captured_at: string | null;
   pace: "above" | "below" | "on_pace" | "unknown";
+  bet_history?: {
+    legs: number;
+    won: number;
+    lost: number;
+    void: number;
+    open: number;
+    unsettled: number;
+    over_won: number;
+    over_lost: number;
+    under_won: number;
+    under_lost: number;
+    league: boolean;
+    teams: boolean;
+  } | null;
 };
 
 export type CornerBetSide = {
@@ -631,7 +659,7 @@ export type CornerBetHistory = {
   competition: CornerBetRecord | null;
   home: CornerBetRecord | null;
   away: CornerBetRecord | null;
-  journal: { corner_legs: number; linked_legs: number };
+  journal: { corner_legs: number; linked_legs: number; league_legs: number };
   note: string;
 };
 

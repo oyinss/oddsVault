@@ -688,6 +688,18 @@ function MatchCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
+          {match.bet_history ? (
+            <Link
+              href={`/corners/detail?id=${match.event_id}&line=${line}`}
+              title={`${match.bet_history.legs} linked corner legs from your journal on this league or these teams. Over ${match.bet_history.over_won}W-${match.bet_history.over_lost}L, Under ${match.bet_history.under_won}W-${match.bet_history.under_lost}L.`}
+              className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-mist-300 uppercase transition hover:border-turf-400/40 hover:text-turf-200"
+            >
+              played {match.bet_history.won}W-{match.bet_history.lost}L
+              {match.bet_history.open + match.bet_history.unsettled > 0
+                ? ` · ${match.bet_history.open + match.bet_history.unsettled} open`
+                : ""}
+            </Link>
+          ) : null}
           <PaceBadge pace={match.pace} line={line} early={match.early_pace} />
           {match.model_risk && (
             <span

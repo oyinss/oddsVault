@@ -18,34 +18,36 @@ type cornerTeam struct {
 }
 
 type liveCornerMatch struct {
-	EventID            int64      `json:"event_id"`
-	Competition        string     `json:"competition"`
-	CompetitionCountry *string    `json:"competition_country"`
-	CompetitionSlug    string     `json:"competition_slug"`
-	CompetitionLogo    *string    `json:"competition_logo"`
-	Kickoff            string     `json:"kickoff"`
-	Home               cornerTeam `json:"home"`
-	Away               cornerTeam `json:"away"`
-	HomeScore          *int       `json:"home_score"`
-	AwayScore          *int       `json:"away_score"`
-	Clock              string     `json:"clock"`
-	Minute             *int       `json:"minute"`
-	HomeCorners        *int       `json:"home_corners"`
-	AwayCorners        *int       `json:"away_corners"`
-	TotalCorners       *int       `json:"total_corners"`
-	ProjectedTotal     *float64   `json:"projected_total"`
-	ProjectionLow      *float64   `json:"projection_low"`
-	ProjectionHigh     *float64   `json:"projection_high"`
-	LineGap            *float64   `json:"line_gap"`
-	ModelRisk          bool       `json:"model_risk"`
-	ModelRiskReason    string     `json:"model_risk_reason,omitempty"`
-	CornersPerMin      *float64   `json:"corners_per_minute"`
-	EarlyPace          bool       `json:"early_pace"`
-	RemainingMins      *int       `json:"remaining_minutes"`
-	Needed             *int       `json:"needed"`
-	NeededPerMin       *float64   `json:"needed_per_minute"`
-	CapturedAt         *string    `json:"captured_at"`
-	Pace               string     `json:"pace"`
+	EventID            int64            `json:"event_id"`
+	CompetitionID      int64            `json:"-"`
+	Competition        string           `json:"competition"`
+	CompetitionCountry *string          `json:"competition_country"`
+	CompetitionSlug    string           `json:"competition_slug"`
+	CompetitionLogo    *string          `json:"competition_logo"`
+	Kickoff            string           `json:"kickoff"`
+	Home               cornerTeam       `json:"home"`
+	Away               cornerTeam       `json:"away"`
+	HomeScore          *int             `json:"home_score"`
+	AwayScore          *int             `json:"away_score"`
+	Clock              string           `json:"clock"`
+	Minute             *int             `json:"minute"`
+	HomeCorners        *int             `json:"home_corners"`
+	AwayCorners        *int             `json:"away_corners"`
+	TotalCorners       *int             `json:"total_corners"`
+	ProjectedTotal     *float64         `json:"projected_total"`
+	ProjectionLow      *float64         `json:"projection_low"`
+	ProjectionHigh     *float64         `json:"projection_high"`
+	LineGap            *float64         `json:"line_gap"`
+	ModelRisk          bool             `json:"model_risk"`
+	ModelRiskReason    string           `json:"model_risk_reason,omitempty"`
+	CornersPerMin      *float64         `json:"corners_per_minute"`
+	EarlyPace          bool             `json:"early_pace"`
+	RemainingMins      *int             `json:"remaining_minutes"`
+	Needed             *int             `json:"needed"`
+	NeededPerMin       *float64         `json:"needed_per_minute"`
+	CapturedAt         *string          `json:"captured_at"`
+	Pace               string           `json:"pace"`
+	BetHistory         *matchBetHistory `json:"bet_history,omitempty"`
 }
 
 // minutePattern only accepts a clock written with a minute mark, so a
@@ -114,6 +116,8 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load live corners")
 		return
 	}
+
+	s.attachMatchBetHistory(r.Context(), matches)
 
 	// Sorting is the operator's choice and can be layered: "competition,remaining"
 	// groups by competition first, then by time. Stable passes applied from the
@@ -208,7 +212,7 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 // cornerMatchSelect is the column list shared by the live board and the match
 // detail page, so both show the same numbers from the same joins.
 const cornerMatchSelect = `
-		SELECT e.id, c.name, co.iso2, c.slug,
+		SELECT e.id, c.id, c.name, co.iso2, c.slug,
 		       EXISTS (
 		           SELECT 1 FROM media_assets ma
 		           WHERE ma.entity_type = 'competition' AND ma.entity_id = c.id
@@ -248,7 +252,7 @@ func (s *Server) queryCornerMatches(ctx context.Context, sql string, line float6
 		var kickoff time.Time
 		var capturedAt *time.Time
 		var hasLogo bool
-		if err := rows.Scan(&m.EventID, &m.Competition, &m.CompetitionCountry, &m.CompetitionSlug, &hasLogo, &kickoff,
+		if err := rows.Scan(&m.EventID, &m.CompetitionID, &m.Competition, &m.CompetitionCountry, &m.CompetitionSlug, &hasLogo, &kickoff,
 			&m.Home.ID, &m.Home.Name, &m.Away.ID, &m.Away.Name,
 			&m.HomeScore, &m.AwayScore,
 			&clock, &capturedAt, &m.HomeCorners, &m.AwayCorners); err != nil {
