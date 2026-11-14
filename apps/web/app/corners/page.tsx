@@ -15,6 +15,7 @@ import {
   faLayerGroup,
   faMagnifyingGlass,
   faRulerHorizontal,
+  faStar,
   faXmark,
   faTriangleExclamation,
   type IconDefinition,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/api";
 import { useApiData } from "@/lib/use-api";
 import { useCornerAlerts } from "@/features/corners/use-corner-alerts";
+import { useCornerFavorites } from "@/features/corners/use-corner-favorites";
 
 const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 
@@ -52,8 +54,10 @@ export default function CornersPage() {
 
   const matches = data?.matches ?? [];
   const alerts = useCornerAlerts(matches, line);
+  const favorites = useCornerFavorites(matches);
+  const [onlyFollowed, setOnlyFollowed] = useState(false);
   const needle = search.trim().toLowerCase();
-  const visible = needle
+  const searched = needle
     ? matches.filter((match) =>
         [match.home.name, match.away.name, match.competition]
           .join(" ")
@@ -61,6 +65,14 @@ export default function CornersPage() {
           .includes(needle),
       )
     : matches;
+  const visible = onlyFollowed
+    ? searched.filter((match) => favorites.isFollowed(match.event_id))
+    : searched;
+  // A followed match leaves the live list when it ends. Keep it visible with
+  // the last count we saw instead of pretending it was never followed.
+  const offBoard = favorites.list.filter(
+    (item) => !matches.some((match) => match.event_id === item.eventId),
+  );
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState("10");
 
@@ -206,6 +218,27 @@ export default function CornersPage() {
           <span className="font-mono text-[10px] text-mist-500">
             {alerts.watches.length} watched · use the bell on a match to add one
           </span>
+          <button
+            type="button"
+            onClick={() => setOnlyFollowed((value) => !value)}
+            aria-pressed={onlyFollowed}
+            title={
+              onlyFollowed
+                ? "Show every live match again"
+                : "Show only the matches you follow"
+            }
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
+              onlyFollowed
+                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon
+              icon={faStar}
+              className={`size-3 ${onlyFollowed ? "text-turf-300" : ""}`}
+            />
+            following {favorites.count}
+          </button>
         </div>
 
         {error || (!loading && data === null) ? (
@@ -237,6 +270,24 @@ export default function CornersPage() {
               fills in as games kick off; nothing is simulated in the meantime.
             </p>
           </div>
+        ) : onlyFollowed && visible.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
+            <p className="text-sm font-medium text-mist-100">
+              None of your followed matches is live right now.
+            </p>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-mist-400">
+              Followed matches are stored in this browser. When one leaves the
+              live board it stays in the list below with the last corner count
+              we saw, so you can still open its detail page.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOnlyFollowed(false)}
+              className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-white/20 hover:text-mist-100"
+            >
+              Show all live matches
+            </button>
+          </div>
         ) : visible.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
             <p className="text-sm font-medium text-mist-100">
@@ -262,6 +313,8 @@ export default function CornersPage() {
                 match={match}
                 line={line}
                 watched={alerts.isWatched(match.event_id)}
+                followed={favorites.isFollowed(match.event_id)}
+                onToggleFollow={() => favorites.toggle(match)}
                 threshold={
                   alerts.watches.find((watch) => watch.eventId === match.event_id)
                     ?.threshold ?? null
@@ -282,6 +335,54 @@ export default function CornersPage() {
               />
             ))}
           </div>
+        )}
+
+        {onlyFollowed && offBoard.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-mist-100">
+              <FontAwesomeIcon icon={faStar} className="size-3 text-turf-300" />
+              Followed, no longer live
+            </h2>
+            <p className="mt-1 text-xs text-mist-500">
+              These left the live board. The count and minute are the last ones
+              we recorded before it happened.
+            </p>
+            <ul className="mt-3 divide-y divide-white/[0.05]">
+              {offBoard.map((item) => (
+                <li
+                  key={item.eventId}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
+                >
+                  <div className="min-w-0">
+                    <Link
+                      href={`/corners/detail?id=${item.eventId}&line=${line}`}
+                      className="text-sm font-semibold text-mist-100 hover:text-turf-300"
+                    >
+                      {item.home} v {item.away}
+                    </Link>
+                    <p className="font-mono text-[10px] text-mist-500">
+                      {item.competition}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono text-[10px] text-mist-400">
+                    <span>
+                      last seen{" "}
+                      {item.lastTotal !== null ? `${item.lastTotal} corners` : "no count"}
+                      {item.lastMinute !== null ? ` at ${item.lastMinute}'` : ""}
+                    </span>
+                    <span className="text-mist-500">{formatAge(item.seenAt)}</span>
+                    <button
+                      type="button"
+                      onClick={() => favorites.unfollow(item.eventId)}
+                      className="rounded-md border border-line px-2 py-1 tracking-widest text-mist-400 uppercase hover:border-loss-400/40 hover:text-loss-300"
+                    >
+                      unfollow
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <section className="mt-8 rounded-2xl border border-line bg-ink-900/50 p-5">
@@ -345,6 +446,8 @@ function MatchCard({
   match,
   line,
   watched,
+  followed,
+  onToggleFollow,
   threshold,
   editing,
   draft,
@@ -357,6 +460,8 @@ function MatchCard({
   match: LiveCornerMatch;
   line: number;
   watched: boolean;
+  followed: boolean;
+  onToggleFollow: () => void;
   threshold: number | null;
   editing: boolean;
   draft: string;
@@ -374,7 +479,11 @@ function MatchCard({
         : "border-line";
 
   return (
-    <article className={`rounded-2xl border ${tone}`}>
+    <article
+      className={`rounded-2xl border ${tone} ${
+        followed ? "ring-1 ring-turf-400/25" : ""
+      }`}
+    >
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-mist-400 uppercase">
@@ -397,6 +506,23 @@ function MatchCard({
           <span className="font-mono text-[10px] text-mist-500">
             corners {formatAge(match.captured_at)}
           </span>
+          <button
+            type="button"
+            onClick={onToggleFollow}
+            aria-pressed={followed}
+            title={
+              followed
+                ? "Stop following this match"
+                : "Follow this match so it keeps its place on this board"
+            }
+            className={`grid size-7 place-items-center rounded-md border transition ${
+              followed
+                ? "border-turf-400/50 bg-turf-500/10 text-turf-300"
+                : "border-line text-mist-500 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon icon={faStar} className="size-3" />
+          </button>
           <button
             type="button"
             onClick={onOpenEditor}
