@@ -631,6 +631,7 @@ export type CornerBetHistory = {
   competition: CornerBetRecord | null;
   home: CornerBetRecord | null;
   away: CornerBetRecord | null;
+  journal: { corner_legs: number; linked_legs: number };
   note: string;
 };
 

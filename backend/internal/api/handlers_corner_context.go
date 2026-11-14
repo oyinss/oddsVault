@@ -136,6 +136,11 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 	} else {
 		s.log.ErrorContext(r.Context(), "away bet history", "error", err.Error())
 	}
+	if journal, err := s.cornerJournalCounts(r.Context()); err == nil {
+		history.Journal = journal
+	} else {
+		s.log.ErrorContext(r.Context(), "journal corner counts", "error", err.Error())
+	}
 	history.Note = "Counts are corner-total legs from your own slips that are linked to these matches. P/L covers one-leg slips only: an accumulator's profit cannot be attributed to one match."
 	out.BetHistory = history
 

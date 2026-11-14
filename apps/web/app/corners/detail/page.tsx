@@ -228,12 +228,23 @@ function YourBets({ history }: { history: CornerBetHistory | null }) {
       (row.record?.over.legs ?? 0) + (row.record?.under.legs ?? 0) > 0,
   );
 
+  const coverage =
+    history.journal && history.journal.corner_legs > 0
+      ? `${history.journal.linked_legs} of ${history.journal.corner_legs} corner legs in your journal are linked to a stored match. A slip whose fixture could not be matched cannot appear under a team.`
+      : null;
+
   if (!anyLegs) {
     return (
-      <p className="mt-3 text-xs text-mist-500">
-        No corner-total bets on this competition or these teams yet. Once a slip
-        with a corner leg is linked to a match, it appears here.
-      </p>
+      <>
+        <p className="mt-3 text-xs text-mist-500">
+          No linked corner-total bets on this competition or these teams yet.
+        </p>
+        {coverage ? (
+          <p className="mt-2 rounded-lg border border-line bg-ink-950/40 p-2.5 text-[10px] leading-relaxed text-mist-400">
+            {coverage}
+          </p>
+        ) : null}
+      </>
     );
   }
 
@@ -257,6 +268,11 @@ function YourBets({ history }: { history: CornerBetHistory | null }) {
       <p className="mt-2 text-[10px] leading-relaxed text-mist-500">
         {history.note}
       </p>
+      {coverage ? (
+        <p className="mt-1 text-[10px] leading-relaxed text-mist-500">
+          {coverage}
+        </p>
+      ) : null}
     </div>
   );
 }

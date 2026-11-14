@@ -36,7 +36,16 @@ type cornerBetHistory struct {
 	Competition *cornerBetRecord `json:"competition"`
 	Home        *cornerBetRecord `json:"home"`
 	Away        *cornerBetRecord `json:"away"`
+	Journal     cornerBetJournal `json:"journal"`
 	Note        string           `json:"note"`
+}
+
+// cornerBetJournal reports how much of the journal could be attached to a
+// stored fixture. A leg that never resolved cannot appear under a team, and
+// saying so is better than implying the bet does not exist.
+type cornerBetJournal struct {
+	CornerLegs int `json:"corner_legs"`
+	LinkedLegs int `json:"linked_legs"`
 }
 
 func (h *cornerBetHistory) empty() bool {
@@ -61,6 +70,16 @@ func (s *Server) cornerBetsByTeam(ctx context.Context, teamID int64) (*cornerBet
 func (s *Server) cornerBetsByCompetition(ctx context.Context, competitionID int64) (*cornerBetRecord, error) {
 	return s.cornerBets(ctx,
 		`l.event_id IN (SELECT id FROM events WHERE competition_id = $1)`, competitionID)
+}
+
+// cornerJournalCounts reads the journal-wide corner leg totals.
+func (s *Server) cornerJournalCounts(ctx context.Context) (cornerBetJournal, error) {
+	var out cornerBetJournal
+	err := s.pool.QueryRow(ctx, `
+		SELECT count(*), count(*) FILTER (WHERE event_id IS NOT NULL)
+		FROM personal_bet_legs
+		WHERE market_family = 'corners_total'`).Scan(&out.CornerLegs, &out.LinkedLegs)
+	return out, err
 }
 
 func (s *Server) cornerBets(ctx context.Context, scope string, id int64) (*cornerBetRecord, error) {
