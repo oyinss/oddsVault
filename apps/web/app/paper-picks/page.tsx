@@ -147,6 +147,9 @@ export default function PaperPicksPage() {
                     <td className="px-3 py-2 font-mono text-mist-200">
                       {pick.side} {pick.line}{" "}
                       <span className="text-mist-500">@ {pick.odds.toFixed(2)}</span>
+                      <p className="mt-0.5 font-mono text-[10px] text-mist-500">
+                        {pick.provider}
+                      </p>
                     </td>
                     <td className="px-3 py-2 font-mono text-[10px] text-mist-400">
                       {pick.minute !== null ? `${pick.minute}'` : "-"} ·{" "}

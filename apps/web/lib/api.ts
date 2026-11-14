@@ -1054,6 +1054,8 @@ export type PaperPick = {
   competition: string;
   home: string;
   away: string;
+  provider: string;
+  provider_slug: string;
   side: "over" | "under";
   line: number;
   odds: number;
@@ -1089,6 +1091,7 @@ export type PaperPicks = {
 // the screen showed at that moment.
 export async function createPaperPick(input: {
   eventId: number;
+  provider: string;
   side: "over" | "under";
   line: number;
   odds: number;
@@ -1098,6 +1101,7 @@ export async function createPaperPick(input: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       event_id: input.eventId,
+      provider: input.provider,
       side: input.side,
       line: input.line,
       odds: input.odds,
@@ -1121,4 +1125,19 @@ export async function deletePaperPick(id: number): Promise<boolean> {
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   return res.ok;
+}
+
+export type BookmakerOption = { slug: string; name: string };
+
+// The list the pick form offers. It comes from the same bookmakers table the
+// odds snapshots use, so a pick can never name a bookmaker we do not know.
+export async function getPaperPickProviders(): Promise<BookmakerOption[]> {
+  try {
+    const body = await getJSON<{ providers: BookmakerOption[] }>(
+      "/api/v1/paper-picks/providers",
+    );
+    return body.providers;
+  } catch {
+    return [];
+  }
 }

@@ -15,6 +15,8 @@ type PaperPick struct {
 	Competition     string
 	Home            string
 	Away            string
+	Provider        string
+	ProviderSlug    string
 	Side            string
 	Line            float64
 	Odds            float64
@@ -46,6 +48,7 @@ type PaperPickInput struct {
 	CompetitionID   int64
 	HomeTeamID      int64
 	AwayTeamID      int64
+	ProviderSlug    string
 	Side            string
 	Line            float64
 	Odds            float64
@@ -71,16 +74,16 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 	err := im.pool.QueryRow(ctx, `
 		INSERT INTO paper_picks (
 			event_id, competition_id, home_team_id, away_team_id,
-			side, line, odds,
+			provider_slug, side, line, odds,
 			minute, home_corners, away_corners, total_corners,
 			pace_per_minute, projected_total, projection_low, projection_high,
 			needed, needed_per_minute, model_risk, early_pace,
 			event_status_at_save, data_cutoff_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-		        $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		RETURNING id, status, created_at`,
 		in.EventID, in.CompetitionID, in.HomeTeamID, in.AwayTeamID,
-		in.Side, in.Line, in.Odds,
+		in.ProviderSlug, in.Side, in.Line, in.Odds,
 		in.Minute, in.HomeCorners, in.AwayCorners, in.TotalCorners,
 		in.PacePerMinute, in.ProjectedTotal, in.ProjectionLow, in.ProjectionHigh,
 		in.Needed, in.NeededPerMinute, in.ModelRisk, in.EarlyPace,
@@ -89,6 +92,7 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 		return out, fmt.Errorf("create paper pick: %w", err)
 	}
 	out.EventID = in.EventID
+	out.ProviderSlug = in.ProviderSlug
 	out.Side = in.Side
 	out.Line = in.Line
 	out.Odds = in.Odds
@@ -111,6 +115,7 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 
 const paperPickSelect = `
 	SELECT p.id, p.event_id, c.name, h.name, a.name,
+	       b.name, p.provider_slug,
 	       p.side, p.line, p.odds,
 	       p.minute, p.total_corners, p.home_corners, p.away_corners,
 	       p.pace_per_minute, p.projected_total, p.projection_low, p.projection_high,
@@ -121,6 +126,7 @@ const paperPickSelect = `
 	JOIN competitions c ON c.id = p.competition_id
 	JOIN teams h ON h.id = p.home_team_id
 	JOIN teams a ON a.id = p.away_team_id
+	JOIN bookmakers b ON b.slug = p.provider_slug
 	`
 
 // ListPaperPicks returns recent recordings, newest first.
@@ -140,6 +146,7 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 	for rows.Next() {
 		var item PaperPick
 		if err := rows.Scan(&item.ID, &item.EventID, &item.Competition, &item.Home, &item.Away,
+			&item.Provider, &item.ProviderSlug,
 			&item.Side, &item.Line, &item.Odds,
 			&item.Minute, &item.TotalCorners, &item.HomeCorners, &item.AwayCorners,
 			&item.PacePerMinute, &item.ProjectedTotal, &item.ProjectionLow, &item.ProjectionHigh,

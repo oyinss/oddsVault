@@ -15,10 +15,11 @@ import (
 // corner count.
 
 type paperPickRequest struct {
-	EventID int64   `json:"event_id"`
-	Side    string  `json:"side"`
-	Line    float64 `json:"line"`
-	Odds    float64 `json:"odds"`
+	EventID  int64   `json:"event_id"`
+	Provider string  `json:"provider"`
+	Side     string  `json:"side"`
+	Line     float64 `json:"line"`
+	Odds     float64 `json:"odds"`
 }
 
 type paperPickResponse struct {
@@ -27,6 +28,8 @@ type paperPickResponse struct {
 	Competition     string   `json:"competition"`
 	Home            string   `json:"home"`
 	Away            string   `json:"away"`
+	Provider        string   `json:"provider"`
+	ProviderSlug    string   `json:"provider_slug"`
 	Side            string   `json:"side"`
 	Line            float64  `json:"line"`
 	Odds            float64  `json:"odds"`
@@ -54,6 +57,7 @@ type paperPickResponse struct {
 func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 	out := paperPickResponse{
 		ID: p.ID, EventID: p.EventID, Competition: p.Competition, Home: p.Home, Away: p.Away,
+		Provider: p.Provider, ProviderSlug: p.ProviderSlug,
 		Side: p.Side, Line: p.Line, Odds: p.Odds,
 		Minute: p.Minute, TotalCorners: p.TotalCorners, HomeCorners: p.HomeCorners, AwayCorners: p.AwayCorners,
 		PacePerMinute: p.PacePerMinute, ProjectedTotal: p.ProjectedTotal,
@@ -89,6 +93,17 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "invalid_event", "event_id is required")
 		return
 	}
+	if body.Provider == "" {
+		writeError(w, r, http.StatusBadRequest, "invalid_provider", "choose the bookmaker that offered the price")
+		return
+	}
+	var providerName string
+	if err := s.pool.QueryRow(r.Context(),
+		`SELECT name FROM bookmakers WHERE slug = $1 AND active`, body.Provider).Scan(&providerName); err != nil {
+		writeError(w, r, http.StatusBadRequest, "invalid_provider", "unknown bookmaker")
+		return
+	}
+
 	if body.Side != "over" && body.Side != "under" {
 		writeError(w, r, http.StatusBadRequest, "invalid_side", "side must be over or under")
 		return
@@ -126,6 +141,7 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 		CompetitionID:   event.CompetitionID,
 		HomeTeamID:      event.Home.ID,
 		AwayTeamID:      event.Away.ID,
+		ProviderSlug:    body.Provider,
 		Side:            body.Side,
 		Line:            body.Line,
 		Odds:            body.Odds,
@@ -153,6 +169,7 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 	pick.Competition = event.Competition
 	pick.Home = event.Home.Name
 	pick.Away = event.Away.Name
+	pick.Provider = providerName
 	writeJSON(w, http.StatusCreated, toPaperPickResponse(pick))
 }
 
@@ -215,4 +232,36 @@ func (s *Server) handleDeletePaperPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": true, "id": id})
+}
+
+// handlePaperPickProviders lists the bookmakers a pick can name, so the form
+// offers a choice instead of a free-text field.
+func (s *Server) handlePaperPickProviders(w http.ResponseWriter, r *http.Request) {
+	if s.pool == nil {
+		writeError(w, r, http.StatusServiceUnavailable, "not_ready", "database is not configured")
+		return
+	}
+	rows, err := s.pool.Query(r.Context(),
+		`SELECT slug, name FROM bookmakers WHERE active ORDER BY name`)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "paper pick providers", "error", err.Error())
+		writeError(w, r, http.StatusInternalServerError, "query_failed", "could not read bookmakers")
+		return
+	}
+	defer rows.Close()
+
+	type provider struct {
+		Slug string `json:"slug"`
+		Name string `json:"name"`
+	}
+	out := make([]provider, 0, 8)
+	for rows.Next() {
+		var item provider
+		if err := rows.Scan(&item.Slug, &item.Name); err != nil {
+			writeError(w, r, http.StatusInternalServerError, "query_failed", "could not read bookmakers")
+			return
+		}
+		out = append(out, item)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"providers": out})
 }

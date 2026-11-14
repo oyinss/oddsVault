@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { faFloppyDisk, faSpinner, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { createPaperPick, type PaperPick } from "@/lib/api";
+import {
+  createPaperPick,
+  getPaperPickProviders,
+  type BookmakerOption,
+  type PaperPick,
+} from "@/lib/api";
 
 // PaperPickForm records a corner selection by hand. No stake is involved: the
 // API freezes the board context with the pick so it can be scored and used as
@@ -20,6 +25,8 @@ export function PaperPickForm({
   onSaved?: (pick: PaperPick) => void;
   onCancel?: () => void;
 }) {
+  const [providers, setProviders] = useState<BookmakerOption[]>([]);
+  const [provider, setProvider] = useState("1xbet");
   const [side, setSide] = useState<"over" | "under">("under");
   const [line, setLine] = useState(String(defaultLine));
   const [odds, setOdds] = useState("");
@@ -27,9 +34,28 @@ export function PaperPickForm({
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    void getPaperPickProviders().then((list) => {
+      if (!active || list.length === 0) return;
+      setProviders(list);
+      setProvider((current) =>
+        list.some((option) => option.slug === current) ? current : list[0].slug,
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function save() {
     const lineValue = Number(line);
     const oddsValue = Number(odds);
+    if (!provider) {
+      setFailed(true);
+      setMessage("Choose the bookmaker that offered the price.");
+      return;
+    }
     if (!Number.isFinite(lineValue) || lineValue <= 0) {
       setFailed(true);
       setMessage("Enter the corner line.");
@@ -46,11 +72,14 @@ export function PaperPickForm({
     try {
       const pick = await createPaperPick({
         eventId,
+        provider,
         side,
         line: lineValue,
         odds: oddsValue,
       });
-      setMessage(`Recorded ${pick.side} ${pick.line} at ${pick.odds.toFixed(2)}.`);
+      setMessage(
+        `Recorded ${pick.side} ${pick.line} at ${pick.odds.toFixed(2)} on ${pick.provider}.`,
+      );
       onSaved?.(pick);
     } catch (error) {
       setFailed(true);
@@ -62,6 +91,25 @@ export function PaperPickForm({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <label className="flex items-center gap-1.5 font-mono text-[10px] text-mist-500 uppercase">
+        book
+        <select
+          value={provider}
+          onChange={(event) => setProvider(event.target.value)}
+          aria-label="Bookmaker"
+          className="rounded-md border border-line bg-ink-900 px-2 py-1 font-mono text-xs text-mist-100 outline-none focus:border-turf-400/50"
+        >
+          {providers.length === 0 ? (
+            <option value="">loading…</option>
+          ) : (
+            providers.map((option) => (
+              <option key={option.slug} value={option.slug}>
+                {option.name}
+              </option>
+            ))
+          )}
+        </select>
+      </label>
       <div className="flex overflow-hidden rounded-md border border-line">
         {(["under", "over"] as const).map((option) => (
           <button
