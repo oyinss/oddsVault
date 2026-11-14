@@ -122,8 +122,13 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN event_live_states l ON l.event_id = e.id
 		LEFT JOIN team_match_stats hs ON hs.event_id = e.id AND hs.team_id = hp.team_id
 		LEFT JOIN team_match_stats as_ ON as_.event_id = e.id AND as_.team_id = ap.team_id
-		WHERE e.status = 'live' AND sp.slug = 'football'
-		ORDER BY COALESCE(e.start_time, e.start_date::timestamptz) ASC`)
+		WHERE e.status = 'live'
+		  AND sp.slug = 'football'
+		  -- A live match whose state has not been refreshed recently is a
+		  -- stale row, not a game in progress.
+		  AND l.captured_at > now() - interval '15 minutes'
+		ORDER BY COALESCE(e.start_time, e.start_date::timestamptz) ASC
+		LIMIT 300`)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "live corners", "error", err.Error())
 		writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load live corners")

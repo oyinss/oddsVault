@@ -324,3 +324,23 @@ func (im *Importer) LinkProviderID(ctx context.Context, eventID int64, provider,
 	}
 	return nil
 }
+
+// CleanupStaleLive marks events that were live but have not been refreshed for
+// hours as unknown. Without it, every match ever seen live stays live forever
+// and the board fills with finished games.
+func (im *Importer) CleanupStaleLive(ctx context.Context) (int64, error) {
+	tag, err := im.pool.Exec(ctx, `
+		UPDATE events e
+		SET status = 'unknown'
+		WHERE e.status = 'live'
+		  AND COALESCE(e.start_time, e.start_date::timestamptz) < now() - interval '4 hours'
+		  AND NOT EXISTS (SELECT 1 FROM event_results r WHERE r.event_id = e.id)
+		  AND NOT EXISTS (
+		      SELECT 1 FROM event_live_states l
+		      WHERE l.event_id = e.id AND l.captured_at > now() - interval '2 hours'
+		  )`)
+	if err != nil {
+		return 0, fmt.Errorf("cleanup stale live events: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}

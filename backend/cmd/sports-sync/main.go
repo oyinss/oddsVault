@@ -334,6 +334,20 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Run:   football.RunAllLive,
 		},
 		{
+			Name:  "cleanup_stale_live",
+			Every: 15 * time.Minute,
+			Run: func(ctx context.Context) error {
+				updated, err := importer.CleanupStaleLive(ctx)
+				if err != nil {
+					return err
+				}
+				if updated > 0 {
+					log.Info("stale live events cleared", slog.Int64("updated", updated))
+				}
+				return nil
+			},
+		},
+		{
 			Name:  "dedupe_live_events",
 			Every: 10 * time.Minute,
 			Run: func(ctx context.Context) error {

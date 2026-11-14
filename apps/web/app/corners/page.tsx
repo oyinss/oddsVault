@@ -208,12 +208,22 @@ export default function CornersPage() {
           </span>
         </div>
 
-        {error ? (
+        {error || (!loading && data === null) ? (
           <div className="mt-6 rounded-2xl border border-flag-400/30 bg-flag-400/[0.04] p-6">
             <p className="text-sm font-medium text-flag-400">
               Unable to load live corners.
             </p>
-            <p className="mt-1 text-xs text-mist-400">{error}</p>
+            <p className="mt-1 text-xs text-mist-400">
+              {error ?? "The API did not respond. This is usually the tunnel or the network, not an empty board."}
+            </p>
+            <button
+              type="button"
+              onClick={reload}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-flag-400/40 px-3 py-1.5 text-xs font-semibold text-flag-400 transition hover:bg-flag-400/10"
+            >
+              <FontAwesomeIcon icon={faArrowsRotate} className="size-3" />
+              Try again
+            </button>
           </div>
         ) : loading && !data ? (
           <LoadingNote label="Reading live matches…" />
