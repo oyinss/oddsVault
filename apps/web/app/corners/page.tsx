@@ -306,8 +306,9 @@ export default function CornersPage() {
               is the reverse.
             </li>
             <li>
-              No projection is shown before the 15th minute or when the provider
-              has not published corner counts. An absent count is not a zero.
+              Pace is shown from the first minute but labelled early before the
+              15th. No projection is shown until then, or when the provider has
+              not published corner counts. An absent count is not a zero.
             </li>
           </ul>
         </section>
@@ -516,11 +517,18 @@ function MatchCard({
           <Metric
             label="Pace"
             icon={faGaugeHigh}
-            hint="Corners per minute so far: total corners divided by minutes played. Before the 15th minute the rate is too noisy to show."
+            hint="Corners per minute so far: total corners divided by minutes played. Shown from the first minute; before the 15th it is early and noisy."
             value={
               match.corners_per_minute !== null
                 ? match.corners_per_minute.toFixed(2)
                 : "-"
+            }
+            note={
+              match.early_pace
+                ? "early"
+                : match.corners_per_minute === null
+                  ? "no count"
+                  : undefined
             }
           />
           <Metric
@@ -554,7 +562,7 @@ function MatchCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
-          <PaceBadge pace={match.pace} line={line} />
+          <PaceBadge pace={match.pace} line={line} early={match.early_pace} />
           {match.model_risk && (
             <span
               className="inline-flex items-center gap-1 rounded border border-flag-400/40 px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-flag-400 uppercase"
@@ -707,10 +715,19 @@ function Hint({ text }: { text: string }) {
 function PaceBadge({
   pace,
   line,
+  early,
 }: {
   pace: LiveCornerMatch["pace"];
   line: number;
+  early: boolean;
 }) {
+  if (early) {
+    return (
+      <span className="font-mono text-[10px] tracking-widest text-mist-400 uppercase">
+        early pace
+      </span>
+    );
+  }
   if (pace === "above") {
     return (
       <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-turf-300 uppercase">

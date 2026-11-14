@@ -40,6 +40,7 @@ type liveCornerMatch struct {
 	ModelRisk          bool       `json:"model_risk"`
 	ModelRiskReason    string     `json:"model_risk_reason,omitempty"`
 	CornersPerMin      *float64   `json:"corners_per_minute"`
+	EarlyPace          bool       `json:"early_pace"`
 	RemainingMins      *int       `json:"remaining_minutes"`
 	Needed             *int       `json:"needed"`
 	NeededPerMin       *float64   `json:"needed_per_minute"`
@@ -303,20 +304,38 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 
 	total := *m.HomeCorners + *m.AwayCorners
 	m.TotalCorners = &total
-	if m.Minute == nil || *m.Minute < 15 {
+	if m.Minute == nil || *m.Minute < 1 {
 		return
 	}
 
 	elapsed := float64(*m.Minute)
 	perMinute := float64(total) / elapsed
 	m.CornersPerMin = ptrFloat(round2(perMinute))
-	m.ProjectedTotal = ptrFloat(round2(perMinute * 90))
 
 	remaining := 90 - *m.Minute
 	if remaining < 0 {
 		remaining = 0
 	}
 	m.RemainingMins = &remaining
+
+	needed := int(math.Ceil(line)) - total
+	if needed < 0 {
+		needed = 0
+	}
+	m.Needed = &needed
+	if remaining > 0 {
+		m.NeededPerMin = ptrFloat(round2(float64(needed) / float64(remaining)))
+	}
+
+	// The rate itself is arithmetic and is shown from the first minute, but the
+	// projection stays hidden until the 15th: a handful of early corners
+	// extrapolated to 90 is noise dressed as a forecast.
+	if *m.Minute < 15 {
+		m.EarlyPace = true
+		return
+	}
+
+	m.ProjectedTotal = ptrFloat(round2(perMinute * 90))
 
 	// A point projection hides how thin four corners in sixteen minutes is.
 	// Show the range a Poisson process would produce for the remaining time.
@@ -335,16 +354,10 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 		m.ModelRiskReason = "early projection: the sample is still small"
 	}
 
-	needed := int(math.Ceil(line)) - total
-	if needed < 0 {
-		needed = 0
-	}
-	m.Needed = &needed
-	if remaining == 0 {
+	if m.NeededPerMin == nil {
 		return
 	}
 
-	m.NeededPerMin = ptrFloat(round2(float64(needed) / float64(remaining)))
 	// Pace compares the current rate with the rate required to clear the line.
 	switch {
 	case perMinute > *m.NeededPerMin*1.2:

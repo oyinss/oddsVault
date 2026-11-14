@@ -305,7 +305,12 @@ function DecisionPanel({
         />
       </dl>
 
-      {m.pace !== "unknown" ? (
+      {m.early_pace ? (
+        <p className="mt-2 font-mono text-[10px] text-mist-400">
+          early pace at {m.corners_per_minute?.toFixed(2)} corners per minute,
+          before the 15th minute
+        </p>
+      ) : m.pace !== "unknown" ? (
         <p className="mt-2 font-mono text-[10px] text-mist-400">
           pace is {m.pace.replace("_", " ")} versus the rate the line needs
         </p>

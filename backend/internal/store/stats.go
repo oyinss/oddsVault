@@ -442,3 +442,45 @@ func (im *Importer) EventsByProviderIDs(ctx context.Context, provider string, id
 	}
 	return out, rows.Err()
 }
+
+// LiveProviderEvent is a match in progress that is linked to one provider, with
+// the ids needed to fetch and store its statistics.
+type LiveProviderEvent struct {
+	EventID         int64
+	ProviderEventID string
+	HomeTeamID      int64
+	AwayTeamID      int64
+	Detail          string
+}
+
+// LiveFotmobCandidates lists live events linked to FotMob. It does not depend on
+// the match appearing on today's FotMob board, which is how a match that
+// started before midnight kept its first minute and lost its corners.
+func (im *Importer) LiveFotmobCandidates(ctx context.Context, limit int) ([]LiveProviderEvent, error) {
+	rows, err := im.pool.Query(ctx, `
+		SELECT e.id, p.provider_event_id, hp.team_id, ap.team_id, COALESCE(l.detail, '')
+		FROM events e
+		JOIN event_provider_ids p ON p.event_id = e.id AND p.provider = 'fotmob'
+		JOIN event_live_states l ON l.event_id = e.id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		WHERE e.status = 'live'
+		  AND l.captured_at > now() - interval '15 minutes'
+		ORDER BY l.captured_at ASC
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list live fotmob events: %w", err)
+	}
+	defer rows.Close()
+
+	var out []LiveProviderEvent
+	for rows.Next() {
+		var item LiveProviderEvent
+		if err := rows.Scan(&item.EventID, &item.ProviderEventID,
+			&item.HomeTeamID, &item.AwayTeamID, &item.Detail); err != nil {
+			return nil, err
+		}
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}

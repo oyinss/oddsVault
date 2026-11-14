@@ -545,6 +545,7 @@ export type LiveCornerMatch = {
   model_risk: boolean;
   model_risk_reason?: string;
   corners_per_minute: number | null;
+  early_pace: boolean;
   remaining_minutes: number | null;
   needed: number | null;
   needed_per_minute: number | null;
@@ -597,6 +598,7 @@ export type CornerMetrics = {
   model_risk: boolean;
   model_risk_reason?: string;
   corners_per_minute: number | null;
+  early_pace: boolean;
   remaining_minutes: number | null;
   needed: number | null;
   needed_per_minute: number | null;

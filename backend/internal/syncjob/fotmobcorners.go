@@ -123,10 +123,44 @@ func (f *Football) RunFotmobLive(ctx context.Context) error {
 		saved++
 	}
 
+	// Pass 3: every live match we already link to FotMob, even if it did not
+	// appear on today's board. A match that kicked off before midnight is still
+	// live, and its corners must keep updating.
+	staleSaved := 0
+	candidates, err := f.importer.LiveFotmobCandidates(ctx, 80)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	for _, candidate := range candidates {
+		id, convErr := strconv.ParseInt(candidate.ProviderEventID, 10, 64)
+		if convErr != nil {
+			continue
+		}
+		corners, err := adapter.FetchCorners(ctx, id)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("fotmob corners %d: %w", id, err))
+			continue
+		}
+		// An absent pair never clears a count another provider published.
+		if corners.Home == nil || corners.Away == nil {
+			continue
+		}
+		if err := f.importer.SaveCorners(ctx, candidate.EventID, "fotmob",
+			candidate.HomeTeamID, candidate.AwayTeamID, corners.Home, corners.Away); err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		_ = f.importer.RecordCornerSnapshot(ctx, candidate.EventID,
+			parseClockMinute(candidate.Detail), *corners.Home, *corners.Away)
+		staleSaved++
+	}
+
 	f.log.Info("fotmob live refreshed",
 		"live", len(live),
 		"discovered", len(states),
 		"corners", saved,
+		"linked_refreshed", len(candidates),
+		"linked_saved", staleSaved,
 		"unmatched", unmatched)
 	return errors.Join(errs...)
 }
