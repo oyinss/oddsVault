@@ -18,6 +18,9 @@ import {
   absoluteAsset,
   formatAge,
   getCornerContext,
+  type CornerBetHistory,
+  type CornerBetRecord,
+  type CornerBetSide,
   type CornerContext,
   type CornerMetrics,
   type CornerTeamForm,
@@ -166,6 +169,15 @@ function DetailView() {
           <FormCard form={data.away_form} />
         </section>
 
+        <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">
+          <h2 className="text-sm font-semibold text-mist-100">Your record here</h2>
+          <p className="mt-1 text-xs text-mist-500">
+            Corner-total bets from your own journal on this competition and
+            these two teams. Won and lost come from the legs themselves.
+          </p>
+          <YourBets history={data.bet_history ?? null} />
+        </section>
+
         <p className="mt-4 flex items-start gap-2 rounded-xl border border-line bg-ink-900/40 p-3 text-[11px] leading-relaxed text-mist-400">
           <FontAwesomeIcon icon={faCircleInfo} className="mt-0.5 size-3 shrink-0 text-mist-500" />
           {data.coverage_note}
@@ -195,6 +207,130 @@ function DetailView() {
       </main>
     </>
   );
+}
+
+function YourBets({ history }: { history: CornerBetHistory | null }) {
+  if (!history) {
+    return (
+      <p className="mt-3 text-xs text-mist-500">
+        Your bet journal could not be read for this match.
+      </p>
+    );
+  }
+
+  const rows: Array<{ label: string; record: CornerBetRecord | null }> = [
+    { label: "Competition", record: history.competition },
+    { label: "Home team", record: history.home },
+    { label: "Away team", record: history.away },
+  ];
+  const anyLegs = rows.some(
+    (row) =>
+      (row.record?.over.legs ?? 0) + (row.record?.under.legs ?? 0) > 0,
+  );
+
+  if (!anyLegs) {
+    return (
+      <p className="mt-3 text-xs text-mist-500">
+        No corner-total bets on this competition or these teams yet. Once a slip
+        with a corner leg is linked to a match, it appears here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full text-left text-[11px]">
+        <thead className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+          <tr>
+            <th className="py-1 font-normal">Where</th>
+            <th className="py-1 font-normal">Over</th>
+            <th className="py-1 font-normal">Under</th>
+            <th className="py-1 text-right font-normal">One-leg P/L</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/[0.05]">
+          {rows.map(({ label, record }) => (
+            <BetRow key={label} label={label} record={record} />
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-[10px] leading-relaxed text-mist-500">
+        {history.note}
+      </p>
+    </div>
+  );
+}
+
+function BetRow({
+  label,
+  record,
+}: {
+  label: string;
+  record: CornerBetRecord | null;
+}) {
+  const legs = (record?.over.legs ?? 0) + (record?.under.legs ?? 0);
+  if (!record || legs === 0) {
+    return (
+      <tr>
+        <td className="py-1.5 text-mist-200">{label}</td>
+        <td className="py-1.5 text-mist-500" colSpan={3}>
+          no bets
+        </td>
+      </tr>
+    );
+  }
+
+  const money = record.single_bet;
+  return (
+    <tr>
+      <td className="py-1.5 text-mist-200">{label}</td>
+      <td className="py-1.5 text-mist-200">
+        <SideLine side={record.over} />
+      </td>
+      <td className="py-1.5 text-mist-200">
+        <SideLine side={record.under} />
+      </td>
+      <td className="py-1.5 text-right">
+        {money.bets > 0 ? (
+          <span className="font-mono text-mist-100">
+            {naira(money.profit_loss)}{" "}
+            <span className="text-mist-500">on {naira(money.stake)}</span>
+          </span>
+        ) : (
+          <span className="font-mono text-mist-500">accumulators only</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function SideLine({ side }: { side: CornerBetSide }) {
+  if (side.legs === 0) {
+    return <span className="font-mono text-mist-500">-</span>;
+  }
+  const extra: string[] = [];
+  if (side.void > 0) extra.push(`${side.void} void`);
+  if (side.pending > 0) extra.push(`${side.pending} open`);
+  if (side.unknown > 0) extra.push(`${side.unknown} unsettled`);
+  return (
+    <span className="font-mono">
+      {side.won}W {side.lost}L
+      {extra.length > 0 ? (
+        <span className="text-mist-500"> · {extra.join(" · ")}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function naira(value: number) {
+  const formatted = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(Math.abs(value));
+  if (value > 0) return `+${formatted}`;
+  if (value < 0) return `-${formatted}`;
+  return formatted;
 }
 
 type Tone = "over" | "under" | "pass" | "early";

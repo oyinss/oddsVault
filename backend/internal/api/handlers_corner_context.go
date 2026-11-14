@@ -28,13 +28,22 @@ type teamForm struct {
 }
 
 type cornerContext struct {
-	Event        eventResponse    `json:"event"`
-	Line         float64          `json:"line"`
-	Metrics      *liveCornerMatch `json:"metrics"`
-	HomeForm     teamForm         `json:"home_form"`
-	AwayForm     teamForm         `json:"away_form"`
-	Points       []cornerPoint    `json:"points"`
-	CoverageNote string           `json:"coverage_note"`
+	Event        eventResponse     `json:"event"`
+	Line         float64           `json:"line"`
+	Metrics      *liveCornerMatch  `json:"metrics"`
+	HomeForm     teamForm          `json:"home_form"`
+	AwayForm     teamForm          `json:"away_form"`
+	Points       []cornerPoint     `json:"points"`
+	BetHistory   *cornerBetHistory `json:"bet_history,omitempty"`
+	CoverageNote string            `json:"coverage_note"`
+}
+
+// eventCompetitionID reads the league id behind one event.
+func (s *Server) eventCompetitionID(ctx context.Context, eventID int64) (int64, error) {
+	var id int64
+	err := s.pool.QueryRow(ctx,
+		`SELECT competition_id FROM events WHERE id = $1`, eventID).Scan(&id)
+	return id, err
 }
 
 // handleCornerContext returns the recent corner record for both teams plus the
@@ -106,6 +115,29 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out.Points = points
+
+	// The user's own record in this spot, from the bet journal. It never mixes
+	// accumulator money into a single match: only one-leg slips carry P/L here.
+	history := &cornerBetHistory{}
+	if competitionID, err := s.eventCompetitionID(r.Context(), id); err == nil {
+		if record, err := s.cornerBetsByCompetition(r.Context(), competitionID); err == nil {
+			history.Competition = record
+		} else {
+			s.log.ErrorContext(r.Context(), "competition bet history", "error", err.Error())
+		}
+	}
+	if record, err := s.cornerBetsByTeam(r.Context(), event.Home.ID); err == nil {
+		history.Home = record
+	} else {
+		s.log.ErrorContext(r.Context(), "home bet history", "error", err.Error())
+	}
+	if record, err := s.cornerBetsByTeam(r.Context(), event.Away.ID); err == nil {
+		history.Away = record
+	} else {
+		s.log.ErrorContext(r.Context(), "away bet history", "error", err.Error())
+	}
+	history.Note = "Counts are corner-total legs from your own slips that are linked to these matches. P/L covers one-leg slips only: an accumulator's profit cannot be attributed to one match."
+	out.BetHistory = history
 
 	out.CoverageNote = "Recent form counts only finished matches with corner statistics stored. A team with no rows has no corner data in our coverage, not zero corners."
 	writeJSON(w, http.StatusOK, out)

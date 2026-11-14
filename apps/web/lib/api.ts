@@ -606,6 +606,34 @@ export type CornerMetrics = {
   pace: "above" | "below" | "on_pace" | "unknown";
 };
 
+export type CornerBetSide = {
+  legs: number;
+  won: number;
+  lost: number;
+  void: number;
+  pending: number;
+  unknown: number;
+};
+
+export type CornerBetMoney = {
+  bets: number;
+  stake: number;
+  profit_loss: number;
+};
+
+export type CornerBetRecord = {
+  over: CornerBetSide;
+  under: CornerBetSide;
+  single_bet: CornerBetMoney;
+};
+
+export type CornerBetHistory = {
+  competition: CornerBetRecord | null;
+  home: CornerBetRecord | null;
+  away: CornerBetRecord | null;
+  note: string;
+};
+
 export type CornerContext = {
   event: EventDetail["event"];
   line: number;
@@ -613,6 +641,7 @@ export type CornerContext = {
   home_form: CornerTeamForm;
   away_form: CornerTeamForm;
   points: Array<{ minute: number | null; total_corners: number; captured_at: string }>;
+  bet_history?: CornerBetHistory | null;
   coverage_note: string;
 };
 
