@@ -19,6 +19,7 @@ import (
 	"github.com/oyins/oddsvault/backend/internal/database"
 	"github.com/oyins/oddsvault/backend/internal/logging"
 	"github.com/oyins/oddsvault/backend/internal/settlement"
+	"github.com/oyins/oddsvault/backend/internal/store"
 	"github.com/oyins/oddsvault/backend/internal/worker"
 )
 
@@ -63,12 +64,16 @@ func runOnce() error {
 	if _, err := engine.Run(ctx); err != nil {
 		return err
 	}
-	_, err = engine.SettleModelBets(ctx)
+	if _, err := engine.SettleModelBets(ctx); err != nil {
+		return err
+	}
+	_, err = store.NewImporter(pool, logger).SettlePaperPicks(ctx)
 	return err
 }
 
 func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, _ config.Config) ([]worker.Job, error) {
 	engine := settlement.New(pool, log)
+	importer := store.NewImporter(pool, log)
 	return []worker.Job{
 		{
 			Name:  "settle_finished_events",
@@ -76,6 +81,20 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, _ config
 			Run: func(ctx context.Context) error {
 				_, err := engine.Run(ctx)
 				return err
+			},
+		},
+		{
+			Name:  "settle_paper_picks",
+			Every: 5 * time.Minute,
+			Run: func(ctx context.Context) error {
+				settled, err := importer.SettlePaperPicks(ctx)
+				if err != nil {
+					return err
+				}
+				if settled > 0 {
+					log.Info("paper picks settled", slog.Int64("picks", settled))
+				}
+				return nil
 			},
 		},
 		{

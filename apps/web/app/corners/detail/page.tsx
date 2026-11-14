@@ -11,6 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { PaperPickForm } from "@/features/corners/paper-pick-form";
 import { LoadingNote } from "@/components/loading-note";
 import { SiteHeader } from "@/components/site-header";
 import { TeamCrest } from "@/components/team-crest";
@@ -167,6 +168,26 @@ function DetailView() {
         <section className="mt-6 grid gap-4 md:grid-cols-2">
           <FormCard form={data.home_form} />
           <FormCard form={data.away_form} />
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-mist-100">
+                Record a paper pick
+              </h2>
+              <p className="mt-1 text-xs text-mist-500">
+                No stake. The current minute, corners, pace and projection are
+                saved with it and it settles on the final corner count.
+              </p>
+            </div>
+            <Link href="/paper-picks" className="text-[10px] text-turf-300 hover:text-turf-200">
+              all paper picks
+            </Link>
+          </div>
+          <div className="mt-3">
+            <PaperPickForm eventId={event.id} defaultLine={data.line} />
+          </div>
         </section>
 
         <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">

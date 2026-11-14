@@ -203,7 +203,14 @@ async function proxyToApi(request, env, url) {
       503,
     );
   }
-  if (request.method !== "GET" && request.method !== "HEAD") {
+  const method = request.method;
+  const isRead = method === "GET" || method === "HEAD";
+  // The static site only writes paper picks: recording and deleting one. Every
+  // other API write stays closed to the browser.
+  const isPaperPickWrite =
+    (method === "POST" || method === "DELETE") &&
+    url.pathname.startsWith(`${API_PREFIX}/api/v1/paper-picks`);
+  if (!isRead && !isPaperPickWrite) {
     return json({ error: "method not allowed" }, 405);
   }
 
@@ -237,11 +244,16 @@ async function proxyToApi(request, env, url) {
     headers.set("authorization", `Bearer ${env.JOURNAL_TOKEN}`);
   }
 
+  // Paper pick writes are small JSON bodies; read them so the proxy can pass
+  // one through without depending on streaming support.
+  const body = isRead ? undefined : await request.text();
+
   let upstream;
   try {
     upstream = await fetch(target, {
       method: request.method,
       headers,
+      body,
       redirect: "manual",
     });
   } catch (error) {

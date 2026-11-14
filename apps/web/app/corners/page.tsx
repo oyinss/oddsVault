@@ -11,6 +11,7 @@ import {
   faChartLine,
   faCircleInfo,
   faClockRotateLeft,
+  faFilePen,
   faFlag,
   faGaugeHigh,
   faLayerGroup,
@@ -38,6 +39,7 @@ import {
 import { useApiData } from "@/lib/use-api";
 import { useCornerAlerts } from "@/features/corners/use-corner-alerts";
 import { useCornerFavorites } from "@/features/corners/use-corner-favorites";
+import { PaperPickForm } from "@/features/corners/paper-pick-form";
 
 const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
 
@@ -76,6 +78,7 @@ export default function CornersPage() {
   );
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState("10");
+  const [recordingId, setRecordingId] = useState<number | null>(null);
 
   function openEditor(match: LiveCornerMatch) {
     const current = match.total_corners ?? 0;
@@ -219,6 +222,14 @@ export default function CornersPage() {
           <span className="font-mono text-[10px] text-mist-500">
             {alerts.watches.length} watched · use the bell on a match to add one
           </span>
+          <Link
+            href="/paper-picks"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-mono text-[10px] tracking-widest text-mist-400 uppercase transition hover:border-turf-400/40 hover:text-turf-200"
+            title="Picks recorded by hand, no stake, settled at full time"
+          >
+            <FontAwesomeIcon icon={faFilePen} className="size-3" />
+            paper picks
+          </Link>
           <button
             type="button"
             onClick={() => setOnlyFollowed((value) => !value)}
@@ -333,6 +344,13 @@ export default function CornersPage() {
                   alerts.removeWatch(match.event_id);
                   setEditingId(null);
                 }}
+                recording={recordingId === match.event_id}
+                onOpenRecord={() =>
+                  setRecordingId((value) =>
+                    value === match.event_id ? null : match.event_id,
+                  )
+                }
+                onCloseRecord={() => setRecordingId(null)}
               />
             ))}
           </div>
@@ -457,6 +475,9 @@ function MatchCard({
   onClose,
   onSave,
   onRemove,
+  recording,
+  onOpenRecord,
+  onCloseRecord,
 }: {
   match: LiveCornerMatch;
   line: number;
@@ -471,6 +492,9 @@ function MatchCard({
   onClose: () => void;
   onSave: () => void;
   onRemove: () => void;
+  recording: boolean;
+  onOpenRecord: () => void;
+  onCloseRecord: () => void;
 }) {
   const tone =
     match.pace === "above"
@@ -523,6 +547,20 @@ function MatchCard({
             }`}
           >
             <FontAwesomeIcon icon={faStar} className="size-3" />
+          </button>
+          <button
+            type="button"
+            onClick={onOpenRecord}
+            aria-pressed={recording}
+            title="Record a paper pick: side, line and odds, settled at full time"
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[9px] tracking-widest uppercase transition ${
+              recording
+                ? "border-turf-400/40 bg-turf-500/10 text-turf-300"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
+            record
           </button>
           <button
             type="button"
@@ -589,6 +627,16 @@ function MatchCard({
           <span className="text-[10px] text-mist-500">
             Defaults to the board line, or the next corner if the match is already past it.
           </span>
+        </div>
+      )}
+
+      {recording && (
+        <div className="border-b border-line bg-ink-950/40 px-4 py-2">
+          <PaperPickForm
+            eventId={match.event_id}
+            defaultLine={line}
+            onCancel={onCloseRecord}
+          />
         </div>
       )}
 

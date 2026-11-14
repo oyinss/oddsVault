@@ -1047,3 +1047,78 @@ export function kickoff(event: {
       : "Kickoff time unknown.",
   };
 }
+
+export type PaperPick = {
+  id: number;
+  event_id: number;
+  competition: string;
+  home: string;
+  away: string;
+  side: "over" | "under";
+  line: number;
+  odds: number;
+  minute: number | null;
+  total_corners: number | null;
+  home_corners: number | null;
+  away_corners: number | null;
+  pace_per_minute: number | null;
+  projected_total: number | null;
+  projection_low: number | null;
+  projection_high: number | null;
+  needed: number | null;
+  needed_per_minute: number | null;
+  model_risk: boolean;
+  early_pace: boolean;
+  event_status_at_save: string;
+  status: "pending" | "won" | "lost" | "push" | "void";
+  final_total: number | null;
+  settlement_rule: string | null;
+  created_at: string;
+  settled_at: string | null;
+  data_cutoff_at: string;
+};
+
+export type PaperPicks = {
+  count: number;
+  summary: Record<"pending" | "won" | "lost" | "push" | "void", number>;
+  picks: PaperPick[];
+};
+
+// A paper pick is a corner selection recorded by hand with no stake. The API
+// captures the board context itself, so the stored pick cannot drift from what
+// the screen showed at that moment.
+export async function createPaperPick(input: {
+  eventId: number;
+  side: "over" | "under";
+  line: number;
+  odds: number;
+}): Promise<PaperPick> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/paper-picks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      event_id: input.eventId,
+      side: input.side,
+      line: input.line,
+      odds: input.odds,
+    }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(detail.slice(0, 160) || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as PaperPick;
+}
+
+export async function getPaperPicks(limit = 200): Promise<PaperPicks> {
+  return getJSON<PaperPicks>(`/api/v1/paper-picks?limit=${limit}`);
+}
+
+export async function deletePaperPick(id: number): Promise<boolean> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/paper-picks/${id}`, {
+    method: "DELETE",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  return res.ok;
+}
