@@ -3,6 +3,7 @@
 import {
   RANGE_LABELS,
   type Filters,
+  type PlayedByKey,
   type RangeKey,
   type SortKey,
   type StatusKey,
@@ -85,6 +86,20 @@ export function FilterBar({
           <option value="won">Won</option>
           <option value="lost">Lost</option>
           <option value="pending">Pending</option>
+        </Select>
+
+        <Divider />
+
+        <Select
+          icon="layers"
+          label="Played by"
+          value={filters.playedBy}
+          onChange={(value) => onChange({ playedBy: value as PlayedByKey })}
+        >
+          <option value="all">Everyone</option>
+          <option value="emife">Emife</option>
+          <option value="oyins">Oyins</option>
+          <option value="agent">Agent</option>
         </Select>
 
         <div className="ml-auto flex w-full flex-1 items-center gap-2 sm:w-auto sm:min-w-[320px]">

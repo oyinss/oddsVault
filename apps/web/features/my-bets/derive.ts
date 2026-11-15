@@ -64,6 +64,7 @@ export type RangeKey = "all" | "7d" | "30d" | "month";
 export type StatusKey = "all" | "won" | "lost" | "pending";
 export type TypeKey = "all" | "accumulator" | "single";
 export type SortKey = "date" | "stake" | "profit" | "odds";
+export type PlayedByKey = "all" | "emife" | "oyins" | "agent";
 
 export type Filters = {
   range: RangeKey;
@@ -71,6 +72,7 @@ export type Filters = {
   competition: string;
   status: StatusKey;
   betType: TypeKey;
+  playedBy: PlayedByKey;
   query: string;
   sort: SortKey;
 };
@@ -81,6 +83,7 @@ export const DEFAULT_FILTERS: Filters = {
   competition: "",
   status: "all",
   betType: "all",
+  playedBy: "all",
   query: "",
   sort: "date",
 };
@@ -139,6 +142,9 @@ export function filterBets(
     if (filters.betType !== "all") {
       const type = (bet.bet_type ?? "").toLowerCase();
       if (type !== filters.betType) return false;
+    }
+    if (filters.playedBy !== "all" && bet.placed_by !== filters.playedBy) {
+      return false;
     }
     if (filters.competition && competitionOf(bet) !== filters.competition) {
       return false;

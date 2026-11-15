@@ -48,6 +48,16 @@ type liveCornerMatch struct {
 	CapturedAt         *string          `json:"captured_at"`
 	Pace               string           `json:"pace"`
 	BetHistory         *matchBetHistory `json:"bet_history,omitempty"`
+	PaperPicks         []paperPickBadge `json:"paper_picks,omitempty"`
+}
+
+// paperPickBadge marks a live row that already has a paper pick recorded, so the
+// board shows the record without opening the match.
+type paperPickBadge struct {
+	Side     string  `json:"side"`
+	Line     float64 `json:"line"`
+	Odds     float64 `json:"odds"`
+	Provider string  `json:"provider"`
 }
 
 // minutePattern only accepts a clock written with a minute mark, so a
@@ -118,6 +128,7 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.attachMatchBetHistory(r.Context(), matches)
+	s.attachPaperPicks(r.Context(), matches)
 
 	// Sorting is the operator's choice and can be layered: "competition,remaining"
 	// groups by competition first, then by time. Stable passes applied from the

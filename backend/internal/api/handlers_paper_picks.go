@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -264,4 +265,37 @@ func (s *Server) handlePaperPickProviders(w http.ResponseWriter, r *http.Request
 		out = append(out, item)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"providers": out})
+}
+
+// attachPaperPicks marks board rows that already carry a pending paper pick.
+func (s *Server) attachPaperPicks(ctx context.Context, matches []liveCornerMatch) {
+	if len(matches) == 0 {
+		return
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT p.event_id, p.side, p.line, p.odds, b.name
+		FROM paper_picks p
+		JOIN bookmakers b ON b.slug = p.provider_slug
+		WHERE p.status = 'pending'`)
+	if err != nil {
+		s.log.ErrorContext(ctx, "board paper picks", "error", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	byEvent := make(map[int64][]paperPickBadge)
+	for rows.Next() {
+		var eventID int64
+		var badge paperPickBadge
+		if err := rows.Scan(&eventID, &badge.Side, &badge.Line, &badge.Odds, &badge.Provider); err != nil {
+			s.log.ErrorContext(ctx, "scan board paper pick", "error", err.Error())
+			return
+		}
+		byEvent[eventID] = append(byEvent[eventID], badge)
+	}
+	for index := range matches {
+		if picks, ok := byEvent[matches[index].EventID]; ok {
+			matches[index].PaperPicks = picks
+		}
+	}
 }

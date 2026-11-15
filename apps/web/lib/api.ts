@@ -551,6 +551,12 @@ export type LiveCornerMatch = {
   needed_per_minute: number | null;
   captured_at: string | null;
   pace: "above" | "below" | "on_pace" | "unknown";
+  paper_picks?: Array<{
+    side: "over" | "under";
+    line: number;
+    odds: number;
+    provider: string;
+  }> | null;
   bet_history?: {
     legs: number;
     won: number;
@@ -618,6 +624,12 @@ export type CornerMetrics = {
   needed_per_minute: number | null;
   captured_at: string | null;
   pace: "above" | "below" | "on_pace" | "unknown";
+  paper_picks?: Array<{
+    side: "over" | "under";
+    line: number;
+    odds: number;
+    provider: string;
+  }> | null;
   bet_history?: {
     legs: number;
     won: number;

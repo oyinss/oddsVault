@@ -743,6 +743,16 @@ function MatchCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
+          {match.paper_picks?.map((pick, index) => (
+            <span
+              key={`${pick.side}-${pick.line}-${index}`}
+              title={`${pick.provider} ${pick.side} ${pick.line} at ${pick.odds}. Settles on the final corner count.`}
+              className="inline-flex items-center gap-1.5 rounded border border-turf-400/40 bg-turf-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest text-turf-200 uppercase"
+            >
+              <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
+              {pick.side === "under" ? "U" : "O"} {pick.line}
+            </span>
+          ))}
           {match.bet_history ? (
             <Link
               href={`/corners/detail?id=${match.event_id}&line=${line}`}

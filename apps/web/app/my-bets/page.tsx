@@ -34,6 +34,7 @@ import {
 import { FilterBar } from "@/features/my-bets/filter-bar";
 import { Icon, type IconName } from "@/features/my-bets/icons";
 import { MarketTable } from "@/features/my-bets/market-table";
+import { PaperPicksPanel } from "@/features/my-bets/paper-picks-panel";
 
 const PAGE_SIZE = 8;
 
@@ -49,6 +50,7 @@ export default function MyBetsPage() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [chartMode, setChartMode] = useState<"pl" | "rate">("pl");
+  const [view, setView] = useState<"bets" | "paper">("bets");
 
   const today = todayLagos();
   const data = state.data;
@@ -160,7 +162,30 @@ export default function MyBetsPage() {
           </div>
         </section>
 
-        {allBets.length === 0 ? (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          {([
+            { key: "bets", label: "Slip bets" },
+            { key: "paper", label: "Paper picks" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              aria-pressed={view === tab.key}
+              onClick={() => setView(tab.key)}
+              className={`rounded-full border px-3 py-1 text-[12px] transition ${
+                view === tab.key
+                  ? "border-turf-400/30 bg-turf-500/10 text-turf-300"
+                  : "border-line-strong text-mist-400 hover:text-mist-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {view === "paper" ? (
+          <PaperPicksPanel />
+        ) : allBets.length === 0 ? (
           <p className="mt-6 rounded-xl border border-line bg-ink-900/50 p-6 text-sm text-mist-400">
             No bets stored yet. Import a history export with{" "}
             <code className="font-mono text-mist-200">make import-bets</code>.
