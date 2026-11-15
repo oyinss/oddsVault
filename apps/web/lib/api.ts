@@ -1111,6 +1111,8 @@ export type PaperPick = {
   current?: {
     live: boolean;
     status: string;
+    home_score: number | null;
+    away_score: number | null;
     minute: number | null;
     home_corners: number | null;
     away_corners: number | null;

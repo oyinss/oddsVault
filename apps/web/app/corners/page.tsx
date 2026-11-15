@@ -59,6 +59,7 @@ export default function CornersPage() {
   const alerts = useCornerAlerts(matches, line);
   const favorites = useCornerFavorites(matches);
   const [onlyFollowed, setOnlyFollowed] = useState(false);
+  const [onlyRecorded, setOnlyRecorded] = useState(false);
   const needle = search.trim().toLowerCase();
   const searched = needle
     ? matches.filter((match) =>
@@ -68,9 +69,14 @@ export default function CornersPage() {
           .includes(needle),
       )
     : matches;
-  const visible = onlyFollowed
-    ? searched.filter((match) => favorites.isFollowed(match.event_id))
-    : searched;
+  const recordedCount = matches.filter(
+    (match) => (match.paper_picks?.length ?? 0) > 0,
+  ).length;
+  const visible = searched
+    .filter((match) => !onlyFollowed || favorites.isFollowed(match.event_id))
+    .filter(
+      (match) => !onlyRecorded || (match.paper_picks?.length ?? 0) > 0,
+    );
   // A followed match leaves the live list when it ends. Keep it visible with
   // the last count we saw instead of pretending it was never followed.
   const offBoard = favorites.list.filter(
@@ -238,6 +244,24 @@ export default function CornersPage() {
           </Link>
           <button
             type="button"
+            onClick={() => setOnlyRecorded((value) => !value)}
+            aria-pressed={onlyRecorded}
+            title={
+              onlyRecorded
+                ? "Show every live match again"
+                : "Show only matches with a recorded paper pick"
+            }
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
+              onlyRecorded
+                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon icon={faFilePen} className="size-3" />
+            recorded {recordedCount}
+          </button>
+          <button
+            type="button"
             onClick={() => setOnlyFollowed((value) => !value)}
             aria-pressed={onlyFollowed}
             title={
@@ -287,6 +311,23 @@ export default function CornersPage() {
               This board only lists matches the live provider is covering. It
               fills in as games kick off; nothing is simulated in the meantime.
             </p>
+          </div>
+        ) : onlyRecorded && visible.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
+            <p className="text-sm font-medium text-mist-100">
+              No live match has a recorded paper pick right now.
+            </p>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-mist-400">
+              Record one with the record button on a card, or open the paper
+              picks page to see settled ones.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOnlyRecorded(false)}
+              className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-white/20 hover:text-mist-100"
+            >
+              Show all live matches
+            </button>
           </div>
         ) : onlyFollowed && visible.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">

@@ -225,6 +225,13 @@ func merge(ctx context.Context, pool *pgxpool.Pool, keepID, dropID int64) error 
 		}
 	}
 
+	// A paper pick is training data, not a duplicate. Keep it and point it at
+	// the surviving event instead of letting the cascade erase it.
+	if _, err := tx.Exec(ctx,
+		`UPDATE paper_picks SET event_id = $1 WHERE event_id = $2`, keepID, dropID); err != nil {
+		return fmt.Errorf("move paper picks: %w", err)
+	}
+
 	if _, err := tx.Exec(ctx, `DELETE FROM events WHERE id = $1`, dropID); err != nil {
 		return fmt.Errorf("delete duplicate: %w", err)
 	}

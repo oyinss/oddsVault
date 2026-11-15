@@ -30,6 +30,8 @@ type paperPickRequest struct {
 type paperPickCurrent struct {
 	Live             bool     `json:"live"`
 	Status           string   `json:"status"`
+	HomeScore        *int     `json:"home_score"`
+	AwayScore        *int     `json:"away_score"`
 	Minute           *int     `json:"minute"`
 	HomeCorners      *int     `json:"home_corners"`
 	AwayCorners      *int     `json:"away_corners"`
@@ -354,7 +356,7 @@ func (s *Server) attachPaperPickCurrent(ctx context.Context, picks []paperPickRe
 
 	rows, err := s.pool.Query(ctx, `
 		SELECT e.id, e.status, COALESCE(l.detail, ''), l.captured_at,
-		       hs.corners, as_.corners
+		       l.home_score, l.away_score, hs.corners, as_.corners
 		FROM events e
 		LEFT JOIN event_live_states l ON l.event_id = e.id
 		LEFT JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
@@ -372,6 +374,8 @@ func (s *Server) attachPaperPickCurrent(ctx context.Context, picks []paperPickRe
 		status     string
 		detail     string
 		capturedAt *time.Time
+		homeScore  *int
+		awayScore  *int
 		home       *int
 		away       *int
 	}
@@ -380,7 +384,7 @@ func (s *Server) attachPaperPickCurrent(ctx context.Context, picks []paperPickRe
 		var id int64
 		var item state
 		if err := rows.Scan(&id, &item.status, &item.detail, &item.capturedAt,
-			&item.home, &item.away); err != nil {
+			&item.homeScore, &item.awayScore, &item.home, &item.away); err != nil {
 			s.log.ErrorContext(ctx, "scan paper pick current", "error", err.Error())
 			return
 		}
@@ -396,6 +400,8 @@ func (s *Server) attachPaperPickCurrent(ctx context.Context, picks []paperPickRe
 		current := &paperPickCurrent{
 			Live:        item.status == "live",
 			Status:      item.status,
+			HomeScore:   item.homeScore,
+			AwayScore:   item.awayScore,
 			HomeCorners: item.home,
 			AwayCorners: item.away,
 		}
