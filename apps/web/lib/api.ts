@@ -694,7 +694,10 @@ export type CornerSort =
   | "projection"
   | "pace"
   | "corners"
-  | "competition";
+  | "competition"
+  | "played"
+  | "played_league"
+  | "played_teams";
 
 export async function getLiveCorners(
   line: number,

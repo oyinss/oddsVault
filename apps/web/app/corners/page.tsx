@@ -142,6 +142,9 @@ export default function CornersPage() {
                 <option value="pace" className="bg-ink-900">Highest pace</option>
                 <option value="corners" className="bg-ink-900">Most corners</option>
                 <option value="competition" className="bg-ink-900">Competition A-Z</option>
+                <option value="played" className="bg-ink-900">Most journal legs</option>
+                <option value="played_league" className="bg-ink-900">Leagues I have played first</option>
+                <option value="played_teams" className="bg-ink-900">Teams I have played first</option>
               </select>
             </label>
             <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
@@ -163,6 +166,9 @@ export default function CornersPage() {
                 <option value="pace" className="bg-ink-900">Highest pace</option>
                 <option value="corners" className="bg-ink-900">Most corners</option>
                 <option value="competition" className="bg-ink-900">Competition A-Z</option>
+                <option value="played" className="bg-ink-900">Most journal legs</option>
+                <option value="played_league" className="bg-ink-900">Leagues I have played first</option>
+                <option value="played_teams" className="bg-ink-900">Teams I have played first</option>
               </select>
             </label>
             <div className="relative w-full sm:w-auto sm:min-w-[200px] sm:flex-1">

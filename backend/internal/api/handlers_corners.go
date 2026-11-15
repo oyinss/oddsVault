@@ -183,6 +183,22 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 			}
 			return matches[i].Competition < matches[j].Competition
 		},
+		// The journal sorts put the matches you have actually recorded a corner
+		// pick on first. More legs means a stronger record, and kickoff keeps
+		// the order stable among matches with the same count.
+		"played": func(i, j int) bool {
+			left, right := betHistoryLegs(matches[i]), betHistoryLegs(matches[j])
+			if left != right {
+				return left > right
+			}
+			return matches[i].Kickoff < matches[j].Kickoff
+		},
+		"played_league": func(i, j int) bool {
+			return journalSortLess(matches[i], matches[j], true)
+		},
+		"played_teams": func(i, j int) bool {
+			return journalSortLess(matches[i], matches[j], false)
+		},
 	}
 
 	var applied []string
@@ -371,4 +387,38 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 	default:
 		m.Pace = "on_pace"
 	}
+}
+
+// betHistoryLegs is the number of linked journal legs behind a row, or zero.
+func betHistoryLegs(match liveCornerMatch) int {
+	if match.BetHistory == nil {
+		return 0
+	}
+	return match.BetHistory.Legs
+}
+
+// journalSortLess orders rows with a league (or team) record first, then by how
+// many legs back that record.
+func journalSortLess(left, right liveCornerMatch, league bool) bool {
+	leftFlag, rightFlag := false, false
+	if left.BetHistory != nil {
+		leftFlag = left.BetHistory.League
+		if !league {
+			leftFlag = left.BetHistory.Teams
+		}
+	}
+	if right.BetHistory != nil {
+		rightFlag = right.BetHistory.League
+		if !league {
+			rightFlag = right.BetHistory.Teams
+		}
+	}
+	if leftFlag != rightFlag {
+		return leftFlag
+	}
+	leftLegs, rightLegs := betHistoryLegs(left), betHistoryLegs(right)
+	if leftLegs != rightLegs {
+		return leftLegs > rightLegs
+	}
+	return left.Kickoff < right.Kickoff
 }
