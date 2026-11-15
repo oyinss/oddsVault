@@ -32,6 +32,18 @@ type cornerBetRecord struct {
 	Over      cornerBetSide  `json:"over"`
 	Under     cornerBetSide  `json:"under"`
 	SingleBet cornerBetMoney `json:"single_bet"`
+	Recent    []cornerBetLeg `json:"recent"`
+}
+
+// cornerBetLeg is one recorded line, shown so the line can be reused.
+type cornerBetLeg struct {
+	Side   string   `json:"side"`
+	Line   *float64 `json:"line"`
+	Odds   *float64 `json:"odds"`
+	Status string   `json:"status"`
+	Date   *string  `json:"date"`
+	Home   string   `json:"home,omitempty"`
+	Away   string   `json:"away,omitempty"`
 }
 
 type cornerBetHistory struct {
@@ -173,6 +185,9 @@ type journalLegRow struct {
 	competitionID int64
 	homeID        int64
 	awayID        int64
+	line          *float64
+	odds          *float64
+	placedAt      *string
 }
 
 // attachMatchBetHistory fills the compact record for every board row. One
@@ -342,12 +357,14 @@ func (s *Server) leagueOnlyCornerLegs(ctx context.Context) (map[int64][]journalL
 	}
 
 	legRows, err := s.pool.Query(ctx, `
-		SELECT market_side, leg_status, competition_raw
-		FROM personal_bet_legs
-		WHERE market_family = 'corners_total'
-		  AND event_id IS NULL
-		  AND competition_raw IS NOT NULL
-		  AND market_side IN ('over', 'under')`)
+		SELECT l.market_side, l.leg_status, l.competition_raw,
+		       l.market_line, l.odds_taken, to_char(pb.placed_at, 'YYYY-MM-DD')
+		FROM personal_bet_legs l
+		JOIN personal_bets pb ON pb.id = l.personal_bet_id
+		WHERE l.market_family = 'corners_total'
+		  AND l.event_id IS NULL
+		  AND l.competition_raw IS NOT NULL
+		  AND l.market_side IN ('over', 'under')`)
 	if err != nil {
 		return nil, fmt.Errorf("list league-only journal legs: %w", err)
 	}
@@ -356,7 +373,9 @@ func (s *Server) leagueOnlyCornerLegs(ctx context.Context) (map[int64][]journalL
 	out := make(map[int64][]journalLegRow)
 	for legRows.Next() {
 		var side, status, raw string
-		if err := legRows.Scan(&side, &status, &raw); err != nil {
+		var line, odds *float64
+		var placedAt *string
+		if err := legRows.Scan(&side, &status, &raw, &line, &odds, &placedAt); err != nil {
 			return nil, err
 		}
 		_, key := normalize.Resolve(raw)
@@ -368,6 +387,9 @@ func (s *Server) leagueOnlyCornerLegs(ctx context.Context) (map[int64][]journalL
 			side:          side,
 			status:        status,
 			competitionID: competitionID,
+			line:          line,
+			odds:          odds,
+			placedAt:      placedAt,
 		})
 	}
 	return out, legRows.Err()
@@ -394,5 +416,51 @@ func addLeagueLeg(record *cornerBetRecord, leg journalLegRow) {
 		target.Pending++
 	default:
 		target.Unknown++
+	}
+}
+
+// recentCornerLegs lists the lines behind one scope so the detail page can show
+// what was actually played, newest first.
+func (s *Server) recentCornerLegs(ctx context.Context, scope string, id int64, limit int) ([]cornerBetLeg, error) {
+	rows, err := s.pool.Query(ctx, fmt.Sprintf(`
+		SELECT l.market_side, l.market_line, l.odds_taken, l.leg_status,
+		       to_char(e.start_date, 'YYYY-MM-DD'), h.name, a.name
+		FROM personal_bet_legs l
+		JOIN events e ON e.id = l.event_id
+		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		JOIN teams h ON h.id = hp.team_id
+		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		JOIN teams a ON a.id = ap.team_id
+		WHERE l.market_family = 'corners_total'
+		  AND l.market_side IN ('over', 'under')
+		  AND %s
+		ORDER BY e.start_date DESC, l.id DESC
+		LIMIT $2`, scope), id, limit)
+	if err != nil {
+		return nil, fmt.Errorf("recent corner legs: %w", err)
+	}
+	defer rows.Close()
+
+	var out []cornerBetLeg
+	for rows.Next() {
+		var item cornerBetLeg
+		var date *string
+		if err := rows.Scan(&item.Side, &item.Line, &item.Odds, &item.Status,
+			&date, &item.Home, &item.Away); err != nil {
+			return nil, err
+		}
+		item.Date = date
+		out = append(out, item)
+	}
+	return out, rows.Err()
+}
+
+func leagueLegToRecent(leg journalLegRow) cornerBetLeg {
+	return cornerBetLeg{
+		Side:   leg.side,
+		Line:   leg.line,
+		Odds:   leg.odds,
+		Status: leg.status,
+		Date:   leg.placedAt,
 	}
 }

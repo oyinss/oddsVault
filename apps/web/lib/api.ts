@@ -649,10 +649,21 @@ export type CornerBetMoney = {
   profit_loss: number;
 };
 
+export type CornerBetLeg = {
+  side: "over" | "under";
+  line: number | null;
+  odds: number | null;
+  status: string;
+  date: string | null;
+  home?: string;
+  away?: string;
+};
+
 export type CornerBetRecord = {
   over: CornerBetSide;
   under: CornerBetSide;
   single_bet: CornerBetMoney;
+  recent: CornerBetLeg[];
 };
 
 export type CornerBetHistory = {

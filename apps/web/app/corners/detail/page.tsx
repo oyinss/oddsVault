@@ -20,6 +20,7 @@ import {
   formatAge,
   getCornerContext,
   type CornerBetHistory,
+  type CornerBetLeg,
   type CornerBetRecord,
   type CornerBetSide,
   type CornerContext,
@@ -323,7 +324,16 @@ function BetRow({
   const money = record.single_bet;
   return (
     <tr>
-      <td className="py-1.5 text-mist-200">{label}</td>
+      <td className="py-1.5 align-top">
+        <span className="text-mist-200">{label}</span>
+        {record.recent.length > 0 ? (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {record.recent.slice(0, 5).map((leg, index) => (
+              <LineChip key={`${leg.side}-${leg.line}-${index}`} leg={leg} />
+            ))}
+          </div>
+        ) : null}
+      </td>
       <td className="py-1.5 text-mist-200">
         <SideLine side={record.over} />
       </td>
@@ -341,6 +351,36 @@ function BetRow({
         )}
       </td>
     </tr>
+  );
+}
+
+function LineChip({ leg }: { leg: CornerBetLeg }) {
+  const status =
+    leg.status === "won"
+      ? "W"
+      : leg.status === "lost"
+        ? "L"
+        : leg.status === "void"
+          ? "V"
+          : leg.status === "pending"
+            ? "P"
+            : "U";
+  const detail = [
+    `${leg.side} ${leg.line ?? "-"}`,
+    leg.odds !== null ? `@ ${leg.odds}` : null,
+    leg.status,
+    leg.date,
+    leg.home && leg.away ? `${leg.home} v ${leg.away}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <span
+      title={detail}
+      className="rounded border border-line px-1.5 py-0.5 font-mono text-[9px] tracking-wide text-mist-400 uppercase"
+    >
+      {leg.side === "under" ? "U" : "O"} {leg.line ?? "-"} · {status}
+    </span>
   );
 }
 

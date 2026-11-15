@@ -126,7 +126,16 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 			if leagueOnly, err := s.leagueOnlyCornerLegs(r.Context()); err == nil {
 				for _, leg := range leagueOnly[competitionID] {
 					addLeagueLeg(record, leg)
+					record.Recent = append(record.Recent, leagueLegToRecent(leg))
 				}
+			}
+			if linked, err := s.recentCornerLegs(r.Context(),
+				`l.event_id IN (SELECT id FROM events WHERE competition_id = $1)`,
+				competitionID, 8); err == nil {
+				record.Recent = append(record.Recent, linked...)
+			}
+			if len(record.Recent) > 8 {
+				record.Recent = record.Recent[:8]
 			}
 			history.Competition = record
 		} else {
@@ -134,11 +143,21 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if record, err := s.cornerBetsByTeam(r.Context(), event.Home.ID); err == nil {
+		if linked, err := s.recentCornerLegs(r.Context(),
+			`l.event_id IN (SELECT event_id FROM event_participants WHERE team_id = $1)`,
+			event.Home.ID, 8); err == nil {
+			record.Recent = linked
+		}
 		history.Home = record
 	} else {
 		s.log.ErrorContext(r.Context(), "home bet history", "error", err.Error())
 	}
 	if record, err := s.cornerBetsByTeam(r.Context(), event.Away.ID); err == nil {
+		if linked, err := s.recentCornerLegs(r.Context(),
+			`l.event_id IN (SELECT event_id FROM event_participants WHERE team_id = $1)`,
+			event.Away.ID, 8); err == nil {
+			record.Recent = linked
+		}
 		history.Away = record
 	} else {
 		s.log.ErrorContext(r.Context(), "away bet history", "error", err.Error())
