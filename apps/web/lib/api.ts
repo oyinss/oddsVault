@@ -1108,6 +1108,7 @@ export type PaperPick = {
   created_at: string;
   settled_at: string | null;
   data_cutoff_at: string;
+  recovered_at?: string | null;
   current?: {
     live: boolean;
     status: string;

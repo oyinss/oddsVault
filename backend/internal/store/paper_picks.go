@@ -43,6 +43,7 @@ type PaperPick struct {
 	CreatedAt       time.Time
 	SettledAt       *time.Time
 	DataCutoffAt    time.Time
+	RecoveredAt     *time.Time
 }
 
 // PaperPickInput carries one recording. Values come from the same metrics the
@@ -126,7 +127,7 @@ const paperPickSelect = `
 	       p.pace_per_minute, p.projected_total, p.projection_low, p.projection_high,
 	       p.needed, p.needed_per_minute, p.model_risk, p.early_pace,
 	       p.event_status_at_save, p.status, p.final_total, p.settlement_rule,
-	       p.created_at, p.settled_at, p.data_cutoff_at
+	       p.created_at, p.settled_at, p.data_cutoff_at, p.recovered_at
 	FROM paper_picks p
 	JOIN competitions c ON c.id = p.competition_id
 	JOIN teams h ON h.id = p.home_team_id
@@ -159,7 +160,7 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 			&item.PacePerMinute, &item.ProjectedTotal, &item.ProjectionLow, &item.ProjectionHigh,
 			&item.Needed, &item.NeededPerMinute, &item.ModelRisk, &item.EarlyPace,
 			&item.EventStatus, &item.Status, &item.FinalTotal, &item.SettlementRule,
-			&item.CreatedAt, &item.SettledAt, &item.DataCutoffAt); err != nil {
+			&item.CreatedAt, &item.SettledAt, &item.DataCutoffAt, &item.RecoveredAt); err != nil {
 			return nil, err
 		}
 		out = append(out, item)

@@ -83,6 +83,14 @@ export function PaperPickCard({
           <span className="font-mono text-[10px] text-mist-500">
             recorded {formatAge(pick.created_at)}
           </span>
+          {pick.recovered_at ? (
+            <span
+              title="Reconstructed from the corner snapshot taken when it was recorded, after a dedupe merge deleted the row."
+              className="rounded border border-flag-400/40 bg-flag-400/[0.06] px-1.5 py-0.5 font-mono text-[9px] tracking-widest text-flag-300 uppercase"
+            >
+              recovered
+            </span>
+          ) : null}
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-turf-400/40 bg-turf-500/10 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-turf-200 uppercase">
           <FontAwesomeIcon icon={faFilePen} className="size-2.5" />

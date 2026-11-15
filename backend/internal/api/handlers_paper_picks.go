@@ -80,6 +80,7 @@ type paperPickResponse struct {
 	CreatedAt       string            `json:"created_at"`
 	SettledAt       *string           `json:"settled_at"`
 	DataCutoffAt    string            `json:"data_cutoff_at"`
+	RecoveredAt     *string           `json:"recovered_at,omitempty"`
 	Current         *paperPickCurrent `json:"current,omitempty"`
 }
 
@@ -98,6 +99,10 @@ func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 		SettlementRule: p.SettlementRule,
 		CreatedAt:      p.CreatedAt.UTC().Format(time.RFC3339),
 		DataCutoffAt:   p.DataCutoffAt.UTC().Format(time.RFC3339),
+	}
+	if p.RecoveredAt != nil {
+		formatted := p.RecoveredAt.UTC().Format(time.RFC3339)
+		out.RecoveredAt = &formatted
 	}
 	if p.Kickoff != nil {
 		formatted := p.Kickoff.UTC().Format(time.RFC3339)
