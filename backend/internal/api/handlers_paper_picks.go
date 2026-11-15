@@ -29,6 +29,10 @@ type paperPickResponse struct {
 	Competition     string   `json:"competition"`
 	Home            string   `json:"home"`
 	Away            string   `json:"away"`
+	HomeTeamID      int64    `json:"home_team_id"`
+	AwayTeamID      int64    `json:"away_team_id"`
+	CurrentStatus   string   `json:"event_status"`
+	Kickoff         *string  `json:"kickoff"`
 	Provider        string   `json:"provider"`
 	ProviderSlug    string   `json:"provider_slug"`
 	Side            string   `json:"side"`
@@ -58,6 +62,7 @@ type paperPickResponse struct {
 func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 	out := paperPickResponse{
 		ID: p.ID, EventID: p.EventID, Competition: p.Competition, Home: p.Home, Away: p.Away,
+		HomeTeamID: p.HomeTeamID, AwayTeamID: p.AwayTeamID, CurrentStatus: p.CurrentStatus,
 		Provider: p.Provider, ProviderSlug: p.ProviderSlug,
 		Side: p.Side, Line: p.Line, Odds: p.Odds,
 		Minute: p.Minute, TotalCorners: p.TotalCorners, HomeCorners: p.HomeCorners, AwayCorners: p.AwayCorners,
@@ -69,6 +74,10 @@ func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 		SettlementRule: p.SettlementRule,
 		CreatedAt:      p.CreatedAt.UTC().Format(time.RFC3339),
 		DataCutoffAt:   p.DataCutoffAt.UTC().Format(time.RFC3339),
+	}
+	if p.Kickoff != nil {
+		formatted := p.Kickoff.UTC().Format(time.RFC3339)
+		out.Kickoff = &formatted
 	}
 	if p.SettledAt != nil {
 		formatted := p.SettledAt.UTC().Format(time.RFC3339)

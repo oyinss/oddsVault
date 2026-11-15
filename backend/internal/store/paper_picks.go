@@ -15,6 +15,10 @@ type PaperPick struct {
 	Competition     string
 	Home            string
 	Away            string
+	HomeTeamID      int64
+	AwayTeamID      int64
+	CurrentStatus   string
+	Kickoff         *time.Time
 	Provider        string
 	ProviderSlug    string
 	Side            string
@@ -114,7 +118,8 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 }
 
 const paperPickSelect = `
-	SELECT p.id, p.event_id, c.name, h.name, a.name,
+	SELECT p.id, p.event_id, c.name, h.name, a.name, h.id, a.id,
+	       e.status, COALESCE(e.start_time, e.start_date::timestamptz),
 	       b.name, p.provider_slug,
 	       p.side, p.line, p.odds,
 	       p.minute, p.total_corners, p.home_corners, p.away_corners,
@@ -126,6 +131,7 @@ const paperPickSelect = `
 	JOIN competitions c ON c.id = p.competition_id
 	JOIN teams h ON h.id = p.home_team_id
 	JOIN teams a ON a.id = p.away_team_id
+	JOIN events e ON e.id = p.event_id
 	JOIN bookmakers b ON b.slug = p.provider_slug
 	`
 
@@ -146,6 +152,7 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 	for rows.Next() {
 		var item PaperPick
 		if err := rows.Scan(&item.ID, &item.EventID, &item.Competition, &item.Home, &item.Away,
+			&item.HomeTeamID, &item.AwayTeamID, &item.CurrentStatus, &item.Kickoff,
 			&item.Provider, &item.ProviderSlug,
 			&item.Side, &item.Line, &item.Odds,
 			&item.Minute, &item.TotalCorners, &item.HomeCorners, &item.AwayCorners,

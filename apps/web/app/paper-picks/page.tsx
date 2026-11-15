@@ -1,32 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faArrowsRotate,
   faFilePen,
-  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { LoadingNote } from "@/components/loading-note";
 import { SiteHeader } from "@/components/site-header";
+import { PaperPickCard } from "@/features/corners/paper-pick-card";
 import {
   deletePaperPick,
-  formatAge,
   getPaperPicks,
   type PaperPick,
   type PaperPicks,
 } from "@/lib/api";
 import { useApiData } from "@/lib/use-api";
-
-const STATUS_STYLES: Record<PaperPick["status"], string> = {
-  pending: "border-line text-mist-300",
-  won: "border-turf-400/40 bg-turf-500/10 text-turf-300",
-  lost: "border-loss-400/40 bg-loss-400/10 text-loss-300",
-  push: "border-line text-mist-300",
-  void: "border-line text-mist-400",
-};
 
 export default function PaperPicksPage() {
   const { data, loading, error, reload } = useApiData<PaperPicks | null>(
@@ -34,15 +25,39 @@ export default function PaperPicksPage() {
     () => getPaperPicks(200),
     { refreshMs: 60000 },
   );
-  const [deleting, setDeleting] = useState<number | null>(null);
+  const [status, setStatus] = useState<"all" | PaperPick["status"]>("all");
+  const [book, setBook] = useState("");
+  const [competition, setCompetition] = useState("");
+  const [query, setQuery] = useState("");
 
   const picks = data?.picks ?? [];
-  const summary = data?.summary;
+  const books = useMemo(
+    () => [...new Set(picks.map((pick) => pick.provider))].sort(),
+    [picks],
+  );
+  const competitions = useMemo(
+    () => [...new Set(picks.map((pick) => pick.competition))].sort(),
+    [picks],
+  );
+  const needle = query.trim().toLowerCase();
+  const visible = picks.filter((pick) => {
+    if (status !== "all" && pick.status !== status) return false;
+    if (book && pick.provider !== book) return false;
+    if (competition && pick.competition !== competition) return false;
+    if (
+      needle &&
+      ![pick.home, pick.away, pick.competition, pick.provider, pick.side]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle)
+    ) {
+      return false;
+    }
+    return true;
+  });
 
   async function remove(id: number) {
-    setDeleting(id);
     await deletePaperPick(id);
-    setDeleting(null);
     reload();
   }
 
@@ -60,11 +75,9 @@ export default function PaperPicksPage() {
               Paper picks
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mist-300">
-              Corner selections recorded by hand with no money on them. They are
-              separate from agent picks and from your bet slips, so they can be
-              used as training data without pretending a stake was placed. The
-              minute, corners, pace and projection at the moment of recording are
-              frozen with each pick.
+              Corner selections recorded by hand with no money on them. Each card
+              keeps the board view you already read: corners, pace, projection and
+              the line, with the pick you recorded and its result.
             </p>
           </div>
           <button
@@ -77,15 +90,67 @@ export default function PaperPicksPage() {
           </button>
         </div>
 
-        {summary ? (
+        {data ? (
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <Summary label="Pending" value={summary.pending} />
-            <Summary label="Won" value={summary.won} tone="text-turf-300" />
-            <Summary label="Lost" value={summary.lost} tone="text-loss-300" />
-            <Summary label="Push" value={summary.push} />
-            <Summary label="Void" value={summary.void} />
+            <Summary label="Pending" value={data.summary.pending} />
+            <Summary label="Won" value={data.summary.won} tone="text-turf-300" />
+            <Summary label="Lost" value={data.summary.lost} tone="text-loss-300" />
+            <Summary label="Push" value={data.summary.push} />
+            <Summary label="Void" value={data.summary.void} />
           </div>
         ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value as typeof status)}
+            aria-label="Status"
+            className="rounded-xl border border-line bg-ink-900 px-3 py-2 text-[12px] text-mist-100"
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="won">Won</option>
+            <option value="lost">Lost</option>
+            <option value="push">Push</option>
+            <option value="void">Void</option>
+          </select>
+          <select
+            value={book}
+            onChange={(event) => setBook(event.target.value)}
+            aria-label="Bookmaker"
+            className="rounded-xl border border-line bg-ink-900 px-3 py-2 text-[12px] text-mist-100"
+          >
+            <option value="">All bookmakers</option>
+            {books.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={competition}
+            onChange={(event) => setCompetition(event.target.value)}
+            aria-label="Competition"
+            className="max-w-[240px] rounded-xl border border-line bg-ink-900 px-3 py-2 text-[12px] text-mist-100"
+          >
+            <option value="">All competitions</option>
+            {competitions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search team, side, book…"
+            className="min-w-[200px] flex-1 rounded-xl border border-line bg-ink-900 px-3 py-2 text-[12px] text-mist-100 placeholder:text-mist-500"
+          />
+          <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
+            {visible.length} of {picks.length}
+          </span>
+        </div>
 
         {error || (!loading && data === null) ? (
           <div className="mt-6 rounded-2xl border border-flag-400/30 bg-flag-400/[0.04] p-6">
@@ -117,106 +182,29 @@ export default function PaperPicksPage() {
               once the final corner count is published.
             </p>
           </div>
+        ) : visible.length === 0 ? (
+          <p className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-5 text-sm text-mist-400">
+            No paper pick matches these filters.
+          </p>
         ) : (
-          <div className="mt-6 overflow-x-auto rounded-2xl border border-line">
-            <table className="w-full min-w-[820px] text-left text-xs">
-              <thead className="border-b border-line bg-ink-900/60 font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-                <tr>
-                  <th className="px-3 py-2 font-normal">Match</th>
-                  <th className="px-3 py-2 font-normal">Pick</th>
-                  <th className="px-3 py-2 font-normal">At save</th>
-                  <th className="px-3 py-2 font-normal">Final</th>
-                  <th className="px-3 py-2 font-normal">Status</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.05]">
-                {picks.map((pick) => (
-                  <tr key={pick.id} className="align-top">
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/corners/detail?id=${pick.event_id}&line=${pick.line}`}
-                        className="font-semibold text-mist-100 hover:text-turf-300"
-                      >
-                        {pick.home} v {pick.away}
-                      </Link>
-                      <p className="mt-0.5 font-mono text-[10px] text-mist-500">
-                        {pick.competition} · {formatAge(pick.created_at)}
-                      </p>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-mist-200">
-                      {pick.side} {pick.line}{" "}
-                      <span className="text-mist-500">@ {pick.odds.toFixed(2)}</span>
-                      <p className="mt-0.5 font-mono text-[10px] text-mist-500">
-                        {pick.provider}
-                      </p>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-mist-400">
-                      {pick.minute !== null ? `${pick.minute}'` : "-"} ·{" "}
-                      {pick.total_corners !== null
-                        ? `${pick.total_corners} corners`
-                        : "no count"}
-                      <br />
-                      pace {pick.pace_per_minute !== null ? pick.pace_per_minute.toFixed(2) : "-"}
-                      {" · "}proj{" "}
-                      {pick.projected_total !== null
-                        ? pick.projected_total.toFixed(1)
-                        : pick.early_pace
-                          ? "early"
-                          : "-"}
-                      {pick.projection_low !== null &&
-                      pick.projection_high !== null ? (
-                        <>
-                          {" "}
-                          ({pick.projection_low.toFixed(1)}-
-                          {pick.projection_high.toFixed(1)})
-                        </>
-                      ) : null}
-                      <br />
-                      need {pick.needed !== null ? pick.needed : "-"}
-                      {pick.needed_per_minute !== null
-                        ? ` · ${pick.needed_per_minute.toFixed(2)}/min`
-                        : ""}
-                      {pick.model_risk ? (
-                        <span className="text-flag-400"> · risk</span>
-                      ) : null}
-                      {pick.early_pace ? (
-                        <span className="text-flag-400"> · early</span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-mist-200">
-                      {pick.final_total !== null ? pick.final_total : "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={`inline-block rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-widest uppercase ${STATUS_STYLES[pick.status]}`}
-                      >
-                        {pick.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void remove(pick.id)}
-                        disabled={deleting === pick.id}
-                        title="Delete this recording"
-                        className="grid size-7 place-items-center rounded-md border border-line text-mist-500 transition hover:border-loss-400/40 hover:text-loss-300 disabled:opacity-50"
-                      >
-                        <FontAwesomeIcon icon={faTrashCan} className="size-3" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-4 space-y-3">
+            {visible.map((pick) => (
+              <PaperPickCard
+                key={pick.id}
+                pick={pick}
+                onDelete={(id) => void remove(id)}
+              />
+            ))}
           </div>
         )}
 
         <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">
-          <h2 className="text-sm font-semibold text-mist-100">How settlement works</h2>
+          <h2 className="text-sm font-semibold text-mist-100">
+            How settlement works
+          </h2>
           <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-mist-300">
             <li>
-              A pick settles only when the match is finished and both teams'
+              A pick settles only when the match is finished and both teams&apos;
               final corner counts are published. Until then it stays pending.
             </li>
             <li>

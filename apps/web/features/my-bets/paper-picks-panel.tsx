@@ -4,16 +4,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { LoadingNote } from "@/components/loading-note";
+import { PaperPickCard } from "@/features/corners/paper-pick-card";
 import { formatAge, getPaperPicks, type PaperPick, type PaperPicks } from "@/lib/api";
 import { useApiData } from "@/lib/use-api";
-
-const STATUS_STYLES: Record<PaperPick["status"], string> = {
-  pending: "border-line text-mist-300",
-  won: "border-turf-400/40 bg-turf-500/10 text-turf-300",
-  lost: "border-loss-400/40 bg-loss-400/10 text-loss-300",
-  push: "border-line text-mist-300",
-  void: "border-line text-mist-400",
-};
 
 // PaperPicksPanel shows the hand-recorded picks inside My Bets, with their own
 // filters. They are kept apart from the money journal: no stake, no P/L, and
@@ -148,69 +141,10 @@ export function PaperPicksPanel() {
           .
         </p>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-line">
-          <table className="w-full min-w-[760px] text-left text-xs">
-            <thead className="border-b border-line bg-ink-900/60 font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-              <tr>
-                <th className="px-3 py-2 font-normal">Match</th>
-                <th className="px-3 py-2 font-normal">Pick</th>
-                <th className="px-3 py-2 font-normal">At save</th>
-                <th className="px-3 py-2 font-normal">Final</th>
-                <th className="px-3 py-2 font-normal">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.05]">
-              {visible.map((pick) => (
-                <tr key={pick.id} className="align-top">
-                  <td className="px-3 py-2">
-                    <Link
-                      href={`/corners/detail?id=${pick.event_id}&line=${pick.line}`}
-                      className="font-semibold text-mist-100 hover:text-turf-300"
-                    >
-                      {pick.home} v {pick.away}
-                    </Link>
-                    <p className="mt-0.5 font-mono text-[10px] text-mist-500">
-                      {pick.competition} · {formatAge(pick.created_at)}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-mist-200">
-                    {pick.side} {pick.line}{" "}
-                    <span className="text-mist-500">@ {pick.odds.toFixed(2)}</span>
-                    <p className="mt-0.5 font-mono text-[10px] text-mist-500">
-                      {pick.provider}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-[10px] text-mist-400">
-                    {pick.minute !== null ? `${pick.minute}'` : "-"} ·{" "}
-                    {pick.total_corners !== null
-                      ? `${pick.total_corners} corners`
-                      : "no count"}
-                    <br />
-                    pace{" "}
-                    {pick.pace_per_minute !== null
-                      ? pick.pace_per_minute.toFixed(2)
-                      : "-"}
-                    {" · "}proj{" "}
-                    {pick.projected_total !== null
-                      ? pick.projected_total.toFixed(1)
-                      : pick.early_pace
-                        ? "early"
-                        : "-"}
-                  </td>
-                  <td className="px-3 py-2 font-mono text-mist-200">
-                    {pick.final_total !== null ? pick.final_total : "-"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`inline-block rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-widest uppercase ${STATUS_STYLES[pick.status]}`}
-                    >
-                      {pick.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-4 space-y-3">
+          {visible.map((pick) => (
+            <PaperPickCard key={pick.id} pick={pick} />
+          ))}
         </div>
       )}
 

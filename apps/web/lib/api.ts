@@ -1082,6 +1082,10 @@ export type PaperPick = {
   away: string;
   provider: string;
   provider_slug: string;
+  home_team_id: number;
+  away_team_id: number;
+  event_status: string;
+  kickoff: string | null;
   side: "over" | "under";
   line: number;
   odds: number;
