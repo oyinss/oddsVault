@@ -40,6 +40,21 @@ export function PaperPickCard({
   const homeCrest = absoluteAsset(`/api/v1/teams/${pick.home_team_id}/crest`);
   const awayCrest = absoluteAsset(`/api/v1/teams/${pick.away_team_id}/crest`);
   const settled = pick.status !== "pending";
+  const current = pick.current ?? null;
+  const live = current?.live === true;
+  // While the match is still being played, show its real progress. Once it is
+  // over, the saved snapshot plus the final count tells the whole story.
+  const minute = current?.minute ?? pick.minute;
+  const homeCorners = current?.home_corners ?? pick.home_corners;
+  const awayCorners = current?.away_corners ?? pick.away_corners;
+  const totalCorners = current?.total_corners ?? pick.total_corners;
+  const pace = current?.pace_per_minute ?? pick.pace_per_minute;
+  const projected = current?.projected_total ?? pick.projected_total;
+  const projectionLow = current?.projection_low ?? pick.projection_low;
+  const projectionHigh = current?.projection_high ?? pick.projection_high;
+  const remaining = current?.remaining_minutes ?? null;
+  const toLine = current?.to_line ?? null;
+  const room = pick.side === "under";
 
   return (
     <article
@@ -61,9 +76,9 @@ export function PaperPickCard({
             recorded {formatAge(pick.created_at)}
           </span>
           <span
-            className={`rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-widest uppercase ${STATUS_STYLES[pick.status]}`}
+            className={`rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-widest uppercase ${live ? "border-flag-400/40 text-flag-300" : STATUS_STYLES[pick.status]}`}
           >
-            {pick.status}
+            {live ? "live" : pick.status}
           </span>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-turf-400/40 bg-turf-500/10 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-turf-200 uppercase">
@@ -90,36 +105,28 @@ export function PaperPickCard({
           <Cell
             icon={faBullseye}
             label="Corners"
-            value={
-              pick.total_corners !== null ? String(pick.total_corners) : "-"
-            }
+            value={totalCorners !== null ? String(totalCorners) : "-"}
             note={
-              pick.home_corners !== null && pick.away_corners !== null
-                ? `${pick.home_corners}-${pick.away_corners}`
-                : undefined
+              homeCorners !== null && awayCorners !== null
+                ? `${homeCorners}-${awayCorners}${minute !== null ? ` · ${minute}'` : ""}`
+                : minute !== null
+                  ? `${minute}'`
+                  : undefined
             }
           />
           <Cell
             icon={faGaugeHigh}
             label="Pace"
-            value={
-              pick.pace_per_minute !== null
-                ? pick.pace_per_minute.toFixed(2)
-                : "-"
-            }
-            note={pick.early_pace ? "early" : undefined}
+            value={pace !== null ? pace.toFixed(2) : "-"}
+            note={live ? "live" : pick.early_pace ? "early" : undefined}
           />
           <Cell
             icon={faChartLine}
             label="Proj."
-            value={
-              pick.projected_total !== null
-                ? pick.projected_total.toFixed(1)
-                : "-"
-            }
+            value={projected !== null ? projected.toFixed(1) : "-"}
             note={
-              pick.projection_low !== null && pick.projection_high !== null
-                ? `${pick.projection_low.toFixed(1)}-${pick.projection_high.toFixed(1)}`
+              projectionLow !== null && projectionHigh !== null
+                ? `${projectionLow.toFixed(1)}-${projectionHigh.toFixed(1)}`
                 : pick.early_pace
                   ? "early"
                   : undefined
@@ -127,14 +134,14 @@ export function PaperPickCard({
           />
           <Cell
             icon={faClock}
-            label={`Need ${pick.line}`}
-            value={pick.needed !== null ? String(pick.needed) : "-"}
+            label={room ? `Room ${pick.line}` : `Need ${pick.line}`}
+            value={toLine !== null ? String(toLine) : "-"}
             note={
-              pick.needed_per_minute !== null
-                ? `${pick.needed_per_minute.toFixed(2)}/min`
-                : pick.minute !== null
-                  ? `${pick.minute}'`
-                  : undefined
+              toLine !== null
+                ? room
+                  ? `corners before ${pick.line} is beaten`
+                  : `corners still needed${remaining !== null ? ` · ${remaining} min` : ""}`
+                : undefined
             }
           />
         </div>
@@ -146,6 +153,16 @@ export function PaperPickCard({
             <>
               <FontAwesomeIcon icon={faTrophy} className="size-2.5" />
               final {pick.final_total ?? "-"} corners
+            </>
+          ) : live ? (
+            <>
+              <FontAwesomeIcon icon={faClock} className="size-2.5" />
+              live{remaining !== null ? ` · ${remaining} min left` : ""}
+              {toLine !== null
+                ? room
+                  ? ` · ${toLine} corners of room`
+                  : ` · ${toLine} needed`
+                : ""}
             </>
           ) : (
             <>

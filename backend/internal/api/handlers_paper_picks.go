@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -23,40 +24,61 @@ type paperPickRequest struct {
 	Odds     float64 `json:"odds"`
 }
 
+// paperPickCurrent is the match state now, so a pending pick can be followed
+// instead of only remembered. to_line means "needed" for an over and "room
+// left" for an under.
+type paperPickCurrent struct {
+	Live             bool     `json:"live"`
+	Status           string   `json:"status"`
+	Minute           *int     `json:"minute"`
+	HomeCorners      *int     `json:"home_corners"`
+	AwayCorners      *int     `json:"away_corners"`
+	TotalCorners     *int     `json:"total_corners"`
+	PacePerMinute    *float64 `json:"pace_per_minute"`
+	ProjectedTotal   *float64 `json:"projected_total"`
+	ProjectionLow    *float64 `json:"projection_low"`
+	ProjectionHigh   *float64 `json:"projection_high"`
+	RemainingMinutes *int     `json:"remaining_minutes"`
+	ToLine           *int     `json:"to_line"`
+	NeededPerMinute  *float64 `json:"needed_per_minute"`
+	CapturedAt       *string  `json:"captured_at"`
+}
+
 type paperPickResponse struct {
-	ID              int64    `json:"id"`
-	EventID         int64    `json:"event_id"`
-	Competition     string   `json:"competition"`
-	Home            string   `json:"home"`
-	Away            string   `json:"away"`
-	HomeTeamID      int64    `json:"home_team_id"`
-	AwayTeamID      int64    `json:"away_team_id"`
-	CurrentStatus   string   `json:"event_status"`
-	Kickoff         *string  `json:"kickoff"`
-	Provider        string   `json:"provider"`
-	ProviderSlug    string   `json:"provider_slug"`
-	Side            string   `json:"side"`
-	Line            float64  `json:"line"`
-	Odds            float64  `json:"odds"`
-	Minute          *int     `json:"minute"`
-	TotalCorners    *int     `json:"total_corners"`
-	HomeCorners     *int     `json:"home_corners"`
-	AwayCorners     *int     `json:"away_corners"`
-	PacePerMinute   *float64 `json:"pace_per_minute"`
-	ProjectedTotal  *float64 `json:"projected_total"`
-	ProjectionLow   *float64 `json:"projection_low"`
-	ProjectionHigh  *float64 `json:"projection_high"`
-	Needed          *int     `json:"needed"`
-	NeededPerMinute *float64 `json:"needed_per_minute"`
-	ModelRisk       bool     `json:"model_risk"`
-	EarlyPace       bool     `json:"early_pace"`
-	EventStatus     string   `json:"event_status_at_save"`
-	Status          string   `json:"status"`
-	FinalTotal      *int     `json:"final_total"`
-	SettlementRule  *string  `json:"settlement_rule"`
-	CreatedAt       string   `json:"created_at"`
-	SettledAt       *string  `json:"settled_at"`
-	DataCutoffAt    string   `json:"data_cutoff_at"`
+	ID              int64             `json:"id"`
+	EventID         int64             `json:"event_id"`
+	Competition     string            `json:"competition"`
+	Home            string            `json:"home"`
+	Away            string            `json:"away"`
+	HomeTeamID      int64             `json:"home_team_id"`
+	AwayTeamID      int64             `json:"away_team_id"`
+	CurrentStatus   string            `json:"event_status"`
+	Kickoff         *string           `json:"kickoff"`
+	Provider        string            `json:"provider"`
+	ProviderSlug    string            `json:"provider_slug"`
+	Side            string            `json:"side"`
+	Line            float64           `json:"line"`
+	Odds            float64           `json:"odds"`
+	Minute          *int              `json:"minute"`
+	TotalCorners    *int              `json:"total_corners"`
+	HomeCorners     *int              `json:"home_corners"`
+	AwayCorners     *int              `json:"away_corners"`
+	PacePerMinute   *float64          `json:"pace_per_minute"`
+	ProjectedTotal  *float64          `json:"projected_total"`
+	ProjectionLow   *float64          `json:"projection_low"`
+	ProjectionHigh  *float64          `json:"projection_high"`
+	Needed          *int              `json:"needed"`
+	NeededPerMinute *float64          `json:"needed_per_minute"`
+	ModelRisk       bool              `json:"model_risk"`
+	EarlyPace       bool              `json:"early_pace"`
+	EventStatus     string            `json:"event_status_at_save"`
+	Status          string            `json:"status"`
+	FinalTotal      *int              `json:"final_total"`
+	SettlementRule  *string           `json:"settlement_rule"`
+	CreatedAt       string            `json:"created_at"`
+	SettledAt       *string           `json:"settled_at"`
+	DataCutoffAt    string            `json:"data_cutoff_at"`
+	Current         *paperPickCurrent `json:"current,omitempty"`
 }
 
 func toPaperPickResponse(p store.PaperPick) paperPickResponse {
@@ -180,7 +202,10 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 	pick.Home = event.Home.Name
 	pick.Away = event.Away.Name
 	pick.Provider = providerName
-	writeJSON(w, http.StatusCreated, toPaperPickResponse(pick))
+
+	created := []paperPickResponse{toPaperPickResponse(pick)}
+	s.attachPaperPickCurrent(r.Context(), created)
+	writeJSON(w, http.StatusCreated, created[0])
 }
 
 // handlePaperPicks lists recent recordings with a small summary.
@@ -211,6 +236,8 @@ func (s *Server) handlePaperPicks(w http.ResponseWriter, r *http.Request) {
 		summary[pick.Status]++
 		items = append(items, toPaperPickResponse(pick))
 	}
+
+	s.attachPaperPickCurrent(r.Context(), items)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"count":   len(items),
@@ -306,5 +333,107 @@ func (s *Server) attachPaperPicks(ctx context.Context, matches []liveCornerMatch
 		if picks, ok := byEvent[matches[index].EventID]; ok {
 			matches[index].PaperPicks = picks
 		}
+	}
+}
+
+// attachPaperPickCurrent fills the live/final state for a list of picks with one
+// query for all events.
+func (s *Server) attachPaperPickCurrent(ctx context.Context, picks []paperPickResponse) {
+	if len(picks) == 0 {
+		return
+	}
+	ids := make([]int64, 0, len(picks))
+	seen := make(map[int64]bool, len(picks))
+	for _, pick := range picks {
+		if seen[pick.EventID] {
+			continue
+		}
+		seen[pick.EventID] = true
+		ids = append(ids, pick.EventID)
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT e.id, e.status, COALESCE(l.detail, ''), l.captured_at,
+		       hs.corners, as_.corners
+		FROM events e
+		LEFT JOIN event_live_states l ON l.event_id = e.id
+		LEFT JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
+		LEFT JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
+		LEFT JOIN team_match_stats hs ON hs.event_id = e.id AND hs.team_id = hp.team_id
+		LEFT JOIN team_match_stats as_ ON as_.event_id = e.id AND as_.team_id = ap.team_id
+		WHERE e.id = ANY($1)`, ids)
+	if err != nil {
+		s.log.ErrorContext(ctx, "paper pick current", "error", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	type state struct {
+		status     string
+		detail     string
+		capturedAt *time.Time
+		home       *int
+		away       *int
+	}
+	states := make(map[int64]state, len(ids))
+	for rows.Next() {
+		var id int64
+		var item state
+		if err := rows.Scan(&id, &item.status, &item.detail, &item.capturedAt,
+			&item.home, &item.away); err != nil {
+			s.log.ErrorContext(ctx, "scan paper pick current", "error", err.Error())
+			return
+		}
+		states[id] = item
+	}
+
+	for index := range picks {
+		pick := &picks[index]
+		item, ok := states[pick.EventID]
+		if !ok {
+			continue
+		}
+		current := &paperPickCurrent{
+			Live:        item.status == "live",
+			Status:      item.status,
+			HomeCorners: item.home,
+			AwayCorners: item.away,
+		}
+		if item.capturedAt != nil {
+			formatted := item.capturedAt.UTC().Format(time.RFC3339)
+			current.CapturedAt = &formatted
+		}
+		if item.home != nil && item.away != nil {
+			match := liveCornerMatch{
+				Minute:      parseMinute(item.detail),
+				HomeCorners: item.home,
+				AwayCorners: item.away,
+			}
+			applyCornerMetrics(&match, pick.Line)
+			current.Minute = match.Minute
+			current.TotalCorners = match.TotalCorners
+			current.PacePerMinute = match.CornersPerMin
+			current.ProjectedTotal = match.ProjectedTotal
+			current.ProjectionLow = match.ProjectionLow
+			current.ProjectionHigh = match.ProjectionHigh
+			current.RemainingMinutes = match.RemainingMins
+			current.NeededPerMinute = match.NeededPerMin
+
+			if current.TotalCorners != nil {
+				total := *current.TotalCorners
+				var toLine int
+				if pick.Side == "under" {
+					// Room left before the line is crossed.
+					toLine = int(math.Floor(pick.Line)) - total
+				} else {
+					toLine = int(math.Ceil(pick.Line)) - total
+				}
+				if toLine < 0 {
+					toLine = 0
+				}
+				current.ToLine = &toLine
+			}
+		}
+		pick.Current = current
 	}
 }

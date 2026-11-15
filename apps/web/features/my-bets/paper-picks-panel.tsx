@@ -46,6 +46,10 @@ export function PaperPicksPanel() {
       return false;
     }
     return true;
+  }).sort((a, b) => {
+    const pendingFirst = (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1);
+    if (pendingFirst !== 0) return pendingFirst;
+    return Date.parse(b.created_at) - Date.parse(a.created_at);
   });
 
   if (error || (!loading && data === null)) {

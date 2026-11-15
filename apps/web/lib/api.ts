@@ -1108,6 +1108,22 @@ export type PaperPick = {
   created_at: string;
   settled_at: string | null;
   data_cutoff_at: string;
+  current?: {
+    live: boolean;
+    status: string;
+    minute: number | null;
+    home_corners: number | null;
+    away_corners: number | null;
+    total_corners: number | null;
+    pace_per_minute: number | null;
+    projected_total: number | null;
+    projection_low: number | null;
+    projection_high: number | null;
+    remaining_minutes: number | null;
+    to_line: number | null;
+    needed_per_minute: number | null;
+    captured_at: string | null;
+  } | null;
 };
 
 export type PaperPicks = {
