@@ -164,8 +164,24 @@ export default function PaperPicksPage() {
                         : pick.early_pace
                           ? "early"
                           : "-"}
+                      {pick.projection_low !== null &&
+                      pick.projection_high !== null ? (
+                        <>
+                          {" "}
+                          ({pick.projection_low.toFixed(1)}-
+                          {pick.projection_high.toFixed(1)})
+                        </>
+                      ) : null}
+                      <br />
+                      need {pick.needed !== null ? pick.needed : "-"}
+                      {pick.needed_per_minute !== null
+                        ? ` · ${pick.needed_per_minute.toFixed(2)}/min`
+                        : ""}
                       {pick.model_risk ? (
                         <span className="text-flag-400"> · risk</span>
+                      ) : null}
+                      {pick.early_pace ? (
+                        <span className="text-flag-400"> · early</span>
                       ) : null}
                     </td>
                     <td className="px-3 py-2 font-mono text-mist-200">
