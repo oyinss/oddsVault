@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   faArrowDownWideShort,
   faArrowsRotate,
@@ -74,6 +74,7 @@ export default function CornersPage() {
   ).length;
   const [onlyRecorded, setOnlyRecorded] = useState(false);
   const [onlyPlayed, setOnlyPlayed] = useState(false);
+  const [pickNotice, setPickNotice] = useState<string | null>(null);
   const [onlySide, setOnlySide] = useState<"none" | "over" | "under">("none");
   const needle = search.trim().toLowerCase();
   const searched = needle
@@ -114,6 +115,12 @@ export default function CornersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState("10");
   const [recordingId, setRecordingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!pickNotice) return;
+    const timer = setTimeout(() => setPickNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [pickNotice]);
 
   function openEditor(match: LiveCornerMatch) {
     const current = match.total_corners ?? 0;
@@ -459,7 +466,10 @@ export default function CornersPage() {
                   )
                 }
                 onCloseRecord={() => setRecordingId(null)}
-                onPickSaved={reload}
+                onPickSaved={(message) => {
+                  setPickNotice(message);
+                  reload();
+                }}
               />
             ))}
           </div>
@@ -545,6 +555,24 @@ export default function CornersPage() {
             </li>
           </ul>
         </section>
+        {pickNotice && (
+          <div className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-start gap-3 rounded-xl border border-turf-400/40 bg-ink-900 px-4 py-3 shadow-2xl">
+            <FontAwesomeIcon
+              icon={faFilePen}
+              className="mt-0.5 size-3.5 text-turf-300"
+            />
+            <p className="flex-1 text-xs leading-relaxed text-mist-200">
+              {pickNotice}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPickNotice(null)}
+              className="font-mono text-[10px] tracking-widest text-mist-500 uppercase hover:text-mist-200"
+            >
+              close
+            </button>
+          </div>
+        )}
         {alerts.notice && (
           <div className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-start gap-3 rounded-xl border border-turf-400/40 bg-ink-900 px-4 py-3 shadow-2xl">
             <FontAwesomeIcon icon={faBell} className="mt-0.5 size-3.5 text-turf-300" />
@@ -609,7 +637,7 @@ function MatchCard({
   recording: boolean;
   onOpenRecord: () => void;
   onCloseRecord: () => void;
-  onPickSaved: () => void;
+  onPickSaved: (message: string) => void;
 }) {
   const [editingPickId, setEditingPickId] = useState<number | null>(null);
   const editingPick =
@@ -771,10 +799,12 @@ function MatchCard({
               setEditingPickId(null);
               onCloseRecord();
             }}
-            onSaved={() => {
-              // Close the editor so the chip repaints with the saved values.
+            onSaved={(_pick, message) => {
+              // Close the form so the chip and the toast carry the result,
+              // instead of leaving a recorder open that has already saved.
               setEditingPickId(null);
-              onPickSaved();
+              onCloseRecord();
+              onPickSaved(message);
             }}
           />
         </div>

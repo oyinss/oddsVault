@@ -37,7 +37,7 @@ export function PaperPickForm({
     line: number;
     odds: number;
   } | null;
-  onSaved?: (pick: PaperPick) => void;
+  onSaved?: (pick: PaperPick, message: string) => void;
   onCancel?: () => void;
 }) {
   const [providers, setProviders] = useState<BookmakerOption[]>([]);
@@ -103,10 +103,9 @@ export function PaperPickForm({
             line: lineValue,
             odds: oddsValue,
           });
-      setMessage(
-        `${editing ? "Updated" : "Recorded"} ${pick.side} ${pick.line} at ${pick.odds.toFixed(2)} on ${pick.provider}.`,
-      );
-      onSaved?.(pick);
+      const confirmation = `${editing ? "Updated" : "Recorded"} ${pick.side} ${pick.line} at ${pick.odds.toFixed(2)} on ${pick.provider}.`;
+      setMessage(confirmation);
+      onSaved?.(pick, confirmation);
     } catch (error) {
       setFailed(true);
       setMessage(error instanceof Error ? error.message : "Could not save the pick.");
