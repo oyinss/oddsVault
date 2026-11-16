@@ -122,6 +122,11 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 	matches, err := s.queryCornerMatches(r.Context(), cornerMatchSelect+`
 		WHERE e.status = 'live'
 		  AND sp.slug = 'football'
+		  -- A corner board with no corner count has nothing to read: short
+		  -- football, subsoccer and simulated leagues publish none, and an
+		  -- unpublished count is missing data, not zero corners.
+		  AND hs.corners IS NOT NULL
+		  AND as_.corners IS NOT NULL
 		  -- A live match whose state has not been refreshed recently is a
 		  -- stale row, not a game in progress.
 		  AND l.captured_at > now() - interval '15 minutes'

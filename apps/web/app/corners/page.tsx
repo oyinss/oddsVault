@@ -140,7 +140,8 @@ export default function CornersPage() {
               Corner counts refresh from the live provider every 90 seconds.
               Pace and projection are straight arithmetic from the current count
               and the match clock, so you can compare a match with the line you
-              are looking at on the bookmaker.
+              are looking at on the bookmaker. Matches whose provider publishes
+              no corner count are not listed.
             </p>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
