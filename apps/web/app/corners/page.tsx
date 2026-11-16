@@ -856,6 +856,20 @@ function MatchCard({
               strong
             />
           </div>
+
+          {match.minute !== null &&
+          match.minute > 45 &&
+          match.first_half_corners !== null &&
+          match.first_half_corners !== undefined &&
+          match.second_half_corners !== null &&
+          match.second_half_corners !== undefined ? (
+            <p
+              className="mt-1.5 font-mono text-[10px] text-mist-500"
+              title="Corners in each half, counted from the snapshots captured while the match was live. The second half figure is the current total minus the count at the break."
+            >
+              1H {match.first_half_corners} · 2H {match.second_half_corners}
+            </p>
+          ) : null}
         </div>
 
         <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
@@ -1237,8 +1251,23 @@ function FormPanel({
                 <span className="shrink-0 text-mist-200">
                   {item.corners_for}-{item.corners_against}
                 </span>
-                <span className="w-6 shrink-0 text-right text-mist-400">
+                <span
+                  className="shrink-0 text-right text-mist-400"
+                  title={
+                    item.first_half_corners != null &&
+                    item.second_half_corners != null
+                      ? `${item.total_corners} corners: ${item.first_half_corners} in the first half, ${item.second_half_corners} in the second`
+                      : `${item.total_corners} corners. No first or second half split was captured for this match.`
+                  }
+                >
                   {item.total_corners}
+                  {item.first_half_corners != null &&
+                  item.second_half_corners != null ? (
+                    <span className="text-mist-500">
+                      {" "}
+                      ({item.first_half_corners}+{item.second_half_corners})
+                    </span>
+                  ) : null}
                 </span>
               </li>
             ))}

@@ -15,6 +15,10 @@ type formMatch struct {
 	CornersFor     int    `json:"corners_for"`
 	CornersAgainst int    `json:"corners_against"`
 	Total          int    `json:"total_corners"`
+	// Half splits are only known for matches we tracked live, because they come
+	// from the snapshots rather than the final provider total.
+	FirstHalf  *int `json:"first_half_corners"`
+	SecondHalf *int `json:"second_half_corners"`
 }
 
 type teamForm struct {

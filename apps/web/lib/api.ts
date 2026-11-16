@@ -586,6 +586,8 @@ export type LiveCornerMatch = {
   } | null;
   home_form?: BoardTeamForm | null;
   away_form?: BoardTeamForm | null;
+  first_half_corners?: number | null;
+  second_half_corners?: number | null;
 };
 
 export type LiveCorners = {
@@ -604,6 +606,9 @@ export type CornerFormMatch = {
   corners_for: number;
   corners_against: number;
   total_corners: number;
+  // Only known for matches we tracked live, because they come from snapshots.
+  first_half_corners?: number | null;
+  second_half_corners?: number | null;
 };
 
 export type CornerTeamForm = {

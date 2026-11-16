@@ -52,7 +52,11 @@ type liveCornerMatch struct {
 	BetHistory         *matchBetHistory `json:"bet_history,omitempty"`
 	HomeForm           *boardTeamForm   `json:"home_form,omitempty"`
 	AwayForm           *boardTeamForm   `json:"away_form,omitempty"`
-	PaperPicks         []paperPickBadge `json:"paper_picks,omitempty"`
+	// The half split comes from the snapshots we captured, so it is derived
+	// from observed counts, never estimated.
+	FirstHalfCorners  *int             `json:"first_half_corners"`
+	SecondHalfCorners *int             `json:"second_half_corners"`
+	PaperPicks        []paperPickBadge `json:"paper_picks,omitempty"`
 }
 
 // paperPickBadge marks a live row that already has a paper pick recorded, so the
@@ -140,6 +144,7 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 
 	s.attachMatchBetHistory(r.Context(), matches)
 	s.attachBoardTeamForms(r.Context(), matches)
+	s.attachHalfSplits(r.Context(), matches)
 	s.attachPaperPicks(r.Context(), matches)
 
 	// Sorting is the operator's choice and can be layered: "competition,remaining"

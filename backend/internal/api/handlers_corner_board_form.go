@@ -136,6 +136,34 @@ func (s *Server) attachBoardTeamForms(ctx context.Context, matches []liveCornerM
 		}
 	}
 
+	// Half splits for the matches in these lists, where we captured them.
+	eventIDs := make([]int64, 0, len(forms)*5)
+	seen := make(map[int64]bool, len(forms)*5)
+	for _, form := range forms {
+		for _, item := range form.Matches {
+			if !seen[item.EventID] {
+				seen[item.EventID] = true
+				eventIDs = append(eventIDs, item.EventID)
+			}
+		}
+	}
+	firstHalf := s.firstHalfTotals(ctx, eventIDs)
+	for _, form := range forms {
+		for index := range form.Matches {
+			item := &form.Matches[index]
+			first, ok := firstHalf[item.EventID]
+			if !ok {
+				continue
+			}
+			second := item.Total - first
+			if second < 0 {
+				continue
+			}
+			item.FirstHalf = &first
+			item.SecondHalf = &second
+		}
+	}
+
 	for index := range matches {
 		if form, ok := forms[matches[index].Home.ID]; ok {
 			matches[index].HomeForm = form
