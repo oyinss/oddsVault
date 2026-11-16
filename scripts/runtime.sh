@@ -121,7 +121,9 @@ start_web() {
         return 0
     fi
     build_web
-    start_bg web python3 -m http.server "$WEB_PORT" --bind 127.0.0.1 --directory "$WEB_OUT"
+    # Serves the export and proxies /svc and /api to the API, so a production
+    # build in out/ still works locally instead of answering 404 on every call.
+    start_bg web node "$ROOT/scripts/local-web.mjs" "$WEB_PORT"
 }
 
 start_worker() {
