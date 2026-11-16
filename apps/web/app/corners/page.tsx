@@ -791,7 +791,7 @@ function MatchCard({
         </div>
       )}
 
-      <div className="grid min-w-0 gap-4 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="grid min-w-0 gap-4 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_460px_360px] lg:items-start lg:gap-5">
         <div>
           <Link
             href={`/corners/detail?id=${match.event_id}&line=${line}`}
@@ -839,7 +839,7 @@ function MatchCard({
           </div>
         </div>
 
-        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:w-[460px] sm:gap-2">
+        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
           <Metric
             label="Pace"
             icon={faGaugeHigh}
@@ -898,30 +898,29 @@ function MatchCard({
                 : undefined
             }
           />
-        </div>
-      </div>
 
-      {match.home_form ||
-      match.away_form ||
-      (match.bet_history?.recent?.length ?? 0) > 0 ? (
-        <div className="grid gap-4 border-t border-line px-4 py-3 lg:grid-cols-3">
-          <FormPanel
-            title={`${match.home.name} · last 5`}
-            form={match.home_form ?? null}
-          />
-          <FormPanel
-            title={`${match.away.name} · last 5`}
-            form={match.away_form ?? null}
-          />
-          <PlayedPanel recent={match.bet_history?.recent ?? []} />
         </div>
-      ) : (
-        <div className="border-t border-line px-4 py-2">
-          <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+
+        {match.home_form ||
+        match.away_form ||
+        (match.bet_history?.recent?.length ?? 0) > 0 ? (
+          <div className="min-w-0 space-y-2.5 lg:border-l lg:border-line lg:pl-4">
+            <FormPanel
+              title={`${match.home.name} · last 5`}
+              form={match.home_form ?? null}
+            />
+            <FormPanel
+              title={`${match.away.name} · last 5`}
+              form={match.away_form ?? null}
+            />
+            <PlayedPanel recent={match.bet_history?.recent ?? []} />
+          </div>
+        ) : (
+          <p className="font-mono text-[9px] leading-4 tracking-widest text-mist-500 uppercase lg:border-l lg:border-line lg:pl-4">
             no stored corner form for these teams, and no linked journal legs
           </p>
-        </div>
-      )}
+        )}
+      </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
@@ -1242,7 +1241,7 @@ function PlayedPanel({
   return (
     <div className="min-w-0">
       <p className="truncate font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-        your last 5 · this league or these teams
+        your last 5 legs
       </p>
       {recent.length === 0 ? (
         <p className="mt-1 text-[10px] text-mist-500">
