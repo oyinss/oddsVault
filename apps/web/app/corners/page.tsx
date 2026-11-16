@@ -251,91 +251,61 @@ export default function CornersPage() {
           <span className="font-mono text-[10px] text-mist-500">
             {alerts.watches.length} watched · use the bell on a match to add one
           </span>
-          <button
-            type="button"
-            onClick={() => setOnlyRecorded((value) => !value)}
-            aria-pressed={onlyRecorded}
-            title={
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <FilterCard
+            label="Recorded"
+            value={recordedCount}
+            icon={faFilePen}
+            active={onlyRecorded}
+            hint={
               onlyRecorded
                 ? "Show every live match again"
                 : "Show only matches with a recorded paper pick"
             }
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
-              onlyRecorded
-                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
-                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
-            }`}
-          >
-            <FontAwesomeIcon icon={faFilePen} className="size-3" />
-            recorded {recordedCount}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
+            onToggle={() => setOnlyRecorded((value) => !value)}
+          />
+          <FilterCard
+            label="Over lines"
+            value={overLineCount}
+            icon={faFlag}
+            active={onlySide === "over"}
+            hint="Show only matches where the range clears an over line"
+            onToggle={() =>
               setOnlySide((value) => (value === "over" ? "none" : "over"))
             }
-            aria-pressed={onlySide === "over"}
-            title="Show only matches where the range clears an over line"
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
-              onlySide === "over"
-                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
-                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
-            }`}
-          >
-            <FontAwesomeIcon icon={faFlag} className="size-3" />
-            over lines {overLineCount}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
+          />
+          <FilterCard
+            label="Under lines"
+            value={underLineCount}
+            icon={faBullseye}
+            active={onlySide === "under"}
+            hint="Show only matches where the range clears an under line"
+            onToggle={() =>
               setOnlySide((value) => (value === "under" ? "none" : "under"))
             }
-            aria-pressed={onlySide === "under"}
-            title="Show only matches where the range clears an under line"
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
-              onlySide === "under"
-                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
-                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
-            }`}
-          >
-            <FontAwesomeIcon icon={faBullseye} className="size-3" />
-            under lines {underLineCount}
-          </button>
-          <button
-            type="button"
-            onClick={() => setOnlyPlayed((value) => !value)}
-            aria-pressed={onlyPlayed}
-            title="Show only matches where your journal has a corner leg on this league or either team"
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
-              onlyPlayed
-                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
-                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
-            }`}
-          >
-            <FontAwesomeIcon icon={faClockRotateLeft} className="size-3" />
-            played {playedCount}
-          </button>
-          <button
-            type="button"
-            onClick={() => setOnlyFollowed((value) => !value)}
-            aria-pressed={onlyFollowed}
-            title={
+          />
+          <FilterCard
+            label="Played"
+            value={playedCount}
+            icon={faClockRotateLeft}
+            active={onlyPlayed}
+            hint="Show only matches where your journal has a corner leg on this league or either team"
+            onToggle={() => setOnlyPlayed((value) => !value)}
+          />
+          <FilterCard
+            label="Following"
+            value={liveFollowed}
+            icon={faStar}
+            active={onlyFollowed}
+            hint={
               onlyFollowed
                 ? "Show every live match again"
                 : "Show only the matches you follow"
             }
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
-              onlyFollowed
-                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
-                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
-            }`}
-          >
-            <FontAwesomeIcon
-              icon={faStar}
-              className={`size-3 ${onlyFollowed ? "text-turf-300" : ""}`}
-            />
-            following {liveFollowed}
-          </button>
+            onToggle={() => setOnlyFollowed((value) => !value)}
+          />
         </div>
 
         {error || (!loading && data === null) ? (
@@ -1188,6 +1158,54 @@ function PaceBadge({
     <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
       pace unavailable
     </span>
+  );
+}
+
+// FilterCard is the board filter as a stat tile: the label names the filter and
+// the number is how many matches it would leave, so the count explains itself
+// before the click.
+function FilterCard({
+  label,
+  value,
+  icon,
+  active,
+  hint,
+  onToggle,
+}: {
+  label: string;
+  value: number;
+  icon: IconDefinition;
+  active: boolean;
+  hint: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      title={hint}
+      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+        active
+          ? "border-turf-400/60 bg-turf-500/10"
+          : "border-line bg-ink-950/40 hover:border-turf-400/40"
+      }`}
+    >
+      <span className="flex items-center justify-between font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+        {label}
+        <FontAwesomeIcon
+          icon={icon}
+          className={`size-2.5 ${active ? "text-turf-300" : "text-mist-500"}`}
+        />
+      </span>
+      <span
+        className={`mt-0.5 block font-mono text-lg tabular-nums ${
+          active ? "text-turf-100" : "text-mist-100"
+        }`}
+      >
+        {value}
+      </span>
+    </button>
   );
 }
 
