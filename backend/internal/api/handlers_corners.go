@@ -50,6 +50,8 @@ type liveCornerMatch struct {
 	CapturedAt         *string          `json:"captured_at"`
 	Pace               string           `json:"pace"`
 	BetHistory         *matchBetHistory `json:"bet_history,omitempty"`
+	HomeForm           *boardTeamForm   `json:"home_form,omitempty"`
+	AwayForm           *boardTeamForm   `json:"away_form,omitempty"`
 	PaperPicks         []paperPickBadge `json:"paper_picks,omitempty"`
 }
 
@@ -130,6 +132,7 @@ func (s *Server) handleLiveCorners(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.attachMatchBetHistory(r.Context(), matches)
+	s.attachBoardTeamForms(r.Context(), matches)
 	s.attachPaperPicks(r.Context(), matches)
 
 	// Sorting is the operator's choice and can be layered: "competition,remaining"

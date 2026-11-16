@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/oyins/oddsvault/backend/internal/normalize"
 )
@@ -177,6 +178,20 @@ type matchBetHistory struct {
 	UnderLost int  `json:"under_lost"`
 	League    bool `json:"league"`
 	Teams     bool `json:"teams"`
+	// Recent carries the last five corner legs that touched this league or
+	// either team, newest first, so the board can show the selection itself
+	// instead of only a win-loss tally.
+	Recent []matchBetRecent `json:"recent,omitempty"`
+}
+
+// matchBetRecent is one played corner leg as the board renders it.
+type matchBetRecent struct {
+	Side   string   `json:"side"`
+	Line   *float64 `json:"line"`
+	Odds   *float64 `json:"odds"`
+	Status string   `json:"status"`
+	Date   *string  `json:"date"`
+	Scope  string   `json:"scope"`
 }
 
 type journalLegRow struct {
@@ -198,13 +213,15 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 		return
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT l.market_side, l.leg_status, e.competition_id, hp.team_id, ap.team_id
+		SELECT l.market_side, l.leg_status, e.competition_id, hp.team_id, ap.team_id,
+		       l.market_line, l.odds_taken, to_char(e.start_date, 'YYYY-MM-DD')
 		FROM personal_bet_legs l
 		JOIN events e ON e.id = l.event_id
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
 		WHERE l.market_family = 'corners_total'
-		  AND l.market_side IN ('over', 'under')`)
+		  AND l.market_side IN ('over', 'under')
+		ORDER BY e.start_date DESC, l.id DESC`)
 	if err != nil {
 		s.log.ErrorContext(ctx, "board bet history", "error", err.Error())
 		return
@@ -214,7 +231,8 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 	var legs []journalLegRow
 	for rows.Next() {
 		var leg journalLegRow
-		if err := rows.Scan(&leg.side, &leg.status, &leg.competitionID, &leg.homeID, &leg.awayID); err != nil {
+		if err := rows.Scan(&leg.side, &leg.status, &leg.competitionID, &leg.homeID, &leg.awayID,
+			&leg.line, &leg.odds, &leg.placedAt); err != nil {
 			s.log.ErrorContext(ctx, "scan board bet leg", "error", err.Error())
 			return
 		}
@@ -239,6 +257,14 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 		for _, leg := range leagueOnly[match.CompetitionID] {
 			history.Legs++
 			history.League = true
+			history.Recent = append(history.Recent, matchBetRecent{
+				Side:   leg.side,
+				Line:   leg.line,
+				Odds:   leg.odds,
+				Status: leg.status,
+				Date:   leg.placedAt,
+				Scope:  "league",
+			})
 			switch leg.status {
 			case "won":
 				history.Won++
@@ -277,6 +303,18 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 			history.Legs++
 			history.League = history.League || inLeague
 			history.Teams = history.Teams || inTeams
+			scope := "team"
+			if inLeague {
+				scope = "league"
+			}
+			history.Recent = append(history.Recent, matchBetRecent{
+				Side:   leg.side,
+				Line:   leg.line,
+				Odds:   leg.odds,
+				Status: leg.status,
+				Date:   leg.placedAt,
+				Scope:  scope,
+			})
 			switch leg.status {
 			case "won":
 				history.Won++
@@ -306,6 +344,20 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 			}
 		}
 		if history.Legs > 0 {
+			// Newest first, then keep the five the card can show.
+			sort.SliceStable(history.Recent, func(i, j int) bool {
+				left, right := "", ""
+				if history.Recent[i].Date != nil {
+					left = *history.Recent[i].Date
+				}
+				if history.Recent[j].Date != nil {
+					right = *history.Recent[j].Date
+				}
+				return left > right
+			})
+			if len(history.Recent) > 5 {
+				history.Recent = history.Recent[:5]
+			}
 			match.BetHistory = &history
 		}
 	}

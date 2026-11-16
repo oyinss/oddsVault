@@ -32,6 +32,7 @@ import {
   flagUrl,
   formatAge,
   getLiveCorners,
+  type BoardTeamForm,
   type CornerSort,
   type LiveCornerMatch,
   type LiveCorners,
@@ -119,7 +120,7 @@ export default function CornersPage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="w-full px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[11px] tracking-widest text-turf-300 uppercase">
@@ -920,6 +921,28 @@ function MatchCard({
         </div>
       </div>
 
+      {match.home_form ||
+      match.away_form ||
+      (match.bet_history?.recent?.length ?? 0) > 0 ? (
+        <div className="grid gap-4 border-t border-line px-4 py-3 lg:grid-cols-3">
+          <FormPanel
+            title={`${match.home.name} · last 5`}
+            form={match.home_form ?? null}
+          />
+          <FormPanel
+            title={`${match.away.name} · last 5`}
+            form={match.away_form ?? null}
+          />
+          <PlayedPanel recent={match.bet_history?.recent ?? []} />
+        </div>
+      ) : (
+        <div className="border-t border-line px-4 py-2">
+          <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+            no stored corner form for these teams, and no linked journal legs
+          </p>
+        </div>
+      )}
+
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
           {match.paper_picks?.map((pick, index) => (
@@ -1141,5 +1164,121 @@ function PaceBadge({
     <span className="font-mono text-[10px] tracking-widest text-mist-500 uppercase">
       pace unavailable
     </span>
+  );
+}
+
+function shortDay(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+const PLAYED_STATUS: Record<string, string> = {
+  won: "text-turf-300",
+  lost: "text-loss-300",
+  void: "text-mist-500",
+  pending: "text-flag-400",
+};
+
+// FormPanel shows the last five finished matches that carry a corner count for
+// one team. A missing sample prints as missing, never as zero corners.
+function FormPanel({
+  title,
+  form,
+}: {
+  title: string;
+  form: BoardTeamForm | null;
+}) {
+  const matches = form?.matches ?? [];
+  return (
+    <div className="min-w-0">
+      <p className="truncate font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+        {title}
+      </p>
+      {matches.length === 0 ? (
+        <p className="mt-1 text-[10px] text-mist-500">
+          no finished match with corner data
+        </p>
+      ) : (
+        <>
+          <ul className="mt-1 space-y-0.5 font-mono text-[10px]">
+            {matches.map((item) => (
+              <li key={item.event_id} className="flex items-baseline gap-1.5">
+                <span className="w-11 shrink-0 text-mist-500">
+                  {shortDay(item.date)}
+                </span>
+                <span
+                  className="min-w-0 flex-1 truncate text-mist-300"
+                  title={item.opponent}
+                >
+                  {item.home ? "v" : "@"} {item.opponent}
+                </span>
+                <span className="shrink-0 text-mist-200">
+                  {item.corners_for}-{item.corners_against}
+                </span>
+                <span className="w-6 shrink-0 text-right text-mist-400">
+                  {item.total_corners}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 font-mono text-[9px] text-mist-500">
+            avg {form?.avg_for.toFixed(1)} for · {form?.avg_total.toFixed(1)} total
+            · {form?.sample} matches
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+// PlayedPanel lists the corner legs already settled or open for this league or
+// either team, so the card shows the selection itself, not just a tally.
+function PlayedPanel({
+  recent,
+}: {
+  recent: Array<{
+    side: "over" | "under";
+    line: number | null;
+    odds: number | null;
+    status: string;
+    date: string | null;
+    scope: "league" | "team";
+  }>;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+        your last 5 · this league or these teams
+      </p>
+      {recent.length === 0 ? (
+        <p className="mt-1 text-[10px] text-mist-500">
+          no linked corner legs on record
+        </p>
+      ) : (
+        <ul className="mt-1 space-y-0.5 font-mono text-[10px]">
+          {recent.map((leg, index) => (
+            <li
+              key={`${leg.side}-${leg.line}-${index}`}
+              className="flex items-baseline gap-1.5"
+            >
+              <span className="w-16 shrink-0 font-bold text-mist-100 uppercase">
+                {leg.side} {leg.line ?? "-"}
+              </span>
+              {leg.odds !== null ? (
+                <span className="shrink-0 text-mist-300">@{leg.odds}</span>
+              ) : null}
+              <span className={PLAYED_STATUS[leg.status] ?? "text-mist-500"}>
+                {leg.status}
+              </span>
+              <span className="ml-auto shrink-0 text-mist-500">
+                {shortDay(leg.date)} · {leg.scope}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

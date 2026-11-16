@@ -572,7 +572,17 @@ export type LiveCornerMatch = {
     under_lost: number;
     league: boolean;
     teams: boolean;
+    recent?: Array<{
+      side: "over" | "under";
+      line: number | null;
+      odds: number | null;
+      status: string;
+      date: string | null;
+      scope: "league" | "team";
+    }>;
   } | null;
+  home_form?: BoardTeamForm | null;
+  away_form?: BoardTeamForm | null;
 };
 
 export type LiveCorners = {
@@ -595,6 +605,17 @@ export type CornerFormMatch = {
 
 export type CornerTeamForm = {
   team: { id: number; name: string; slug: string; crest_url: string | null };
+  matches: CornerFormMatch[];
+  sample: number;
+  avg_for: number;
+  avg_against: number;
+  avg_total: number;
+  over_rates: Record<string, number>;
+};
+
+// The board ships the same last-five shape as the detail page but without the
+// team identity block, because the card already knows which team it is.
+export type BoardTeamForm = {
   matches: CornerFormMatch[];
   sample: number;
   avg_for: number;
