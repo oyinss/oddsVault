@@ -264,14 +264,6 @@ export default function CornersPage() {
           <span className="font-mono text-[10px] text-mist-500">
             {alerts.watches.length} watched · use the bell on a match to add one
           </span>
-          <Link
-            href="/paper-picks"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 font-mono text-[10px] tracking-widest text-mist-400 uppercase transition hover:border-turf-400/40 hover:text-turf-200"
-            title="Picks recorded by hand, no stake, settled at full time"
-          >
-            <FontAwesomeIcon icon={faFilePen} className="size-3" />
-            paper picks
-          </Link>
           <button
             type="button"
             onClick={() => setOnlyRecorded((value) => !value)}
