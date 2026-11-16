@@ -206,5 +206,40 @@ func (im *Importer) SettlePaperPicks(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("settle paper picks: %w", err)
 	}
-	return tag.RowsAffected(), nil
+	settled := tag.RowsAffected()
+
+	// A provider can drop a match without ever publishing a final status. When
+	// the match window is long over and the corner counts have stopped moving,
+	// the stored pair is the only final count that will ever exist. Settle with
+	// an explicit rule name so a training set can filter these out.
+	timeoutTag, err := im.pool.Exec(ctx, `
+		WITH finals AS (
+			SELECT e.id AS event_id, sum(s.corners)::int AS total
+			FROM events e
+			JOIN team_match_stats s ON s.event_id = e.id
+			LEFT JOIN event_live_states l ON l.event_id = e.id
+			WHERE e.status IN ('live', 'unknown')
+			  AND COALESCE(e.start_time, e.start_date::timestamptz) < now() - interval '3 hours'
+			  AND (l.captured_at IS NULL OR l.captured_at < now() - interval '2 hours')
+			  AND s.corners IS NOT NULL
+			GROUP BY e.id
+			HAVING count(*) = 2
+		)
+		UPDATE paper_picks p
+		SET final_total = f.total,
+		    status = CASE
+		        WHEN f.total::numeric = p.line THEN 'push'
+		        WHEN p.side = 'over' AND f.total::numeric > p.line THEN 'won'
+		        WHEN p.side = 'under' AND f.total::numeric < p.line THEN 'won'
+		        ELSE 'lost'
+		    END,
+		    settled_at = now(),
+		    settlement_rule = 'total_corners_after_timeout'
+		FROM finals f
+		WHERE p.event_id = f.event_id
+		  AND p.status = 'pending'`)
+	if err != nil {
+		return settled, fmt.Errorf("settle paper picks after timeout: %w", err)
+	}
+	return settled + timeoutTag.RowsAffected(), nil
 }

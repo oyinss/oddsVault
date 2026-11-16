@@ -159,9 +159,21 @@ export function PaperPickCard({
             {pick.status}
           </span>
           {settled ? (
-            <span className="flex items-center gap-1.5 text-mist-400">
+            <span
+              className="flex items-center gap-1.5 text-mist-400"
+              title={
+                pick.settlement_rule === "total_corners_after_timeout"
+                  ? "Settled from the stored corner counts after the feed stopped updating; the provider never published a final status."
+                  : undefined
+              }
+            >
               <FontAwesomeIcon icon={faTrophy} className="size-2.5" />
               final {pick.final_total ?? "-"} corners
+              {pick.settlement_rule === "total_corners_after_timeout" ? (
+                <span className="rounded border border-line px-1.5 py-0.5 text-[9px] tracking-widest uppercase">
+                  after timeout
+                </span>
+              ) : null}
             </span>
           ) : live ? (
             <span className="flex items-center gap-1.5 text-mist-400">
