@@ -73,6 +73,7 @@ export default function CornersPage() {
     favorites.isFollowed(match.event_id),
   ).length;
   const [onlyRecorded, setOnlyRecorded] = useState(false);
+  const [onlyPlayed, setOnlyPlayed] = useState(false);
   const [onlySide, setOnlySide] = useState<"none" | "over" | "under">("none");
   const needle = search.trim().toLowerCase();
   const searched = needle
@@ -92,10 +93,16 @@ export default function CornersPage() {
   const underLineCount = matches.filter(
     (match) => match.rec_under_line !== null,
   ).length;
+  const playedCount = matches.filter(
+    (match) => (match.bet_history?.legs ?? 0) > 0,
+  ).length;
   const visible = searched
     .filter((match) => !onlyFollowed || favorites.isFollowed(match.event_id))
     .filter(
       (match) => !onlyRecorded || (match.paper_picks?.length ?? 0) > 0,
+    )
+    .filter(
+      (match) => !onlyPlayed || (match.bet_history?.legs ?? 0) > 0,
     )
     .filter((match) =>
       onlySide === "over"
@@ -316,6 +323,20 @@ export default function CornersPage() {
           </button>
           <button
             type="button"
+            onClick={() => setOnlyPlayed((value) => !value)}
+            aria-pressed={onlyPlayed}
+            title="Show only matches where your journal has a corner leg on this league or either team"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
+              onlyPlayed
+                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon icon={faClockRotateLeft} className="size-3" />
+            played {playedCount}
+          </button>
+          <button
+            type="button"
             onClick={() => setOnlyFollowed((value) => !value)}
             aria-pressed={onlyFollowed}
             title={
@@ -396,6 +417,24 @@ export default function CornersPage() {
             <button
               type="button"
               onClick={() => setOnlyRecorded(false)}
+              className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-white/20 hover:text-mist-100"
+            >
+              Show all live matches
+            </button>
+          </div>
+        ) : onlyPlayed && visible.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
+            <p className="text-sm font-medium text-mist-100">
+              No live match has a corner leg from your journal.
+            </p>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-mist-400">
+              Nothing is linked to a live league or team right now. The board
+              shows only legs already imported into the journal, not games you
+              watched.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOnlyPlayed(false)}
               className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-white/20 hover:text-mist-100"
             >
               Show all live matches
