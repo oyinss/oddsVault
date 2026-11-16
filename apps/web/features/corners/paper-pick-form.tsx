@@ -111,7 +111,7 @@ export function PaperPickForm({
         </select>
       </label>
       <div className="flex overflow-hidden rounded-md border border-line">
-        {(["under", "over"] as const).map((option) => (
+        {(["over", "under"] as const).map((option) => (
           <button
             key={option}
             type="button"
