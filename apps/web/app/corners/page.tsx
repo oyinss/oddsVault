@@ -1195,7 +1195,8 @@ function FilterCard({
         {label}
         <FontAwesomeIcon
           icon={icon}
-          className={`size-2.5 ${active ? "text-turf-300" : "text-mist-500"}`}
+          style={{ width: "1rem", height: "1rem" }}
+          className={active ? "text-turf-300" : "text-mist-500"}
         />
       </span>
       <span

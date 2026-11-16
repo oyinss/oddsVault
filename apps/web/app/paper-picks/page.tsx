@@ -5,12 +5,16 @@ import { useMemo, useState } from "react";
 import {
   faArrowsRotate,
   faFilePen,
+  type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { LoadingNote } from "@/components/loading-note";
 import { SiteHeader } from "@/components/site-header";
-import { PaperPickCard } from "@/features/corners/paper-pick-card";
+import {
+  PaperPickCard,
+  STATUS_ICONS,
+} from "@/features/corners/paper-pick-card";
 import { PaperPickForm } from "@/features/corners/paper-pick-form";
 import {
   deletePaperPick,
@@ -113,6 +117,7 @@ export default function PaperPicksPage() {
                 label={item.label}
                 value={data.summary[item.key]}
                 tone={item.tone}
+                icon={STATUS_ICONS[item.key]}
                 active={status === item.key}
                 onSelect={() =>
                   setStatus((current) =>
@@ -274,12 +279,14 @@ function Summary({
   label,
   value,
   tone = "text-mist-100",
+  icon,
   active,
   onSelect,
 }: {
   label: string;
   value: number;
   tone?: string;
+  icon: IconDefinition;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -299,10 +306,17 @@ function Summary({
           : "border-line bg-ink-950/40 hover:border-turf-400/40"
       }`}
     >
-      <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+      <span className="flex items-center justify-between font-mono text-[9px] tracking-widest text-mist-500 uppercase">
         {label}
-      </p>
-      <p className={`mt-0.5 font-mono text-lg tabular-nums ${tone}`}>{value}</p>
+        <FontAwesomeIcon
+          icon={icon}
+          style={{ width: "1rem", height: "1rem" }}
+          className={active ? "text-turf-300" : "text-mist-500"}
+        />
+      </span>
+      <span className={`mt-0.5 block font-mono text-lg tabular-nums ${tone}`}>
+        {value}
+      </span>
     </button>
   );
 }

@@ -32,7 +32,7 @@ const STATUS_STYLES: Record<PaperPick["status"], string> = {
 
 // One glyph per outcome so a card can be read at a glance without parsing the
 // word, and the icons stay monochrome so the status colour still leads.
-const STATUS_ICONS: Record<PaperPick["status"], IconDefinition> = {
+export const STATUS_ICONS: Record<PaperPick["status"], IconDefinition> = {
   pending: faClock,
   won: faCircleCheck,
   lost: faCircleXmark,
