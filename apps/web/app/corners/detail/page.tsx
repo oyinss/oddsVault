@@ -410,18 +410,20 @@ function BetRow({
       <td className="py-1.5 align-top">
         <span className="text-mist-200">{label}</span>
         {record.recent.length > 0 ? (
-          <div className="mt-1 flex flex-wrap gap-1">
+          <ul className="mt-1.5 space-y-1">
             {record.recent.slice(0, 5).map((leg, index) => (
-              <LineChip key={`${leg.side}-${leg.line}-${index}`} leg={leg} />
+              <li key={`${leg.side}-${leg.line}-${index}`}>
+                <LineChip leg={leg} />
+              </li>
             ))}
-          </div>
+          </ul>
         ) : null}
       </td>
-      <td className="py-1.5 text-mist-200">
-        <SideLine side={record.over} />
+      <td className="py-1.5 align-top text-mist-200">
+        <SideLine side={record.over} recent={record.recent} which="over" />
       </td>
-      <td className="py-1.5 text-mist-200">
-        <SideLine side={record.under} />
+      <td className="py-1.5 align-top text-mist-200">
+        <SideLine side={record.under} recent={record.recent} which="under" />
       </td>
       <td className="py-1.5 text-right">
         {money.bets > 0 ? (
@@ -437,37 +439,54 @@ function BetRow({
   );
 }
 
+const LEG_STATUS: Record<string, { label: string; tone: string }> = {
+  won: { label: "won", tone: "text-turf-300" },
+  lost: { label: "lost", tone: "text-loss-300" },
+  void: { label: "void", tone: "text-mist-500" },
+  pending: { label: "open", tone: "text-flag-400" },
+};
+
 function LineChip({ leg }: { leg: CornerBetLeg }) {
-  const status =
-    leg.status === "won"
-      ? "W"
-      : leg.status === "lost"
-        ? "L"
-        : leg.status === "void"
-          ? "V"
-          : leg.status === "pending"
-            ? "P"
-            : "U";
-  const detail = [
-    `${leg.side} ${leg.line ?? "-"}`,
-    leg.odds !== null ? `@ ${leg.odds}` : null,
-    leg.status,
-    leg.date,
-    leg.home && leg.away ? `${leg.home} v ${leg.away}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const status = LEG_STATUS[leg.status] ?? {
+    label: "unsettled",
+    tone: "text-mist-500",
+  };
   return (
-    <span
-      title={detail}
-      className="rounded border border-line px-1.5 py-0.5 font-mono text-[9px] tracking-wide text-mist-400 uppercase"
-    >
-      {leg.side === "under" ? "U" : "O"} {leg.line ?? "-"} · {status}
+    <span className="inline-flex flex-wrap items-baseline gap-1.5 font-mono text-[10px] leading-4">
+      <span className="font-bold tracking-wide text-mist-100 uppercase">
+        {leg.side} {leg.line ?? "-"}
+      </span>
+      {leg.odds !== null ? (
+        <span className="text-mist-300">@ {leg.odds}</span>
+      ) : null}
+      <span className={status.tone}>{status.label}</span>
+      {leg.date ? (
+        <span className="text-mist-500">{shortDate(leg.date)}</span>
+      ) : null}
+      {leg.home && leg.away ? (
+        <span className="text-mist-500">
+          {leg.home} v {leg.away}
+        </span>
+      ) : null}
     </span>
   );
 }
 
-function SideLine({ side }: { side: CornerBetSide }) {
+function shortDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function SideLine({
+  side,
+  recent,
+  which,
+}: {
+  side: CornerBetSide;
+  recent: CornerBetLeg[];
+  which: "over" | "under";
+}) {
   if (side.legs === 0) {
     return <span className="font-mono text-mist-500">-</span>;
   }
@@ -475,11 +494,25 @@ function SideLine({ side }: { side: CornerBetSide }) {
   if (side.void > 0) extra.push(`${side.void} void`);
   if (side.pending > 0) extra.push(`${side.pending} open`);
   if (side.unknown > 0) extra.push(`${side.unknown} unsettled`);
+  // The lines actually played on this side, newest first, so the record reads
+  // as "1W 0L at 9" instead of a bare count with the selection hidden.
+  const lines = Array.from(
+    new Set(
+      recent
+        .filter((leg) => leg.side === which && leg.line !== null)
+        .map((leg) => leg.line as number),
+    ),
+  ).sort((a, b) => b - a);
   return (
-    <span className="font-mono">
+    <span className="block font-mono">
       {side.won}W {side.lost}L
       {extra.length > 0 ? (
         <span className="text-mist-500"> · {extra.join(" · ")}</span>
+      ) : null}
+      {lines.length > 0 ? (
+        <span className="mt-0.5 block text-[10px] text-mist-400">
+          at {lines.slice(0, 4).join(", ")}
+        </span>
       ) : null}
     </span>
   );
