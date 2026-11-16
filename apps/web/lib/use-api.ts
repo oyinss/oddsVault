@@ -11,7 +11,40 @@ export type ApiState<T> = {
   loading: boolean;
   /** Re-run the loader now. Stable identity, safe as an effect dependency. */
   reload: () => void;
+  /**
+   * When the payload on screen came from the browser cache because the live
+   * request failed. Null while the data is fresh from the API.
+   */
+  cachedAt: string | null;
 };
+
+const CACHE_PREFIX = "oddsvault:cache:";
+
+type CachedPayload<T> = { at: string; data: T };
+
+function readCache<T>(key: string): CachedPayload<T> | null {
+  try {
+    const raw = window.localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedPayload<T>;
+    if (!parsed || typeof parsed.at !== "string") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache<T>(key: string, data: T) {
+  if (data === null || data === undefined) return;
+  try {
+    window.localStorage.setItem(
+      CACHE_PREFIX + key,
+      JSON.stringify({ at: new Date().toISOString(), data }),
+    );
+  } catch {
+    // A full or disabled store only costs the fallback, never the page.
+  }
+}
 
 /**
  * Runs a browser-side API read.
@@ -36,13 +69,28 @@ export function useApiData<T>(
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const hasDataRef = useRef(false);
 
   const reload = useCallback(() => setNonce((value) => value + 1), []);
 
   useEffect(() => {
     if (keyRef.current !== key) {
       keyRef.current = key;
+      hasDataRef.current = false;
       setData(null);
+      setCachedAt(null);
+    }
+
+    // A reload during an outage should still show the last board we had,
+    // labelled as cached, instead of an empty error page.
+    if (!hasDataRef.current) {
+      const cached = readCache<T>(key);
+      if (cached) {
+        hasDataRef.current = true;
+        setData(cached.data);
+        setCachedAt(cached.at);
+      }
     }
 
     let cancelled = false;
@@ -52,8 +100,11 @@ export function useApiData<T>(
       .current()
       .then((result) => {
         if (cancelled) return;
+        hasDataRef.current = true;
         setData(result);
+        setCachedAt(null);
         setError(null);
+        writeCache(key, result);
       })
       .catch((cause: unknown) => {
         if (cancelled) return;
@@ -74,5 +125,5 @@ export function useApiData<T>(
     return () => clearInterval(timer);
   }, [options.refreshMs, reload]);
 
-  return { data, error, loading, reload };
+  return { data, error, loading, reload, cachedAt };
 }

@@ -57,7 +57,7 @@ export default function CornersPage() {
   const [sort, setSort] = useState<CornerSort>("remaining");
   const [then, setThen] = useState<CornerSort | "">("");
   const sortParam = then ? `${sort},${then}` : sort;
-  const { data, loading, error, reload } = useApiData<LiveCorners | null>(
+  const { data, loading, error, reload, cachedAt } = useApiData<LiveCorners | null>(
     `live-corners:${line}:${sortParam}`,
     () => getLiveCorners(line, sortParam),
     { refreshMs: 30000 },
@@ -315,7 +315,28 @@ export default function CornersPage() {
           />
         </div>
 
-        {error || (!loading && data === null) ? (
+        {error && cachedAt ? (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-flag-400/30 bg-flag-400/[0.04] px-3 py-2">
+            <FontAwesomeIcon
+              icon={faCircleInfo}
+              className="size-3 text-flag-400"
+            />
+            <p className="flex-1 text-xs leading-relaxed text-mist-300">
+              The API is not answering, so this is the last board we saved in
+              this browser, {formatAge(cachedAt)}. Counts and prices in it are
+              as old as that stamp.
+            </p>
+            <button
+              type="button"
+              onClick={reload}
+              className="rounded-lg border border-flag-400/40 px-2.5 py-1 font-mono text-[10px] tracking-widest text-flag-400 uppercase transition hover:bg-flag-400/10"
+            >
+              retry
+            </button>
+          </div>
+        ) : null}
+
+        {(!cachedAt && error) || (!loading && data === null && !cachedAt) ? (
           <div className="mt-6 rounded-2xl border border-flag-400/30 bg-flag-400/[0.04] p-6">
             <p className="text-sm font-medium text-flag-400">
               Unable to load live corners.

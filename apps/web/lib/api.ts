@@ -789,14 +789,10 @@ export type CornerSort =
 export async function getLiveCorners(
   line: number,
   sort: string = "remaining",
-): Promise<LiveCorners | null> {
-  try {
-    return await getJSON<LiveCorners>(
-      `/api/v1/corners/live?line=${line}&sort=${sort}`,
-    );
-  } catch {
-    return null;
-  }
+): Promise<LiveCorners> {
+  // Errors propagate on purpose: a swallowed failure looks like an empty board
+  // and would replace the cached copy the page falls back to.
+  return getJSON<LiveCorners>(`/api/v1/corners/live?line=${line}&sort=${sort}`);
 }
 
 export type SearchResult = {

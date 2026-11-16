@@ -80,11 +80,12 @@ if [ "$UPDATE_SECRET" = "1" ]; then
     # takes effect after the worker is redeployed.
     echo "Redeploying so the worker picks up the new origin …"
     if ! (
+      flock -w 600 9 || exit 90
       cd apps/web &&
         npm run build &&
         npx wrangler pages deploy out --project-name "$PROJECT" \
           --branch=main --commit-dirty=true
-    ); then
+    ) 9>/tmp/oddsvault-deploy.lock; then
       echo "Redeploy failed. Run 'make pages-deploy' once the error is clear." >&2
     fi
   else
