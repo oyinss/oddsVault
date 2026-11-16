@@ -35,6 +35,7 @@ type cornerContext struct {
 	AwayForm     teamForm          `json:"away_form"`
 	Points       []cornerPoint     `json:"points"`
 	BetHistory   *cornerBetHistory `json:"bet_history,omitempty"`
+	Shape        *matchShape       `json:"shape,omitempty"`
 	CoverageNote string            `json:"coverage_note"`
 }
 
@@ -115,6 +116,12 @@ func (s *Server) handleCornerContext(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out.Points = points
+
+	if shape, err := s.matchShape(r.Context(), id); err == nil {
+		out.Shape = shape
+	} else {
+		s.log.ErrorContext(r.Context(), "match shape", "error", err.Error())
+	}
 
 	// The user's own record in this spot, from the bet journal. It never mixes
 	// accumulator money into a single match: only one-leg slips carry P/L here.

@@ -174,6 +174,10 @@ export function PaperPickForm({
           <FontAwesomeIcon icon={faXmark} className="size-2.5" />
         </button>
       ) : null}
+      <span className="basis-full text-[10px] text-mist-500">
+        Suggested line: over 8.5 (61% base) · under 11.5 (70% base). Line 10 is
+        the median and gives no edge.
+      </span>
       {message ? (
         <span
           className={`text-[10px] ${failed ? "text-flag-400" : "text-turf-300"}`}

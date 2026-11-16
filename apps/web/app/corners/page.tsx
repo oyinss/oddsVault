@@ -41,10 +41,17 @@ import { useCornerAlerts } from "@/features/corners/use-corner-alerts";
 import { useCornerFavorites } from "@/features/corners/use-corner-favorites";
 import { PaperPickForm } from "@/features/corners/paper-pick-form";
 
-const LINE_OPTIONS = [8.5, 9.5, 10, 10.5, 11.5, 12.5];
+const LINE_OPTIONS: { value: number; hint: string }[] = [
+  { value: 8.5, hint: "overs" },
+  { value: 9.5, hint: "overs" },
+  { value: 10, hint: "median" },
+  { value: 10.5, hint: "" },
+  { value: 11.5, hint: "unders" },
+  { value: 12.5, hint: "unders" },
+];
 
 export default function CornersPage() {
-  const [line, setLine] = useState(10);
+  const [line, setLine] = useState(9.5);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<CornerSort>("remaining");
   const [then, setThen] = useState<CornerSort | "">("");
@@ -126,8 +133,8 @@ export default function CornersPage() {
                 className="bg-transparent font-mono text-sm text-mist-100 outline-none"
               >
                 {LINE_OPTIONS.map((option) => (
-                  <option key={option} value={option} className="bg-ink-900">
-                    {option}
+                  <option key={option.value} value={option.value} className="bg-ink-900">
+                    {option.value} {option.hint ? `· ${option.hint}` : ""}
                   </option>
                 ))}
               </select>
@@ -450,6 +457,58 @@ export default function CornersPage() {
             </ul>
           </section>
         )}
+
+        <section className="mt-8 rounded-2xl border border-line bg-ink-900/50 p-5">
+          <h2 className="text-sm font-semibold text-mist-100">Line guide</h2>
+          <p className="mt-1 text-xs text-mist-500">
+            Base rates from 338 finished matches with final corner counts. This
+            is the neutral reference, before any team or live read.
+          </p>
+          <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+            {[
+              { line: 8.5, over: 61 },
+              { line: 9.5, over: 48 },
+              { line: 10.5, over: 38 },
+              { line: 11.5, over: 30 },
+              { line: 12.5, over: 22 },
+              { line: 13.5, over: 16 },
+            ].map((row) => (
+              <div
+                key={row.line}
+                className={`rounded-lg border px-2 py-1.5 ${
+                  row.line === line
+                    ? "border-turf-400/50 bg-turf-500/10"
+                    : "border-line bg-ink-950/40"
+                }`}
+              >
+                <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+                  {row.line}
+                </p>
+                <p className="font-mono text-sm tabular-nums text-mist-100">
+                  {row.over}%
+                </p>
+                <p className="font-mono text-[9px] text-mist-500 uppercase">
+                  over
+                </p>
+              </div>
+            ))}
+          </div>
+          <ul className="mt-3 space-y-1 text-[11px] leading-relaxed text-mist-300">
+            <li>
+              <strong className="text-mist-100">Overs</strong> are priced sensibly
+              at 8.5 or 9.5; over 10.5 lands only 38% of the time.
+            </li>
+            <li>
+              <strong className="text-mist-100">Unders</strong> belong at 11.5 or
+              12.5. Line 10 is the median, so it carries no edge either way.
+            </li>
+            <li>
+              <strong className="text-mist-100">At 60 minutes:</strong> if the
+              favourite leads, unders are the side (21% of those matches went over
+              10.5); if it is level or behind, overs (62% went over 9.5).
+            </li>
+          </ul>
+        </section>
 
         <section className="mt-8 rounded-2xl border border-line bg-ink-900/50 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-mist-100">

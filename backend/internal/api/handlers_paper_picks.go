@@ -62,6 +62,8 @@ type paperPickResponse struct {
 	Line            float64           `json:"line"`
 	Odds            float64           `json:"odds"`
 	Minute          *int              `json:"minute"`
+	HomeScore       *int              `json:"home_score_at_save"`
+	AwayScore       *int              `json:"away_score_at_save"`
 	TotalCorners    *int              `json:"total_corners"`
 	HomeCorners     *int              `json:"home_corners"`
 	AwayCorners     *int              `json:"away_corners"`
@@ -90,7 +92,8 @@ func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 		HomeTeamID: p.HomeTeamID, AwayTeamID: p.AwayTeamID, CurrentStatus: p.CurrentStatus,
 		Provider: p.Provider, ProviderSlug: p.ProviderSlug,
 		Side: p.Side, Line: p.Line, Odds: p.Odds,
-		Minute: p.Minute, TotalCorners: p.TotalCorners, HomeCorners: p.HomeCorners, AwayCorners: p.AwayCorners,
+		Minute: p.Minute, HomeScore: p.HomeScore, AwayScore: p.AwayScore,
+		TotalCorners: p.TotalCorners, HomeCorners: p.HomeCorners, AwayCorners: p.AwayCorners,
 		PacePerMinute: p.PacePerMinute, ProjectedTotal: p.ProjectedTotal,
 		ProjectionLow: p.ProjectionLow, ProjectionHigh: p.ProjectionHigh,
 		Needed: p.Needed, NeededPerMinute: p.NeededPerMinute,
@@ -185,6 +188,8 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 		Line:            body.Line,
 		Odds:            body.Odds,
 		Minute:          event.Minute,
+		HomeScore:       event.HomeScore,
+		AwayScore:       event.AwayScore,
 		HomeCorners:     event.HomeCorners,
 		AwayCorners:     event.AwayCorners,
 		TotalCorners:    event.TotalCorners,

@@ -25,6 +25,8 @@ type PaperPick struct {
 	Line            float64
 	Odds            float64
 	Minute          *int
+	HomeScore       *int
+	AwayScore       *int
 	TotalCorners    *int
 	HomeCorners     *int
 	AwayCorners     *int
@@ -58,6 +60,8 @@ type PaperPickInput struct {
 	Line            float64
 	Odds            float64
 	Minute          *int
+	HomeScore       *int
+	AwayScore       *int
 	HomeCorners     *int
 	AwayCorners     *int
 	TotalCorners    *int
@@ -80,16 +84,18 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 		INSERT INTO paper_picks (
 			event_id, competition_id, home_team_id, away_team_id,
 			provider_slug, side, line, odds,
-			minute, home_corners, away_corners, total_corners,
+			minute, home_score_at_save, away_score_at_save,
+			home_corners, away_corners, total_corners,
 			pace_per_minute, projected_total, projection_low, projection_high,
 			needed, needed_per_minute, model_risk, early_pace,
 			event_status_at_save, data_cutoff_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
 		RETURNING id, status, created_at`,
 		in.EventID, in.CompetitionID, in.HomeTeamID, in.AwayTeamID,
 		in.ProviderSlug, in.Side, in.Line, in.Odds,
-		in.Minute, in.HomeCorners, in.AwayCorners, in.TotalCorners,
+		in.Minute, in.HomeScore, in.AwayScore,
+		in.HomeCorners, in.AwayCorners, in.TotalCorners,
 		in.PacePerMinute, in.ProjectedTotal, in.ProjectionLow, in.ProjectionHigh,
 		in.Needed, in.NeededPerMinute, in.ModelRisk, in.EarlyPace,
 		in.EventStatus, in.DataCutoffAt).Scan(&out.ID, &out.Status, &out.CreatedAt)
@@ -102,6 +108,8 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 	out.Line = in.Line
 	out.Odds = in.Odds
 	out.Minute = in.Minute
+	out.HomeScore = in.HomeScore
+	out.AwayScore = in.AwayScore
 	out.HomeCorners = in.HomeCorners
 	out.AwayCorners = in.AwayCorners
 	out.TotalCorners = in.TotalCorners
@@ -123,7 +131,8 @@ const paperPickSelect = `
 	       e.status, COALESCE(e.start_time, e.start_date::timestamptz),
 	       b.name, p.provider_slug,
 	       p.side, p.line, p.odds,
-	       p.minute, p.total_corners, p.home_corners, p.away_corners,
+	       p.minute, p.home_score_at_save, p.away_score_at_save,
+	       p.total_corners, p.home_corners, p.away_corners,
 	       p.pace_per_minute, p.projected_total, p.projection_low, p.projection_high,
 	       p.needed, p.needed_per_minute, p.model_risk, p.early_pace,
 	       p.event_status_at_save, p.status, p.final_total, p.settlement_rule,
@@ -156,7 +165,8 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 			&item.HomeTeamID, &item.AwayTeamID, &item.CurrentStatus, &item.Kickoff,
 			&item.Provider, &item.ProviderSlug,
 			&item.Side, &item.Line, &item.Odds,
-			&item.Minute, &item.TotalCorners, &item.HomeCorners, &item.AwayCorners,
+			&item.Minute, &item.HomeScore, &item.AwayScore,
+			&item.TotalCorners, &item.HomeCorners, &item.AwayCorners,
 			&item.PacePerMinute, &item.ProjectedTotal, &item.ProjectionLow, &item.ProjectionHigh,
 			&item.Needed, &item.NeededPerMinute, &item.ModelRisk, &item.EarlyPace,
 			&item.EventStatus, &item.Status, &item.FinalTotal, &item.SettlementRule,

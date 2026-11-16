@@ -686,6 +686,33 @@ export type CornerBetHistory = {
   note: string;
 };
 
+export type MatchShapeGoal = {
+  minute: number;
+  home: boolean;
+  player: string;
+  own_goal: boolean;
+};
+
+export type MatchShapeTeam = {
+  shots: number | null;
+  shots_on_target: number | null;
+  big_chances: number | null;
+  passes: number | null;
+  xg: number | null;
+  possession: number | null;
+};
+
+export type MatchShape = {
+  goals: MatchShapeGoal[];
+  home: MatchShapeTeam;
+  away: MatchShapeTeam;
+  favourite: string | null;
+  favourite_odds: number | null;
+  state_at_60: string | null;
+  home_score: number | null;
+  away_score: number | null;
+};
+
 export type CornerContext = {
   event: EventDetail["event"];
   line: number;
@@ -694,6 +721,7 @@ export type CornerContext = {
   away_form: CornerTeamForm;
   points: Array<{ minute: number | null; total_corners: number; captured_at: string }>;
   bet_history?: CornerBetHistory | null;
+  shape?: MatchShape | null;
   coverage_note: string;
 };
 
@@ -1090,6 +1118,8 @@ export type PaperPick = {
   line: number;
   odds: number;
   minute: number | null;
+  home_score_at_save: number | null;
+  away_score_at_save: number | null;
   total_corners: number | null;
   home_corners: number | null;
   away_corners: number | null;

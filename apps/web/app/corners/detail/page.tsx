@@ -166,6 +166,89 @@ function DetailView() {
           <Timeline points={data.points} line={data.line} />
         </section>
 
+        {data.shape ? (
+          <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">
+            <h2 className="text-sm font-semibold text-mist-100">Match shape</h2>
+            <p className="mt-1 text-xs text-mist-500">
+              Goals, shooting and the favourite's position at 60 minutes: the
+              pressure behind the corner count, not just the count.
+            </p>
+
+            {data.shape.goals.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {data.shape.goals.map((goal, index) => (
+                  <span
+                    key={`${goal.minute}-${index}`}
+                    title={`${goal.player || "goal"}${goal.own_goal ? " (own goal)" : ""}`}
+                    className={`rounded border px-2 py-1 font-mono text-[10px] ${
+                      goal.home
+                        ? "border-turf-400/30 text-turf-200"
+                        : "border-flag-400/30 text-flag-200"
+                    }`}
+                  >
+                    {goal.minute}'{" "}
+                    {goal.home ? data.event.home.name : data.event.away.name}
+                    {goal.player ? ` · ${goal.player}` : ""}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-mist-500">No goals in this match.</p>
+            )}
+
+            <table className="mt-4 w-full text-left text-[11px]">
+              <thead className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+                <tr>
+                  <th className="py-1 font-normal">Stat</th>
+                  <th className="py-1 text-right font-normal">{data.event.home.name}</th>
+                  <th className="py-1 text-right font-normal">{data.event.away.name}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {([
+                  ["Shots", data.shape.home.shots, data.shape.away.shots],
+                  ["On target", data.shape.home.shots_on_target, data.shape.away.shots_on_target],
+                  ["Big chances", data.shape.home.big_chances, data.shape.away.big_chances],
+                  ["xG", data.shape.home.xg, data.shape.away.xg],
+                  ["Possession", data.shape.home.possession, data.shape.away.possession],
+                ] as const).map(([label, home, away]) => (
+                  <tr key={label}>
+                    <td className="py-1 text-mist-400">{label}</td>
+                    <td className="py-1 text-right font-mono text-mist-100">{home ?? "-"}</td>
+                    <td className="py-1 text-right font-mono text-mist-200">{away ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {data.shape.favourite ? (
+              <p className="mt-3 rounded-lg border border-line bg-ink-950/40 p-2.5 text-[11px] leading-relaxed text-mist-300">
+                Closing favourite:{" "}
+                <strong className="text-mist-100">
+                  {data.shape.favourite === "home"
+                    ? data.event.home.name
+                    : data.shape.favourite === "away"
+                      ? data.event.away.name
+                      : "the draw"}
+                </strong>
+                {data.shape.favourite_odds
+                  ? ` at ${data.shape.favourite_odds.toFixed(2)}`
+                  : ""}
+                {data.shape.state_at_60
+                  ? ` · ${data.shape.state_at_60} at 60 minutes`
+                  : ""}
+                .{" "}
+                {data.shape.state_at_60 === "leading"
+                  ? "A favourite that already leads tends to sit back, and those matches average fewer corners."
+                  : data.shape.state_at_60 === "level" ||
+                      data.shape.state_at_60 === "behind"
+                    ? "A favourite that is not ahead keeps pushing, and those matches average more corners."
+                    : ""}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
         <section className="mt-6 grid gap-4 md:grid-cols-2">
           <FormCard form={data.home_form} />
           <FormCard form={data.away_form} />
