@@ -36,6 +36,7 @@ func main() {
 	allLive := flag.Bool("alllive", false, "import every live soccer fixture once and exit")
 	fotmob := flag.Bool("fotmob", false, "refresh live corners from FotMob once and exit")
 	cornerForm := flag.Bool("corner-form", false, "backfill recent corner history for board teams once and exit")
+	attack := flag.Bool("attack", false, "backfill goal minutes and attacking stats once and exit")
 	onexbetFlag := flag.Bool("onexbet", false, "import 1xBet live football once and exit")
 	logos := flag.Bool("logos", false, "resolve missing team badges once and exit")
 	flag.Parse()
@@ -44,6 +45,8 @@ func main() {
 	switch {
 	case *cornerForm:
 		err = runCornerFormOnce()
+	case *attack:
+		err = runAttackOnce()
 	case *logos:
 		err = runLogosOnce()
 	case *onexbetFlag:
@@ -244,6 +247,35 @@ func runCornerFormOnce() error {
 	return football.RunCornerFormBackfill(ctx)
 }
 
+// runAttackOnce backfills goal timelines and attacking stats.
+func runAttackOnce() error {
+	cfg, err := config.Load("oddsvault-sports-sync")
+	if err != nil {
+		return err
+	}
+	logger := logging.New(cfg.Env, cfg.LogLevel)
+	slog.SetDefault(logger)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.JobTimeout)
+	defer cancel()
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	if err := database.Ping(ctx, pool, cfg.ConnectTimeout); err != nil {
+		return fmt.Errorf("database unreachable: %w", err)
+	}
+
+	football := syncjob.NewFootball(
+		providers.NewClient(pool, logger, "OddsVault/0.1 (research)"),
+		store.NewImporter(pool, logger),
+		logger,
+	)
+	return football.RunAttackBackfill(ctx)
+}
+
 // runAllLiveOnce imports the live fixtures found on ESPN's all-soccer board.
 func runAllLiveOnce() error {
 	cfg, err := config.Load("oddsvault-sports-sync")
@@ -427,6 +459,11 @@ func buildJobs(_ context.Context, pool *pgxpool.Pool, log *slog.Logger, cfg conf
 			Name:  "sync_team_crests",
 			Every: 24 * time.Hour,
 			Run:   football.RunCrests,
+		},
+		{
+			Name:  "backfill_attack_stats",
+			Every: 30 * time.Minute,
+			Run:   football.RunAttackBackfill,
 		},
 		{
 			Name:  "backfill_corner_form",

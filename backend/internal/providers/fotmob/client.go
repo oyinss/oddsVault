@@ -309,3 +309,142 @@ func (c *Client) SearchTeams(ctx context.Context, name string) ([]TeamSuggestion
 func TeamLogoURL(id int64) string {
 	return fmt.Sprintf("https://images.fotmob.com/image_resources/logo/teamlogo/%d_small.png", id)
 }
+
+// GoalEvent is one goal with the score before it, so a match can be replayed.
+type GoalEvent struct {
+	Minute    int
+	Home      bool
+	HomeScore *int
+	AwayScore *int
+	Player    string
+	OwnGoal   bool
+	Shootout  bool
+}
+
+// AttackStats is the pressure behind the corners. Nils mean the provider did
+// not publish the stat.
+type AttackStats struct {
+	Shots         *int
+	ShotsOnTarget *int
+	BigChances    *int
+	Passes        *int
+	XG            *float64
+	Possession    *float64
+}
+
+// Extra bundles the goal timeline and both teams' attacking stats.
+type Extra struct {
+	Goals []GoalEvent
+	Home  AttackStats
+	Away  AttackStats
+}
+
+type extraPayload struct {
+	Content struct {
+		MatchFacts struct {
+			Events struct {
+				Events []struct {
+					Type      string `json:"type"`
+					Time      int    `json:"time"`
+					IsHome    *bool  `json:"isHome"`
+					HomeScore *int   `json:"homeScore"`
+					AwayScore *int   `json:"awayScore"`
+					OwnGoal   *bool  `json:"ownGoal"`
+					Shootout  bool   `json:"isPenaltyShootoutEvent"`
+					Player    struct {
+						Name string `json:"name"`
+					} `json:"player"`
+				} `json:"events"`
+			} `json:"events"`
+		} `json:"matchFacts"`
+		Stats struct {
+			Periods map[string]statPeriod `json:"Periods"`
+		} `json:"stats"`
+	} `json:"content"`
+}
+
+// FetchExtra reads goals and attacking stats for one finished match.
+func (c *Client) FetchExtra(ctx context.Context, matchID int64) (Extra, error) {
+	res, err := c.http.Get(ctx, providers.Request{
+		Provider: "fotmob",
+		CacheKey: fmt.Sprintf("match/%d", matchID),
+		URL:      fmt.Sprintf("%s/matchDetails?matchId=%d", baseURL, matchID),
+		MaxAge:   45 * time.Second,
+		Headers:  map[string]string{"Accept": "application/json"},
+	})
+	if err != nil {
+		return Extra{}, err
+	}
+
+	var doc extraPayload
+	if err := json.Unmarshal(res.Body, &doc); err != nil {
+		return Extra{}, fmt.Errorf("fotmob: decode extras %d: %w", matchID, err)
+	}
+
+	var out Extra
+	for _, event := range doc.Content.MatchFacts.Events.Events {
+		if event.Type != "Goal" || event.IsHome == nil || event.Shootout {
+			continue
+		}
+		if event.Time <= 0 || event.Time > 130 {
+			continue
+		}
+		out.Goals = append(out.Goals, GoalEvent{
+			Minute:    event.Time,
+			Home:      *event.IsHome,
+			HomeScore: event.HomeScore,
+			AwayScore: event.AwayScore,
+			Player:    event.Player.Name,
+			OwnGoal:   event.OwnGoal != nil && *event.OwnGoal,
+			Shootout:  event.Shootout,
+		})
+	}
+
+	all, ok := doc.Content.Stats.Periods["All"]
+	if !ok {
+		return out, nil
+	}
+	for _, group := range all.Stats {
+		for _, stat := range group.Stats {
+			if len(stat.Stats) < 2 {
+				continue
+			}
+			switch strings.ToLower(stat.Title) {
+			case "total shots":
+				out.Home.Shots = toInt(stat.Stats[0])
+				out.Away.Shots = toInt(stat.Stats[1])
+			case "shots on target":
+				out.Home.ShotsOnTarget = toInt(stat.Stats[0])
+				out.Away.ShotsOnTarget = toInt(stat.Stats[1])
+			case "big chances":
+				out.Home.BigChances = toInt(stat.Stats[0])
+				out.Away.BigChances = toInt(stat.Stats[1])
+			case "passes":
+				out.Home.Passes = toInt(stat.Stats[0])
+				out.Away.Passes = toInt(stat.Stats[1])
+			case "expected goals (xg)":
+				out.Home.XG = toFloat(stat.Stats[0])
+				out.Away.XG = toFloat(stat.Stats[1])
+			case "possession":
+				out.Home.Possession = toFloat(stat.Stats[0])
+				out.Away.Possession = toFloat(stat.Stats[1])
+			}
+		}
+	}
+	return out, nil
+}
+
+func toFloat(value any) *float64 {
+	switch typed := value.(type) {
+	case float64:
+		return &typed
+	case string:
+		parsed, err := strconv.ParseFloat(strings.TrimSpace(typed), 64)
+		if err != nil {
+			return nil
+		}
+		return &parsed
+	default:
+		return nil
+	}
+}
