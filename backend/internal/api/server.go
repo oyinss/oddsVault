@@ -84,6 +84,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/paper-picks", s.handlePaperPicks)
 	mux.HandleFunc("GET /api/v1/paper-picks/providers", s.handlePaperPickProviders)
 	mux.HandleFunc("POST /api/v1/paper-picks", s.handleCreatePaperPick)
+	mux.HandleFunc("PATCH /api/v1/paper-picks/{id}", s.handleUpdatePaperPick)
 	mux.HandleFunc("DELETE /api/v1/paper-picks/{id}", s.handleDeletePaperPick)
 	mux.HandleFunc("GET /api/v1/events/{id}/movement", s.handleEventMovement)
 	mux.HandleFunc("GET /api/v1/events/{id}/prices", s.handleEventPrices)

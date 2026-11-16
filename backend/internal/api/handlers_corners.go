@@ -58,10 +58,12 @@ type liveCornerMatch struct {
 // paperPickBadge marks a live row that already has a paper pick recorded, so the
 // board shows the record without opening the match.
 type paperPickBadge struct {
-	Side     string  `json:"side"`
-	Line     float64 `json:"line"`
-	Odds     float64 `json:"odds"`
-	Provider string  `json:"provider"`
+	ID           int64   `json:"id"`
+	Side         string  `json:"side"`
+	Line         float64 `json:"line"`
+	Odds         float64 `json:"odds"`
+	Provider     string  `json:"provider"`
+	ProviderSlug string  `json:"provider_slug"`
 }
 
 // minutePattern only accepts a clock written with a minute mark, so a

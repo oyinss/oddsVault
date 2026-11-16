@@ -554,10 +554,12 @@ export type LiveCornerMatch = {
   captured_at: string | null;
   pace: "above" | "below" | "on_pace" | "unknown";
   paper_picks?: Array<{
+    id: number;
     side: "over" | "under";
     line: number;
     odds: number;
     provider: string;
+    provider_slug: string;
   }> | null;
   bet_history?: {
     legs: number;
@@ -1215,6 +1217,32 @@ export async function createPaperPick(input: {
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(detail.slice(0, 160) || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as PaperPick;
+}
+
+// Correct a recording that has not settled. The captured board context is not
+// editable: only the side, line, price and bookmaker the user typed.
+export async function updatePaperPick(
+  id: number,
+  input: { provider: string; side: "over" | "under"; line: number; odds: number },
+): Promise<PaperPick> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/paper-picks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    let message = `HTTP ${res.status}`;
+    try {
+      const parsed = JSON.parse(detail) as { error?: { message?: string } };
+      if (parsed.error?.message) message = parsed.error.message;
+    } catch {
+      if (detail) message = detail.slice(0, 160);
+    }
+    throw new Error(message);
   }
   return (await res.json()) as PaperPick;
 }

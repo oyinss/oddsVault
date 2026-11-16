@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"net/http"
 	"strconv"
@@ -258,6 +259,66 @@ func (s *Server) handlePaperPicks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleUpdatePaperPick corrects a recording that has not settled. The board
+// context stays frozen; only the side, line, price and bookmaker change.
+func (s *Server) handleUpdatePaperPick(w http.ResponseWriter, r *http.Request) {
+	if s.pool == nil {
+		writeError(w, r, http.StatusServiceUnavailable, "not_ready", "database is not configured")
+		return
+	}
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, r, http.StatusBadRequest, "invalid_id", "pick id must be a positive integer")
+		return
+	}
+
+	var body paperPickRequest
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+		writeError(w, r, http.StatusBadRequest, "invalid_body", "expected a JSON body")
+		return
+	}
+	if body.Provider == "" {
+		writeError(w, r, http.StatusBadRequest, "invalid_provider", "choose the bookmaker that offered the price")
+		return
+	}
+	var providerName string
+	if err := s.pool.QueryRow(r.Context(),
+		`SELECT name FROM bookmakers WHERE slug = $1 AND active`, body.Provider).Scan(&providerName); err != nil {
+		writeError(w, r, http.StatusBadRequest, "invalid_provider", "unknown bookmaker")
+		return
+	}
+	if body.Side != "over" && body.Side != "under" {
+		writeError(w, r, http.StatusBadRequest, "invalid_side", "side must be over or under")
+		return
+	}
+	if body.Line <= 0 || body.Line > 40 {
+		writeError(w, r, http.StatusBadRequest, "invalid_line", "line must be between 0 and 40")
+		return
+	}
+	if body.Odds <= 1 || body.Odds > 1000 {
+		writeError(w, r, http.StatusBadRequest, "invalid_odds", "odds must be greater than 1")
+		return
+	}
+
+	importer := store.NewImporter(s.pool, s.log)
+	pick, err := importer.UpdatePaperPick(r.Context(), id, body.Provider, body.Side, body.Line, body.Odds)
+	if err != nil {
+		if errors.Is(err, store.ErrPaperPickSettled) {
+			writeError(w, r, http.StatusConflict, "already_settled",
+				"this pick already settled, so its side and line are part of the record")
+			return
+		}
+		s.log.ErrorContext(r.Context(), "update paper pick", "error", err.Error())
+		writeError(w, r, http.StatusInternalServerError, "update_failed", "could not update the pick")
+		return
+	}
+	pick.Provider = providerName
+
+	items := []paperPickResponse{toPaperPickResponse(pick)}
+	s.attachPaperPickCurrent(r.Context(), items)
+	writeJSON(w, http.StatusOK, items[0])
+}
+
 // handleDeletePaperPick removes a mistyped recording.
 func (s *Server) handleDeletePaperPick(w http.ResponseWriter, r *http.Request) {
 	if s.pool == nil {
@@ -321,7 +382,7 @@ func (s *Server) attachPaperPicks(ctx context.Context, matches []liveCornerMatch
 		return
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT p.event_id, p.side, p.line, p.odds, b.name
+		SELECT p.event_id, p.id, p.side, p.line, p.odds, b.name, b.slug
 		FROM paper_picks p
 		JOIN bookmakers b ON b.slug = p.provider_slug
 		WHERE p.status = 'pending'`)
@@ -335,7 +396,8 @@ func (s *Server) attachPaperPicks(ctx context.Context, matches []liveCornerMatch
 	for rows.Next() {
 		var eventID int64
 		var badge paperPickBadge
-		if err := rows.Scan(&eventID, &badge.Side, &badge.Line, &badge.Odds, &badge.Provider); err != nil {
+		if err := rows.Scan(&eventID, &badge.ID, &badge.Side, &badge.Line, &badge.Odds,
+			&badge.Provider, &badge.ProviderSlug); err != nil {
 			s.log.ErrorContext(ctx, "scan board paper pick", "error", err.Error())
 			return
 		}

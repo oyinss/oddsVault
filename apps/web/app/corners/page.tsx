@@ -470,6 +470,7 @@ export default function CornersPage() {
                   )
                 }
                 onCloseRecord={() => setRecordingId(null)}
+                onPickSaved={reload}
               />
             ))}
           </div>
@@ -601,6 +602,7 @@ function MatchCard({
   recording,
   onOpenRecord,
   onCloseRecord,
+  onPickSaved,
 }: {
   match: LiveCornerMatch;
   line: number;
@@ -618,7 +620,11 @@ function MatchCard({
   recording: boolean;
   onOpenRecord: () => void;
   onCloseRecord: () => void;
+  onPickSaved: () => void;
 }) {
+  const [editingPickId, setEditingPickId] = useState<number | null>(null);
+  const editingPick =
+    match.paper_picks?.find((pick) => pick.id === editingPickId) ?? null;
   const tone =
     match.pace === "above"
       ? "border-turf-400/40 bg-turf-500/[0.06]"
@@ -673,7 +679,10 @@ function MatchCard({
           </button>
           <button
             type="button"
-            onClick={onOpenRecord}
+            onClick={() => {
+              setEditingPickId(null);
+              onOpenRecord();
+            }}
             aria-pressed={recording}
             title="Record a paper pick: side, line and odds, settled at full time"
             className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[9px] tracking-widest uppercase transition ${
@@ -753,12 +762,31 @@ function MatchCard({
         </div>
       )}
 
-      {recording && (
+      {(recording || editingPick) && (
         <div className="border-b border-line bg-ink-950/40 px-4 py-2">
           <PaperPickForm
             eventId={match.event_id}
             defaultLine={line}
-            onCancel={onCloseRecord}
+            editing={
+              editingPick
+                ? {
+                    id: editingPick.id,
+                    provider_slug: editingPick.provider_slug,
+                    side: editingPick.side,
+                    line: editingPick.line,
+                    odds: editingPick.odds,
+                  }
+                : null
+            }
+            onCancel={() => {
+              setEditingPickId(null);
+              onCloseRecord();
+            }}
+            onSaved={() => {
+              // Close the editor so the chip repaints with the saved values.
+              setEditingPickId(null);
+              onPickSaved();
+            }}
           />
         </div>
       )}
@@ -897,15 +925,27 @@ function MatchCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
-          {match.paper_picks?.map((pick, index) => (
-            <span
-              key={`${pick.side}-${pick.line}-${index}`}
-              title={`${pick.provider} ${pick.side} ${pick.line} at ${pick.odds}. Settles on the final corner count.`}
-              className="inline-flex items-center gap-1.5 rounded border border-turf-400/40 bg-turf-500/10 px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest text-turf-200 uppercase"
+          {match.paper_picks?.map((pick) => (
+            <button
+              key={pick.id}
+              type="button"
+              onClick={() => {
+                onCloseRecord();
+                setEditingPickId((current) =>
+                  current === pick.id ? null : pick.id,
+                );
+              }}
+              aria-pressed={editingPickId === pick.id}
+              title={`${pick.provider} ${pick.side} ${pick.line} at ${pick.odds}. Click to edit this recording.`}
+              className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest uppercase transition ${
+                editingPickId === pick.id
+                  ? "border-turf-400/70 bg-turf-500/20 text-turf-100"
+                  : "border-turf-400/40 bg-turf-500/10 text-turf-200 hover:border-turf-400/70"
+              }`}
             >
               <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
               {pick.side === "under" ? "U" : "O"} {pick.line}
-            </span>
+            </button>
           ))}
           {match.bet_history ? (
             <Link

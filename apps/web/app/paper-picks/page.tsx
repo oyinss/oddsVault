@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { LoadingNote } from "@/components/loading-note";
 import { SiteHeader } from "@/components/site-header";
 import { PaperPickCard } from "@/features/corners/paper-pick-card";
+import { PaperPickForm } from "@/features/corners/paper-pick-form";
 import {
   deletePaperPick,
   getPaperPicks,
@@ -59,6 +60,8 @@ export default function PaperPicksPage() {
     if (pendingFirst !== 0) return pendingFirst;
     return Date.parse(b.created_at) - Date.parse(a.created_at);
   });
+
+  const [editing, setEditing] = useState<PaperPick | null>(null);
 
   async function remove(id: number) {
     await deletePaperPick(id);
@@ -193,11 +196,33 @@ export default function PaperPicksPage() {
         ) : (
           <div className="mt-4 space-y-3">
             {visible.map((pick) => (
-              <PaperPickCard
-                key={pick.id}
-                pick={pick}
-                onDelete={(id) => void remove(id)}
-              />
+              <div key={pick.id}>
+                {editing?.id === pick.id ? (
+                  <div className="mb-1 rounded-xl border border-turf-400/40 bg-ink-950/40 px-3 py-2">
+                    <PaperPickForm
+                      eventId={pick.event_id}
+                      defaultLine={pick.line}
+                      editing={{
+                        id: pick.id,
+                        provider_slug: pick.provider_slug,
+                        side: pick.side,
+                        line: pick.line,
+                        odds: pick.odds,
+                      }}
+                      onCancel={() => setEditing(null)}
+                      onSaved={() => {
+                        setEditing(null);
+                        reload();
+                      }}
+                    />
+                  </div>
+                ) : null}
+                <PaperPickCard
+                  pick={pick}
+                  onEdit={(target) => setEditing(target)}
+                  onDelete={(id) => void remove(id)}
+                />
+              </div>
             ))}
           </div>
         )}

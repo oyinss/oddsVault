@@ -7,6 +7,7 @@ import {
   faClock,
   faFilePen,
   faGaugeHigh,
+  faPenToSquare,
   faTrashCan,
   faTriangleExclamation,
   faTrophy,
@@ -30,9 +31,11 @@ const STATUS_STYLES: Record<PaperPick["status"], string> = {
 export function PaperPickCard({
   pick,
   onDelete,
+  onEdit,
 }: {
   pick: PaperPick;
   onDelete?: (id: number) => void;
+  onEdit?: (pick: PaperPick) => void;
 }) {
   const homeCrest = absoluteAsset(`/api/v1/teams/${pick.home_team_id}/crest`);
   const awayCrest = absoluteAsset(`/api/v1/teams/${pick.away_team_id}/crest`);
@@ -205,6 +208,16 @@ export function PaperPickCard({
           >
             details
           </Link>
+          {onEdit && !settled ? (
+            <button
+              type="button"
+              onClick={() => onEdit(pick)}
+              title="Edit the side, line, price or bookmaker"
+              className="grid size-6 place-items-center rounded border border-line text-mist-500 transition hover:border-turf-400/40 hover:text-turf-200"
+            >
+              <FontAwesomeIcon icon={faPenToSquare} className="size-2.5" />
+            </button>
+          ) : null}
           {onDelete ? (
             <button
               type="button"

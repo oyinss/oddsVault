@@ -7,9 +7,16 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   createPaperPick,
   getPaperPickProviders,
+  updatePaperPick,
   type BookmakerOption,
   type PaperPick,
 } from "@/lib/api";
+
+// Corner lines the books actually hang. A free number box invited typos like
+// 9.4, which settlement would then grade against a line that never existed.
+const LINE_OPTIONS = Array.from({ length: 24 }, (_, index) =>
+  (5.5 + index * 0.5).toFixed(1),
+);
 
 // PaperPickForm records a corner selection by hand. No stake is involved: the
 // API freezes the board context with the pick so it can be scored and used as
@@ -17,19 +24,31 @@ import {
 export function PaperPickForm({
   eventId,
   defaultLine,
+  editing,
   onSaved,
   onCancel,
 }: {
   eventId: number;
   defaultLine: number;
+  editing?: {
+    id: number;
+    provider_slug: string;
+    side: "over" | "under";
+    line: number;
+    odds: number;
+  } | null;
   onSaved?: (pick: PaperPick) => void;
   onCancel?: () => void;
 }) {
   const [providers, setProviders] = useState<BookmakerOption[]>([]);
-  const [provider, setProvider] = useState("1xbet");
-  const [side, setSide] = useState<"over" | "under">("under");
-  const [line, setLine] = useState(String(defaultLine));
-  const [odds, setOdds] = useState("");
+  const [provider, setProvider] = useState(editing?.provider_slug ?? "1xbet");
+  const [side, setSide] = useState<"over" | "under">(editing?.side ?? "under");
+  const [line, setLine] = useState(
+    (editing?.line ?? defaultLine).toFixed(1),
+  );
+  const [odds, setOdds] = useState(
+    editing?.odds != null ? String(editing.odds) : "",
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -70,15 +89,22 @@ export function PaperPickForm({
     setFailed(false);
     setMessage(null);
     try {
-      const pick = await createPaperPick({
-        eventId,
-        provider,
-        side,
-        line: lineValue,
-        odds: oddsValue,
-      });
+      const pick = editing
+        ? await updatePaperPick(editing.id, {
+            provider,
+            side,
+            line: lineValue,
+            odds: oddsValue,
+          })
+        : await createPaperPick({
+            eventId,
+            provider,
+            side,
+            line: lineValue,
+            odds: oddsValue,
+          });
       setMessage(
-        `Recorded ${pick.side} ${pick.line} at ${pick.odds.toFixed(2)} on ${pick.provider}.`,
+        `${editing ? "Updated" : "Recorded"} ${pick.side} ${pick.line} at ${pick.odds.toFixed(2)} on ${pick.provider}.`,
       );
       onSaved?.(pick);
     } catch (error) {
@@ -128,16 +154,21 @@ export function PaperPickForm({
       </div>
       <label className="flex items-center gap-1.5 font-mono text-[10px] text-mist-500 uppercase">
         line
-        <input
-          type="number"
-          step="0.5"
-          min="0.5"
-          max="40"
+        <select
           value={line}
           onChange={(event) => setLine(event.target.value)}
           aria-label="Corner line"
-          className="w-16 rounded-md border border-line bg-ink-900 px-2 py-1 font-mono text-sm text-mist-100 outline-none focus:border-turf-400/50"
-        />
+          className="rounded-md border border-line bg-ink-900 px-2 py-1 font-mono text-xs text-mist-100 outline-none focus:border-turf-400/50"
+        >
+          {!LINE_OPTIONS.includes(line) ? (
+            <option value={line}>{line}</option>
+          ) : null}
+          {LINE_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="flex items-center gap-1.5 font-mono text-[10px] text-mist-500 uppercase">
         odds
@@ -162,14 +193,14 @@ export function PaperPickForm({
           icon={saving ? faSpinner : faFloppyDisk}
           className={`size-2.5 ${saving ? "animate-spin" : ""}`}
         />
-        {saving ? "saving" : "record"}
+        {saving ? "saving" : editing ? "save changes" : "record"}
       </button>
       {onCancel ? (
         <button
           type="button"
           onClick={onCancel}
           className="grid size-6 place-items-center rounded-md border border-line text-mist-500 hover:text-mist-200"
-          aria-label="Cancel recording"
+          aria-label={editing ? "Cancel editing" : "Cancel recording"}
         >
           <FontAwesomeIcon icon={faXmark} className="size-2.5" />
         </button>

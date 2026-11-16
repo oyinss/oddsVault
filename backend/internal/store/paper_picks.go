@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -176,6 +177,43 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 		out = append(out, item)
 	}
 	return out, rows.Err()
+}
+
+// ErrPaperPickSettled means the pick already settled, so its line and side are
+// part of the record and may not be rewritten.
+var ErrPaperPickSettled = errors.New("paper pick already settled")
+
+// UpdatePaperPick corrects a recording that has not settled yet. The frozen
+// context stays as captured; only the selection the user typed changes.
+func (im *Importer) UpdatePaperPick(ctx context.Context, id int64, providerSlug, side string, line, odds float64) (PaperPick, error) {
+	var status string
+	if err := im.pool.QueryRow(ctx, `SELECT status FROM paper_picks WHERE id = $1`, id).Scan(&status); err != nil {
+		return PaperPick{}, fmt.Errorf("load paper pick: %w", err)
+	}
+	if status != "pending" {
+		return PaperPick{}, ErrPaperPickSettled
+	}
+	if _, err := im.pool.Exec(ctx, `
+		UPDATE paper_picks
+		SET provider_slug = $2, side = $3, line = $4, odds = $5
+		WHERE id = $1`, id, providerSlug, side, line, odds); err != nil {
+		return PaperPick{}, fmt.Errorf("update paper pick: %w", err)
+	}
+	var out PaperPick
+	err := im.pool.QueryRow(ctx, `
+		SELECT p.id, p.event_id, p.provider_slug, p.side, p.line, p.odds,
+		       p.status, p.model_risk, p.early_pace, p.event_status_at_save,
+		       p.created_at, p.data_cutoff_at, p.final_total, p.settlement_rule,
+		       p.settled_at, p.recovered_at
+		FROM paper_picks p WHERE p.id = $1`, id).Scan(
+		&out.ID, &out.EventID, &out.ProviderSlug, &out.Side, &out.Line, &out.Odds,
+		&out.Status, &out.ModelRisk, &out.EarlyPace, &out.EventStatus,
+		&out.CreatedAt, &out.DataCutoffAt, &out.FinalTotal, &out.SettlementRule,
+		&out.SettledAt, &out.RecoveredAt)
+	if err != nil {
+		return PaperPick{}, fmt.Errorf("reload paper pick: %w", err)
+	}
+	return out, nil
 }
 
 // DeletePaperPick removes one recording, for a mistyped line or odds.
