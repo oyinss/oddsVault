@@ -256,10 +256,12 @@ func (im *Importer) SettlePaperPicks(ctx context.Context) (int64, error) {
 	}
 	settled := tag.RowsAffected()
 
-	// A provider can drop a match without ever publishing a final status. When
-	// the match window is long over and the corner counts have stopped moving,
-	// the stored pair is the only final count that will ever exist. Settle with
-	// an explicit rule name so a training set can filter these out.
+	// A provider can drop a match without ever publishing a final status, which
+	// leaves the pick pending long after the game ended. A full match plus
+	// stoppage fits inside two and a quarter hours, and a live feed that has
+	// been silent for twenty minutes is not still playing, so the stored pair is
+	// the only final count that will ever exist. Settle with an explicit rule
+	// name so a training set can filter these out.
 	timeoutTag, err := im.pool.Exec(ctx, `
 		WITH finals AS (
 			SELECT e.id AS event_id, sum(s.corners)::int AS total
@@ -267,8 +269,8 @@ func (im *Importer) SettlePaperPicks(ctx context.Context) (int64, error) {
 			JOIN team_match_stats s ON s.event_id = e.id
 			LEFT JOIN event_live_states l ON l.event_id = e.id
 			WHERE e.status IN ('live', 'unknown')
-			  AND COALESCE(e.start_time, e.start_date::timestamptz) < now() - interval '3 hours'
-			  AND (l.captured_at IS NULL OR l.captured_at < now() - interval '2 hours')
+			  AND COALESCE(e.start_time, e.start_date::timestamptz) < now() - interval '2 hours 15 minutes'
+			  AND (l.captured_at IS NULL OR l.captured_at < now() - interval '20 minutes')
 			  AND s.corners IS NOT NULL
 			GROUP BY e.id
 			HAVING count(*) = 2
