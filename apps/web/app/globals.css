@@ -10,21 +10,24 @@
 :root {
   color-scheme: dark;
 
-  --ink-950: #05070d;
-  --ink-900: #090d16;
-  --ink-850: #0d1320;
-  --ink-800: #121a29;
-  --mist-100: #e9eff9;
-  --mist-200: #d5deeb;
-  --mist-300: #b9c4d4;
-  --mist-400: #93a1b5;
-  --mist-500: #6c7a90;
-  --turf-300: #7cf0bd;
-  --turf-400: #34d399;
+  /* Soft dark: near-black canvases and pure-white text are the two things that
+   * strain eyes at night, so the floor is lifted and the brightest text sits a
+   * step below white. The accents are dimmed to match. */
+  --ink-950: #111823;
+  --ink-900: #161e2a;
+  --ink-850: #1b2431;
+  --ink-800: #212c3b;
+  --mist-100: #dde5f0;
+  --mist-200: #c8d3e2;
+  --mist-300: #adb9ca;
+  --mist-400: #8d9aad;
+  --mist-500: #6d7b90;
+  --turf-300: #6fd9ac;
+  --turf-400: #2fbf8b;
   --turf-500: #10b981;
-  --flag-400: #fbbf24;
-  --loss-300: #fca5a5;
-  --loss-400: #f87171;
+  --flag-400: #e3b04a;
+  --loss-300: #e8a0a0;
+  --loss-400: #dd7676;
   --loss-500: #ef4444;
 
   /* Text placed on a solid turf fill. Constant in both themes. */
