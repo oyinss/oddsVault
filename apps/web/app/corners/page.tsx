@@ -67,6 +67,7 @@ export default function CornersPage() {
   const favorites = useCornerFavorites(matches);
   const [onlyFollowed, setOnlyFollowed] = useState(false);
   const [onlyRecorded, setOnlyRecorded] = useState(false);
+  const [onlySide, setOnlySide] = useState<"none" | "over" | "under">("none");
   const needle = search.trim().toLowerCase();
   const searched = needle
     ? matches.filter((match) =>
@@ -79,10 +80,23 @@ export default function CornersPage() {
   const recordedCount = matches.filter(
     (match) => (match.paper_picks?.length ?? 0) > 0,
   ).length;
+  const overLineCount = matches.filter(
+    (match) => match.rec_over_line !== null,
+  ).length;
+  const underLineCount = matches.filter(
+    (match) => match.rec_under_line !== null,
+  ).length;
   const visible = searched
     .filter((match) => !onlyFollowed || favorites.isFollowed(match.event_id))
     .filter(
       (match) => !onlyRecorded || (match.paper_picks?.length ?? 0) > 0,
+    )
+    .filter((match) =>
+      onlySide === "over"
+        ? match.rec_over_line !== null
+        : onlySide === "under"
+          ? match.rec_under_line !== null
+          : true,
     );
   // A followed match leaves the live list when it ends. Keep it visible with
   // the last count we saw instead of pretending it was never followed.
@@ -125,7 +139,7 @@ export default function CornersPage() {
             <label className="flex items-center gap-2 rounded-xl border border-line bg-ink-900 px-3 py-2">
               <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-mist-500 uppercase">
                 <FontAwesomeIcon icon={faRulerHorizontal} className="size-3" />
-                Line
+                Board line
               </span>
               <select
                 value={line}
@@ -269,6 +283,38 @@ export default function CornersPage() {
           </button>
           <button
             type="button"
+            onClick={() =>
+              setOnlySide((value) => (value === "over" ? "none" : "over"))
+            }
+            aria-pressed={onlySide === "over"}
+            title="Show only matches where the range clears an over line"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
+              onlySide === "over"
+                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon icon={faFlag} className="size-3" />
+            over lines {overLineCount}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setOnlySide((value) => (value === "under" ? "none" : "under"))
+            }
+            aria-pressed={onlySide === "under"}
+            title="Show only matches where the range clears an under line"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase transition ${
+              onlySide === "under"
+                ? "border-turf-400/50 bg-turf-500/10 text-turf-200"
+                : "border-line text-mist-400 hover:border-turf-400/40 hover:text-turf-200"
+            }`}
+          >
+            <FontAwesomeIcon icon={faBullseye} className="size-3" />
+            under lines {underLineCount}
+          </button>
+          <button
+            type="button"
             onClick={() => setOnlyFollowed((value) => !value)}
             aria-pressed={onlyFollowed}
             title={
@@ -318,6 +364,24 @@ export default function CornersPage() {
               This board only lists matches the live provider is covering. It
               fills in as games kick off; nothing is simulated in the meantime.
             </p>
+          </div>
+        ) : onlySide !== "none" && visible.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
+            <p className="text-sm font-medium text-mist-100">
+              No live match clears an {onlySide} line right now.
+            </p>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-mist-400">
+              Every projection range is crossing the standard {onlySide} lines.
+              That is a pass, not a gap: widen the range only when the minute and
+              corner count justify it.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOnlySide("none")}
+              className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-mist-200 hover:border-white/20 hover:text-mist-100"
+            >
+              Show all live matches
+            </button>
           </div>
         ) : onlyRecorded && visible.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-line bg-ink-900/60 p-6">
