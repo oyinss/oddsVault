@@ -6,6 +6,10 @@ import {
   faChartLine,
   faClock,
   faFilePen,
+  faCircleCheck,
+  faCircleMinus,
+  faCircleQuestion,
+  faCircleXmark,
   faGaugeHigh,
   faPenToSquare,
   faTrashCan,
@@ -13,6 +17,7 @@ import {
   faTrophy,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 
 import { TeamCrest } from "@/components/team-crest";
 import { absoluteAsset, formatAge, type PaperPick } from "@/lib/api";
@@ -23,6 +28,16 @@ const STATUS_STYLES: Record<PaperPick["status"], string> = {
   lost: "border-loss-400/40 bg-loss-400/10 text-loss-300",
   push: "border-line text-mist-300",
   void: "border-line text-mist-400",
+};
+
+// One glyph per outcome so a card can be read at a glance without parsing the
+// word, and the icons stay monochrome so the status colour still leads.
+const STATUS_ICONS: Record<PaperPick["status"], IconDefinition> = {
+  pending: faClock,
+  won: faCircleCheck,
+  lost: faCircleXmark,
+  push: faCircleMinus,
+  void: faCircleQuestion,
 };
 
 // PaperPickCard mirrors the live corner card: the same header, corner cells,
@@ -157,8 +172,9 @@ export function PaperPickCard({
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase">
           <span
-            className={`rounded border px-1.5 py-0.5 text-[9px] tracking-widest ${STATUS_STYLES[pick.status]}`}
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] tracking-widest ${STATUS_STYLES[pick.status]}`}
           >
+            <FontAwesomeIcon icon={STATUS_ICONS[pick.status]} className="size-2.5" />
             {pick.status}
           </span>
           {settled ? (
