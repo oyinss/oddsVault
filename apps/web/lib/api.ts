@@ -580,7 +580,8 @@ export type LiveCornerMatch = {
       odds: number | null;
       status: string;
       date: string | null;
-      scope: "league" | "team";
+      scope: "league" | "team" | "match";
+      by?: string;
     }>;
   } | null;
   home_form?: BoardTeamForm | null;

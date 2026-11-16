@@ -162,6 +162,15 @@ func (s *Server) cornerBets(ctx context.Context, scope string, id int64) (*corne
 	return record, nil
 }
 
+// placedByString names the bettor behind a journal leg. An unlabelled bet is
+// reported as unknown rather than guessed from its stake.
+func placedByString(value *string) string {
+	if value == nil || *value == "" {
+		return "unknown"
+	}
+	return *value
+}
+
 // matchBetHistory is a compact view of the journal for one board row. It exists
 // so the board can answer "have I played this league or these teams before?"
 // without opening the match.
@@ -192,6 +201,9 @@ type matchBetRecent struct {
 	Status string   `json:"status"`
 	Date   *string  `json:"date"`
 	Scope  string   `json:"scope"`
+	// By names who played it: emife, oyins or agent from the journal, paper for
+	// a pick recorded on this board.
+	By string `json:"by"`
 }
 
 type journalLegRow struct {
@@ -203,6 +215,7 @@ type journalLegRow struct {
 	line          *float64
 	odds          *float64
 	placedAt      *string
+	placedBy      *string
 }
 
 // attachMatchBetHistory fills the compact record for every board row. One
@@ -214,8 +227,10 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT l.market_side, l.leg_status, e.competition_id, hp.team_id, ap.team_id,
-		       l.market_line, l.odds_taken, to_char(e.start_date, 'YYYY-MM-DD')
+		       l.market_line, l.odds_taken, to_char(e.start_date, 'YYYY-MM-DD'),
+		       pb.placed_by
 		FROM personal_bet_legs l
+		JOIN personal_bets pb ON pb.id = l.personal_bet_id
 		JOIN events e ON e.id = l.event_id
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
@@ -232,7 +247,7 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 	for rows.Next() {
 		var leg journalLegRow
 		if err := rows.Scan(&leg.side, &leg.status, &leg.competitionID, &leg.homeID, &leg.awayID,
-			&leg.line, &leg.odds, &leg.placedAt); err != nil {
+			&leg.line, &leg.odds, &leg.placedAt, &leg.placedBy); err != nil {
 			s.log.ErrorContext(ctx, "scan board bet leg", "error", err.Error())
 			return
 		}
@@ -247,7 +262,9 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 		s.log.ErrorContext(ctx, "board league-only bet history", "error", err.Error())
 	}
 
-	if len(legs) == 0 && len(leagueOnly) == 0 {
+	paperByEvent := s.paperPicksForBoard(ctx, matches)
+
+	if len(legs) == 0 && len(leagueOnly) == 0 && len(paperByEvent) == 0 {
 		return
 	}
 
@@ -264,6 +281,7 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 				Status: leg.status,
 				Date:   leg.placedAt,
 				Scope:  "league",
+				By:     placedByString(leg.placedBy),
 			})
 			switch leg.status {
 			case "won":
@@ -314,6 +332,7 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 				Status: leg.status,
 				Date:   leg.placedAt,
 				Scope:  scope,
+				By:     placedByString(leg.placedBy),
 			})
 			switch leg.status {
 			case "won":
@@ -343,7 +362,10 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 				}
 			}
 		}
-		if history.Legs > 0 {
+		for _, pick := range paperByEvent[match.EventID] {
+			history.Recent = append(history.Recent, pick)
+		}
+		if history.Legs > 0 || len(history.Recent) > 0 {
 			// Newest first, then keep the five the card can show.
 			sort.SliceStable(history.Recent, func(i, j int) bool {
 				left, right := "", ""
@@ -361,6 +383,43 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 			match.BetHistory = &history
 		}
 	}
+}
+
+// paperPicksForBoard returns the picks already recorded on these live matches,
+// so one list can show every corner leg the user has on a card: journal legs by
+// bettor and paper picks by name.
+func (s *Server) paperPicksForBoard(ctx context.Context, matches []liveCornerMatch) map[int64][]matchBetRecent {
+	ids := make([]int64, 0, len(matches))
+	for _, match := range matches {
+		ids = append(ids, match.EventID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT event_id, side, line, odds, status, to_char(created_at, 'YYYY-MM-DD')
+		FROM paper_picks
+		WHERE event_id = ANY($1::bigint[])`, ids)
+	if err != nil {
+		s.log.ErrorContext(ctx, "board paper pick history", "error", err.Error())
+		return nil
+	}
+	defer rows.Close()
+
+	out := make(map[int64][]matchBetRecent, len(matches))
+	for rows.Next() {
+		var eventID int64
+		var item matchBetRecent
+		if err := rows.Scan(&eventID, &item.Side, &item.Line, &item.Odds,
+			&item.Status, &item.Date); err != nil {
+			s.log.ErrorContext(ctx, "scan board paper pick history", "error", err.Error())
+			return out
+		}
+		item.Scope = "match"
+		item.By = "paper"
+		out[eventID] = append(out[eventID], item)
+	}
+	return out
 }
 
 // leagueOnlyCornerLegs returns journal legs whose fixture never resolved but
@@ -410,7 +469,8 @@ func (s *Server) leagueOnlyCornerLegs(ctx context.Context) (map[int64][]journalL
 
 	legRows, err := s.pool.Query(ctx, `
 		SELECT l.market_side, l.leg_status, l.competition_raw,
-		       l.market_line, l.odds_taken, to_char(pb.placed_at, 'YYYY-MM-DD')
+		       l.market_line, l.odds_taken, to_char(pb.placed_at, 'YYYY-MM-DD'),
+		       pb.placed_by
 		FROM personal_bet_legs l
 		JOIN personal_bets pb ON pb.id = l.personal_bet_id
 		WHERE l.market_family = 'corners_total'
@@ -426,8 +486,8 @@ func (s *Server) leagueOnlyCornerLegs(ctx context.Context) (map[int64][]journalL
 	for legRows.Next() {
 		var side, status, raw string
 		var line, odds *float64
-		var placedAt *string
-		if err := legRows.Scan(&side, &status, &raw, &line, &odds, &placedAt); err != nil {
+		var placedAt, placedBy *string
+		if err := legRows.Scan(&side, &status, &raw, &line, &odds, &placedAt, &placedBy); err != nil {
 			return nil, err
 		}
 		_, key := normalize.Resolve(raw)
@@ -442,6 +502,7 @@ func (s *Server) leagueOnlyCornerLegs(ctx context.Context) (map[int64][]journalL
 			line:          line,
 			odds:          odds,
 			placedAt:      placedAt,
+			placedBy:      placedBy,
 		})
 	}
 	return out, legRows.Err()

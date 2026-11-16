@@ -1191,6 +1191,16 @@ const PLAYED_STATUS: Record<string, string> = {
   pending: "text-flag-400",
 };
 
+// Who played the leg: the journal stores a bettor per slip, a paper pick is
+// recorded on this board. Unknown stays unknown rather than being attributed.
+const PLAYED_BY: Record<string, { label: string; cls: string }> = {
+  emife: { label: "Emife", cls: "border-flag-400/40 text-flag-400" },
+  oyins: { label: "Oyins", cls: "border-turf-400/40 text-turf-300" },
+  agent: { label: "Agent", cls: "border-line text-mist-300" },
+  paper: { label: "Paper", cls: "border-line text-mist-300" },
+  unknown: { label: "Unlabelled", cls: "border-line text-mist-500" },
+};
+
 // FormPanel shows the last five finished matches that carry a corner count for
 // one team. A missing sample prints as missing, never as zero corners.
 function FormPanel({
@@ -1254,7 +1264,8 @@ function PlayedPanel({
     odds: number | null;
     status: string;
     date: string | null;
-    scope: "league" | "team";
+    scope: "league" | "team" | "match";
+    by?: string;
   }>;
 }) {
   return (
@@ -1268,25 +1279,37 @@ function PlayedPanel({
         </p>
       ) : (
         <ul className="mt-1 space-y-0.5 font-mono text-[10px]">
-          {recent.map((leg, index) => (
-            <li
-              key={`${leg.side}-${leg.line}-${index}`}
-              className="flex items-baseline gap-1.5"
-            >
-              <span className="w-16 shrink-0 font-bold text-mist-100 uppercase">
-                {leg.side} {leg.line ?? "-"}
-              </span>
-              {leg.odds !== null ? (
-                <span className="shrink-0 text-mist-300">@{leg.odds}</span>
-              ) : null}
-              <span className={PLAYED_STATUS[leg.status] ?? "text-mist-500"}>
-                {leg.status}
-              </span>
-              <span className="ml-auto shrink-0 text-mist-500">
-                {shortDay(leg.date)} · {leg.scope}
-              </span>
-            </li>
-          ))}
+          {recent.map((leg, index) => {
+            const source =
+              PLAYED_BY[leg.by ?? "unknown"] ?? PLAYED_BY.unknown;
+            return (
+              <li
+                key={`${leg.side}-${leg.line}-${index}`}
+                className="flex items-baseline gap-1.5"
+                title={`${leg.side} ${leg.line ?? "-"} · ${leg.status} · ${leg.scope} · played by ${leg.by ?? "unknown"}`}
+              >
+                <span className="w-14 shrink-0 font-bold text-mist-100 uppercase">
+                  {leg.side} {leg.line ?? "-"}
+                </span>
+                {leg.odds !== null ? (
+                  <span className="shrink-0 text-mist-300">@{leg.odds}</span>
+                ) : null}
+                <span
+                  className={`shrink-0 ${PLAYED_STATUS[leg.status] ?? "text-mist-500"}`}
+                >
+                  {leg.status}
+                </span>
+                <span
+                  className={`ml-auto shrink-0 rounded border px-1 py-0.5 text-[8px] tracking-wider uppercase ${source.cls}`}
+                >
+                  {source.label}
+                </span>
+                <span className="shrink-0 text-mist-500">
+                  {shortDay(leg.date)}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
