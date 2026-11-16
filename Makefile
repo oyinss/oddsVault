@@ -160,6 +160,14 @@ web-preview:
 tunnel:
 	./scripts/tunnel.sh
 
+tunnel-watch:
+	@if pgrep -f "scripts/tunnel-watch.sh" >/dev/null 2>&1; then \
+		echo "tunnel watcher already running"; \
+	else \
+		setsid nohup ./scripts/tunnel-watch.sh >/dev/null 2>&1 </dev/null & \
+		echo "tunnel watcher started; log: .local/logs/tunnel-watch.log"; \
+	fi
+
 pages-login:
 	cd apps/web && npx wrangler login $(if $(CALLBACK_PORT),--callback-port $(CALLBACK_PORT),)
 
