@@ -204,6 +204,12 @@ type matchBetRecent struct {
 	// By names who played it: emife, oyins or agent from the journal, paper for
 	// a pick recorded on this board.
 	By string `json:"by"`
+	// The settled match, so a row can be read against what actually happened.
+	// Total is the pair of published corner counts; the halves come from our
+	// snapshots and stay empty when the match was not tracked past the break.
+	Total      *int `json:"total_corners,omitempty"`
+	FirstHalf  *int `json:"first_half_corners,omitempty"`
+	SecondHalf *int `json:"second_half_corners,omitempty"`
 }
 
 type journalLegRow struct {
@@ -216,6 +222,9 @@ type journalLegRow struct {
 	odds          *float64
 	placedAt      *string
 	placedBy      *string
+	eventID       int64
+	total         *int
+	firstHalf     *int
 }
 
 // attachMatchBetHistory fills the compact record for every board row. One
@@ -228,10 +237,30 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 	rows, err := s.pool.Query(ctx, `
 		SELECT l.market_side, l.leg_status, e.competition_id, hp.team_id, ap.team_id,
 		       l.market_line, l.odds_taken, to_char(e.start_date, 'YYYY-MM-DD'),
-		       pb.placed_by
+		       pb.placed_by, e.id,
+		       CASE WHEN fin.n = 2 THEN fin.total END,
+		       fh.first_half
 		FROM personal_bet_legs l
 		JOIN personal_bets pb ON pb.id = l.personal_bet_id
 		JOIN events e ON e.id = l.event_id
+		LEFT JOIN LATERAL (
+			SELECT count(s.corners) AS n, sum(s.corners)::int AS total
+			FROM team_match_stats s
+			WHERE s.event_id = e.id AND s.corners IS NOT NULL
+		) fin ON true
+		LEFT JOIN LATERAL (
+			SELECT cs.total_corners AS first_half
+			FROM corner_snapshots cs
+			WHERE cs.event_id = e.id
+			  AND cs.minute IS NOT NULL
+			  AND cs.minute <= 45
+			  AND EXISTS (
+			      SELECT 1 FROM corner_snapshots c2
+			      WHERE c2.event_id = e.id AND c2.minute > 45
+			  )
+			ORDER BY cs.minute DESC, cs.captured_at DESC
+			LIMIT 1
+		) fh ON true
 		JOIN event_participants hp ON hp.event_id = e.id AND hp.role = 'home'
 		JOIN event_participants ap ON ap.event_id = e.id AND ap.role = 'away'
 		WHERE l.market_family = 'corners_total'
@@ -247,7 +276,8 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 	for rows.Next() {
 		var leg journalLegRow
 		if err := rows.Scan(&leg.side, &leg.status, &leg.competitionID, &leg.homeID, &leg.awayID,
-			&leg.line, &leg.odds, &leg.placedAt, &leg.placedBy); err != nil {
+			&leg.line, &leg.odds, &leg.placedAt, &leg.placedBy,
+			&leg.eventID, &leg.total, &leg.firstHalf); err != nil {
 			s.log.ErrorContext(ctx, "scan board bet leg", "error", err.Error())
 			return
 		}
@@ -274,7 +304,7 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 		for _, leg := range leagueOnly[match.CompetitionID] {
 			history.Legs++
 			history.League = true
-			history.Recent = append(history.Recent, matchBetRecent{
+			recent := matchBetRecent{
 				Side:   leg.side,
 				Line:   leg.line,
 				Odds:   leg.odds,
@@ -282,7 +312,9 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 				Date:   leg.placedAt,
 				Scope:  "league",
 				By:     placedByString(leg.placedBy),
-			})
+			}
+			recent.applyResult(leg.total, leg.firstHalf)
+			history.Recent = append(history.Recent, recent)
 			switch leg.status {
 			case "won":
 				history.Won++
@@ -325,7 +357,7 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 			if inLeague {
 				scope = "league"
 			}
-			history.Recent = append(history.Recent, matchBetRecent{
+			recent := matchBetRecent{
 				Side:   leg.side,
 				Line:   leg.line,
 				Odds:   leg.odds,
@@ -333,7 +365,9 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 				Date:   leg.placedAt,
 				Scope:  scope,
 				By:     placedByString(leg.placedBy),
-			})
+			}
+			recent.applyResult(leg.total, leg.firstHalf)
+			history.Recent = append(history.Recent, recent)
 			switch leg.status {
 			case "won":
 				history.Won++
@@ -385,6 +419,24 @@ func (s *Server) attachMatchBetHistory(ctx context.Context, matches []liveCorner
 	}
 }
 
+// applyResult attaches the settled match to a leg. The second half is the total
+// minus the first half, and only appears when both numbers are real.
+func (r *matchBetRecent) applyResult(total, firstHalf *int) {
+	if total == nil {
+		return
+	}
+	r.Total = total
+	if firstHalf == nil {
+		return
+	}
+	second := *total - *firstHalf
+	if second < 0 {
+		return
+	}
+	r.FirstHalf = firstHalf
+	r.SecondHalf = &second
+}
+
 // paperPicksForBoard returns the picks already recorded on these live matches,
 // so one list can show every corner leg the user has on a card: journal legs by
 // bettor and paper picks by name.
@@ -397,9 +449,30 @@ func (s *Server) paperPicksForBoard(ctx context.Context, matches []liveCornerMat
 		return nil
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT event_id, side, line, odds, status, to_char(created_at, 'YYYY-MM-DD')
-		FROM paper_picks
-		WHERE event_id = ANY($1::bigint[])`, ids)
+		SELECT p.event_id, p.side, p.line, p.odds, p.status,
+		       to_char(p.created_at, 'YYYY-MM-DD'),
+		       CASE WHEN fin.n = 2 THEN fin.total END,
+		       fh.first_half
+		FROM paper_picks p
+		LEFT JOIN LATERAL (
+			SELECT count(s.corners) AS n, sum(s.corners)::int AS total
+			FROM team_match_stats s
+			WHERE s.event_id = p.event_id AND s.corners IS NOT NULL
+		) fin ON true
+		LEFT JOIN LATERAL (
+			SELECT cs.total_corners AS first_half
+			FROM corner_snapshots cs
+			WHERE cs.event_id = p.event_id
+			  AND cs.minute IS NOT NULL
+			  AND cs.minute <= 45
+			  AND EXISTS (
+			      SELECT 1 FROM corner_snapshots c2
+			      WHERE c2.event_id = p.event_id AND c2.minute > 45
+			  )
+			ORDER BY cs.minute DESC, cs.captured_at DESC
+			LIMIT 1
+		) fh ON true
+		WHERE p.event_id = ANY($1::bigint[])`, ids)
 	if err != nil {
 		s.log.ErrorContext(ctx, "board paper pick history", "error", err.Error())
 		return nil
@@ -410,13 +483,15 @@ func (s *Server) paperPicksForBoard(ctx context.Context, matches []liveCornerMat
 	for rows.Next() {
 		var eventID int64
 		var item matchBetRecent
+		var total, firstHalf *int
 		if err := rows.Scan(&eventID, &item.Side, &item.Line, &item.Odds,
-			&item.Status, &item.Date); err != nil {
+			&item.Status, &item.Date, &total, &firstHalf); err != nil {
 			s.log.ErrorContext(ctx, "scan board paper pick history", "error", err.Error())
 			return out
 		}
 		item.Scope = "match"
 		item.By = "paper"
+		item.applyResult(total, firstHalf)
 		out[eventID] = append(out[eventID], item)
 	}
 	return out

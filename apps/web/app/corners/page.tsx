@@ -1314,6 +1314,9 @@ function PlayedPanel({
     date: string | null;
     scope: "league" | "team" | "match";
     by?: string;
+    total_corners?: number;
+    first_half_corners?: number;
+    second_half_corners?: number;
   }>;
 }) {
   return (
@@ -1333,28 +1336,50 @@ function PlayedPanel({
             return (
               <li
                 key={`${leg.side}-${leg.line}-${index}`}
-                className="flex items-baseline gap-1.5"
+                className="space-y-0.5"
                 title={`${leg.side} ${leg.line ?? "-"} · ${leg.status} · ${leg.scope} · played by ${leg.by ?? "unknown"}`}
               >
-                <span className="w-14 shrink-0 font-bold text-mist-100 uppercase">
-                  {leg.side} {leg.line ?? "-"}
-                </span>
-                {leg.odds !== null ? (
-                  <span className="shrink-0 text-mist-300">@{leg.odds}</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="w-14 shrink-0 font-bold text-mist-100 uppercase">
+                    {leg.side} {leg.line ?? "-"}
+                  </span>
+                  {leg.odds !== null ? (
+                    <span className="shrink-0 text-mist-300">@{leg.odds}</span>
+                  ) : null}
+                  <span
+                    className={`shrink-0 ${PLAYED_STATUS[leg.status] ?? "text-mist-500"}`}
+                  >
+                    {leg.status}
+                  </span>
+                  <span
+                    className={`ml-auto shrink-0 rounded border px-1 py-0.5 text-[8px] tracking-wider uppercase ${source.cls}`}
+                  >
+                    {source.label}
+                  </span>
+                  <span className="shrink-0 text-mist-500">
+                    {shortDay(leg.date)}
+                  </span>
+                </div>
+                {leg.total_corners !== undefined &&
+                (leg.status === "won" ||
+                  leg.status === "lost" ||
+                  leg.status === "push" ||
+                  leg.status === "void") ? (
+                  <p className="pl-14 font-mono text-[9px] text-mist-500">
+                    final {leg.total_corners} corners
+                    {leg.first_half_corners !== undefined &&
+                    leg.second_half_corners !== undefined
+                      ? ` · 1H ${leg.first_half_corners} · 2H ${leg.second_half_corners}`
+                      : ""}
+                  </p>
+                ) : leg.status === "won" ||
+                  leg.status === "lost" ||
+                  leg.status === "push" ||
+                  leg.status === "void" ? (
+                  <p className="pl-14 font-mono text-[9px] text-mist-500">
+                    no corner count stored for that match
+                  </p>
                 ) : null}
-                <span
-                  className={`shrink-0 ${PLAYED_STATUS[leg.status] ?? "text-mist-500"}`}
-                >
-                  {leg.status}
-                </span>
-                <span
-                  className={`ml-auto shrink-0 rounded border px-1 py-0.5 text-[8px] tracking-wider uppercase ${source.cls}`}
-                >
-                  {source.label}
-                </span>
-                <span className="shrink-0 text-mist-500">
-                  {shortDay(leg.date)}
-                </span>
               </li>
             );
           })}

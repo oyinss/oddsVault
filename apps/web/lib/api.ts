@@ -582,6 +582,9 @@ export type LiveCornerMatch = {
       date: string | null;
       scope: "league" | "team" | "match";
       by?: string;
+      total_corners?: number;
+      first_half_corners?: number;
+      second_half_corners?: number;
     }>;
   } | null;
   home_form?: BoardTeamForm | null;
