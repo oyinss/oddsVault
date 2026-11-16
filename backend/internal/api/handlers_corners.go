@@ -37,6 +37,8 @@ type liveCornerMatch struct {
 	ProjectedTotal     *float64         `json:"projected_total"`
 	ProjectionLow      *float64         `json:"projection_low"`
 	ProjectionHigh     *float64         `json:"projection_high"`
+	RecOverLine        *float64         `json:"rec_over_line"`
+	RecUnderLine       *float64         `json:"rec_under_line"`
 	LineGap            *float64         `json:"line_gap"`
 	ModelRisk          bool             `json:"model_risk"`
 	ModelRiskReason    string           `json:"model_risk_reason,omitempty"`
@@ -376,6 +378,22 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 	high := float64(total) + lambdaRemaining + spread
 	m.ProjectionLow = ptrFloat(round2(low))
 	m.ProjectionHigh = ptrFloat(round2(high))
+
+	// Both sides, computed from the same band, so a card never has to hide one
+	// of them behind a single selected line.
+	for line := 6.5; line <= 15.5; line += 1 {
+		if line < low {
+			value := line
+			m.RecOverLine = &value
+		}
+	}
+	for line := 6.5; line <= 15.5; line += 1 {
+		if line > high {
+			value := line
+			m.RecUnderLine = &value
+			break
+		}
+	}
 	m.LineGap = ptrFloat(round2(perMinute*90 - line))
 
 	// Early bursts regress. Flag a projection that is far above the line before

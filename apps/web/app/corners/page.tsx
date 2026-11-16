@@ -794,7 +794,7 @@ function MatchCard({
           </div>
         </div>
 
-        <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:w-[360px] sm:gap-2">
+        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:w-[460px] sm:gap-2">
           <Metric
             label="Pace"
             icon={faGaugeHigh}
@@ -828,13 +828,28 @@ function MatchCard({
             }
           />
           <Metric
-            label={`Need ${line}`}
-            icon={faBullseye}
-            hint={`Corners still needed to clear the selected line of ${line}, and the per-minute rate required for the rest of the match.`}
-            value={match.needed !== null ? String(match.needed) : "-"}
+            label="Over line"
+            icon={faFlag}
+            hint="Highest over line that still sits below the low end of the likely range. If it shows a dash, the range does not clear a standard line."
+            value={
+              match.rec_over_line !== null ? match.rec_over_line.toFixed(1) : "-"
+            }
             note={
-              match.needed_per_minute !== null
-                ? `${match.needed_per_minute.toFixed(2)}/min`
+              match.rec_over_line !== null && match.total_corners !== null
+                ? `${Math.max(0, Math.ceil(match.rec_over_line) - match.total_corners)} needed`
+                : undefined
+            }
+          />
+          <Metric
+            label="Under line"
+            icon={faFlag}
+            hint="Lowest under line that still sits above the high end of the likely range. If it shows a dash, the range does not clear a standard line."
+            value={
+              match.rec_under_line !== null ? match.rec_under_line.toFixed(1) : "-"
+            }
+            note={
+              match.rec_under_line !== null && match.total_corners !== null
+                ? `${Math.max(0, Math.floor(match.rec_under_line) - match.total_corners)} room`
                 : undefined
             }
           />

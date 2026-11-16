@@ -541,6 +541,8 @@ export type LiveCornerMatch = {
   projected_total: number | null;
   projection_low: number | null;
   projection_high: number | null;
+  rec_over_line: number | null;
+  rec_under_line: number | null;
   line_gap: number | null;
   model_risk: boolean;
   model_risk_reason?: string;
@@ -614,6 +616,8 @@ export type CornerMetrics = {
   projected_total: number | null;
   projection_low: number | null;
   projection_high: number | null;
+  rec_over_line: number | null;
+  rec_under_line: number | null;
   line_gap: number | null;
   model_risk: boolean;
   model_risk_reason?: string;
