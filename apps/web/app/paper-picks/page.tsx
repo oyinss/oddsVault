@@ -99,11 +99,28 @@ export default function PaperPicksPage() {
 
         {data ? (
           <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <Summary label="Pending" value={data.summary.pending} />
-            <Summary label="Won" value={data.summary.won} tone="text-turf-300" />
-            <Summary label="Lost" value={data.summary.lost} tone="text-loss-300" />
-            <Summary label="Push" value={data.summary.push} />
-            <Summary label="Void" value={data.summary.void} />
+            {(
+              [
+                { key: "pending", label: "Pending", tone: "text-mist-100" },
+                { key: "won", label: "Won", tone: "text-turf-300" },
+                { key: "lost", label: "Lost", tone: "text-loss-300" },
+                { key: "push", label: "Push", tone: "text-mist-100" },
+                { key: "void", label: "Void", tone: "text-mist-100" },
+              ] as const
+            ).map((item) => (
+              <Summary
+                key={item.key}
+                label={item.label}
+                value={data.summary[item.key]}
+                tone={item.tone}
+                active={status === item.key}
+                onSelect={() =>
+                  setStatus((current) =>
+                    current === item.key ? "all" : item.key,
+                  )
+                }
+              />
+            ))}
           </div>
         ) : null}
 
@@ -251,21 +268,41 @@ export default function PaperPicksPage() {
   );
 }
 
+// Summary is the status filter as well as a count: clicking one narrows the
+// list below to that status, and clicking it again clears the filter.
 function Summary({
   label,
   value,
   tone = "text-mist-100",
+  active,
+  onSelect,
 }: {
   label: string;
   value: number;
   tone?: string;
+  active: boolean;
+  onSelect: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-ink-950/40 px-3 py-2.5">
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      title={
+        active
+          ? `Showing only ${label.toLowerCase()} picks. Click to clear.`
+          : `Show only ${label.toLowerCase()} picks`
+      }
+      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+        active
+          ? "border-turf-400/60 bg-turf-500/10"
+          : "border-line bg-ink-950/40 hover:border-turf-400/40"
+      }`}
+    >
       <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
         {label}
       </p>
       <p className={`mt-0.5 font-mono text-lg tabular-nums ${tone}`}>{value}</p>
-    </div>
+    </button>
   );
 }
