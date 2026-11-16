@@ -249,6 +249,7 @@ export type PersonalBet = {
   profit_loss: number | null;
   source: string;
   placed_by: string | null;
+  imported_at?: string | null;
   legs: BetLeg[];
 };
 

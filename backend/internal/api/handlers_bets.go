@@ -27,22 +27,25 @@ type betLegResponse struct {
 }
 
 type betResponse struct {
-	ID              int64            `json:"id"`
-	ExternalID      string           `json:"external_id"`
-	Bookmaker       string           `json:"bookmaker"`
-	Currency        string           `json:"currency"`
-	PlacedAt        *string          `json:"placed_at"`
-	PlacedAtRaw     *string          `json:"placed_at_raw"`
-	BetType         *string          `json:"bet_type"`
-	Stake           *float64         `json:"stake"`
-	CombinedOdds    *float64         `json:"combined_odds"`
-	PotentialReturn *float64         `json:"potential_return"`
-	Status          string           `json:"status"`
-	ActualReturn    *float64         `json:"actual_return"`
-	ProfitLoss      *float64         `json:"profit_loss"`
-	Source          string           `json:"source"`
-	PlacedBy        *string          `json:"placed_by"`
-	Legs            []betLegResponse `json:"legs"`
+	ID              int64    `json:"id"`
+	ExternalID      string   `json:"external_id"`
+	Bookmaker       string   `json:"bookmaker"`
+	Currency        string   `json:"currency"`
+	PlacedAt        *string  `json:"placed_at"`
+	PlacedAtRaw     *string  `json:"placed_at_raw"`
+	BetType         *string  `json:"bet_type"`
+	Stake           *float64 `json:"stake"`
+	CombinedOdds    *float64 `json:"combined_odds"`
+	PotentialReturn *float64 `json:"potential_return"`
+	Status          string   `json:"status"`
+	ActualReturn    *float64 `json:"actual_return"`
+	ProfitLoss      *float64 `json:"profit_loss"`
+	Source          string   `json:"source"`
+	PlacedBy        *string  `json:"placed_by"`
+	// ImportedAt is the fallback ordering key for a slip whose screenshot never
+	// showed a placed time.
+	ImportedAt string           `json:"imported_at"`
+	Legs       []betLegResponse `json:"legs"`
 }
 
 type betSummary struct {
@@ -82,10 +85,13 @@ func (s *Server) handleMyBets(w http.ResponseWriter, r *http.Request) {
 		SELECT pb.id, pb.external_id, b.name, pb.currency, pb.placed_at, pb.placed_at_raw, pb.bet_type,
 		       pb.stake::float8, pb.combined_odds::float8, pb.potential_return::float8,
 		       pb.status, pb.actual_return::float8, pb.profit_loss::float8, pb.source,
-		       pb.placed_by
+		       pb.placed_by, pb.imported_at
 		FROM personal_bets pb
 		JOIN bookmakers b ON b.id = pb.bookmaker_id
-		ORDER BY pb.placed_at DESC NULLS LAST, pb.id DESC`)
+		-- A slip whose screenshot never showed a placed time has no date, so it
+		-- would fall past every dated slip and out of reach. Sort those by when
+		-- they were imported instead of hiding them at the bottom.
+		ORDER BY COALESCE(pb.placed_at, pb.imported_at) DESC, pb.id DESC`)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "query bets", "error", err.Error())
 		writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load bets")
@@ -98,11 +104,12 @@ func (s *Server) handleMyBets(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item betResponse
 		var placedAt *time.Time
+		var importedAt time.Time
 		if err := rows.Scan(
 			&item.ID, &item.ExternalID, &item.Bookmaker, &item.Currency, &placedAt,
 			&item.PlacedAtRaw, &item.BetType, &item.Stake, &item.CombinedOdds, &item.PotentialReturn,
 			&item.Status, &item.ActualReturn, &item.ProfitLoss, &item.Source,
-			&item.PlacedBy); err != nil {
+			&item.PlacedBy, &importedAt); err != nil {
 			s.log.ErrorContext(r.Context(), "scan bet", "error", err.Error())
 			writeError(w, r, http.StatusInternalServerError, "query_failed", "could not load bets")
 			return
@@ -111,6 +118,7 @@ func (s *Server) handleMyBets(w http.ResponseWriter, r *http.Request) {
 			formatted := placedAt.UTC().Format(time.RFC3339)
 			item.PlacedAt = &formatted
 		}
+		item.ImportedAt = importedAt.UTC().Format(time.RFC3339)
 		index[item.ID] = len(bets)
 		bets = append(bets, item)
 	}

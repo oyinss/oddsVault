@@ -154,8 +154,14 @@ export function filterBets(
     return true;
   });
 
+  // A slip whose screenshot never showed a placed time still needs a place in
+  // the timeline; use when it was imported rather than dropping it to the end.
   const placedMs = (bet: PersonalBet) =>
-    bet.placed_at ? Date.parse(bet.placed_at) || 0 : 0;
+    bet.placed_at
+      ? Date.parse(bet.placed_at) || 0
+      : bet.imported_at
+        ? Date.parse(bet.imported_at) || 0
+        : 0;
 
   return filtered.sort((a, b) => {
     switch (filters.sort) {
