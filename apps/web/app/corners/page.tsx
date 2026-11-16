@@ -248,19 +248,6 @@ export default function CornersPage() {
               ? `${visible.length} of ${matches.length} matches`
               : `${matches.length} live ${matches.length === 1 ? "match" : "matches"}`}
           </p>
-          {alerts.permission !== "granted" && (
-            <button
-              type="button"
-              onClick={() => void alerts.requestPermission()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-turf-400/40 bg-turf-500/10 px-3 py-1.5 font-mono text-[10px] tracking-widest text-turf-200 uppercase transition hover:bg-turf-500/20"
-              title="Alerts fire while this page is open"
-            >
-              <FontAwesomeIcon icon={faBell} className="size-3" />
-              {alerts.permission === "unsupported"
-                ? "alerts on this page only"
-                : "enable corner alerts"}
-            </button>
-          )}
           <span className="font-mono text-[10px] text-mist-500">
             {alerts.watches.length} watched · use the bell on a match to add one
           </span>
