@@ -67,6 +67,11 @@ export default function CornersPage() {
   const alerts = useCornerAlerts(matches, line);
   const favorites = useCornerFavorites(matches);
   const [onlyFollowed, setOnlyFollowed] = useState(false);
+  // Storage keeps a follow after the match ends, so count only the ones still
+  // on the live board; the board itself no longer lists finished games.
+  const liveFollowed = matches.filter((match) =>
+    favorites.isFollowed(match.event_id),
+  ).length;
   const [onlyRecorded, setOnlyRecorded] = useState(false);
   const [onlySide, setOnlySide] = useState<"none" | "over" | "under">("none");
   const needle = search.trim().toLowerCase();
@@ -99,11 +104,6 @@ export default function CornersPage() {
           ? match.rec_under_line !== null
           : true,
     );
-  // A followed match leaves the live list when it ends. Keep it visible with
-  // the last count we saw instead of pretending it was never followed.
-  const offBoard = favorites.list.filter(
-    (item) => !matches.some((match) => match.event_id === item.eventId),
-  );
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState("10");
   const [recordingId, setRecordingId] = useState<number | null>(null);
@@ -333,7 +333,7 @@ export default function CornersPage() {
               icon={faStar}
               className={`size-3 ${onlyFollowed ? "text-turf-300" : ""}`}
             />
-            following {favorites.count}
+            following {liveFollowed}
           </button>
         </div>
 
@@ -407,9 +407,9 @@ export default function CornersPage() {
               None of your followed matches is live right now.
             </p>
             <p className="mt-1 max-w-2xl text-xs leading-relaxed text-mist-400">
-              Followed matches are stored in this browser. When one leaves the
-              live board it stays in the list below with the last corner count
-              we saw, so you can still open its detail page.
+              Followed matches are stored in this browser and only appear while
+              the match is live. Once it leaves the live board it drops off the
+              card list.
             </p>
             <button
               type="button"
@@ -473,54 +473,6 @@ export default function CornersPage() {
               />
             ))}
           </div>
-        )}
-
-        {onlyFollowed && offBoard.length > 0 && (
-          <section className="mt-6 rounded-2xl border border-line bg-ink-900/50 p-5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-mist-100">
-              <FontAwesomeIcon icon={faStar} className="size-3 text-turf-300" />
-              Followed, no longer live
-            </h2>
-            <p className="mt-1 text-xs text-mist-500">
-              These left the live board. The count and minute are the last ones
-              we recorded before it happened.
-            </p>
-            <ul className="mt-3 divide-y divide-white/[0.05]">
-              {offBoard.map((item) => (
-                <li
-                  key={item.eventId}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/corners/detail?id=${item.eventId}&line=${line}`}
-                      className="text-sm font-semibold text-mist-100 hover:text-turf-300"
-                    >
-                      {item.home} v {item.away}
-                    </Link>
-                    <p className="font-mono text-[10px] text-mist-500">
-                      {item.competition}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 font-mono text-[10px] text-mist-400">
-                    <span>
-                      last seen{" "}
-                      {item.lastTotal !== null ? `${item.lastTotal} corners` : "no count"}
-                      {item.lastMinute !== null ? ` at ${item.lastMinute}'` : ""}
-                    </span>
-                    <span className="text-mist-500">{formatAge(item.seenAt)}</span>
-                    <button
-                      type="button"
-                      onClick={() => favorites.unfollow(item.eventId)}
-                      className="rounded-md border border-line px-2 py-1 tracking-widest text-mist-400 uppercase hover:border-loss-400/40 hover:text-loss-300"
-                    >
-                      unfollow
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
         )}
 
         <section className="mt-8 rounded-2xl border border-line bg-ink-900/50 p-5">
