@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   faArrowDownWideShort,
+  faArrowDown,
   faArrowTrendUp,
+  faArrowUp,
   faArrowsRotate,
   faBell,
   faBellSlash,
@@ -1561,8 +1563,17 @@ function PlayedPanel({
                 title={`${leg.side} ${leg.line ?? "-"} · ${leg.status} · ${leg.scope} · played by ${leg.by ?? "unknown"}`}
               >
                 <div className="flex items-baseline gap-1.5">
-                  <span className="w-14 shrink-0 font-bold text-mist-100 uppercase">
-                    {leg.side} {leg.line ?? "-"}
+                  <span
+                    className={`flex w-14 shrink-0 items-center gap-1 font-bold uppercase ${
+                      leg.side === "over" ? "text-turf-300" : "text-flag-400"
+                    }`}
+                    title={`${leg.side} ${leg.line ?? ""}`}
+                  >
+                    <FontAwesomeIcon
+                      icon={leg.side === "over" ? faArrowUp : faArrowDown}
+                      className="size-2.5 shrink-0"
+                    />
+                    {leg.side === "over" ? "O" : "U"} {leg.line ?? "-"}
                   </span>
                   {leg.odds !== null ? (
                     <span className="shrink-0 text-mist-300">@{leg.odds}</span>
