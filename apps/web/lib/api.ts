@@ -592,6 +592,9 @@ export type LiveCornerMatch = {
   away_form?: BoardTeamForm | null;
   first_half_corners?: number | null;
   second_half_corners?: number | null;
+  // Chance the match finishes above each half line, from the projection's
+  // Poisson assumption. Compare with the price before playing anything.
+  model_over?: Record<string, number>;
 };
 
 export type LiveCorners = {

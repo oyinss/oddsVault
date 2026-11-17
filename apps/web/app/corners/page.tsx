@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   faArrowDownWideShort,
   faArrowTrendUp,
@@ -974,6 +974,13 @@ function MatchCard({
                     ? "before 15 min"
                     : undefined
             }
+            extra={
+              <PriceCheck
+                side="over"
+                line={match.rec_over_line ?? fairLineNumber(match.projected_total)}
+                modelOver={match.model_over}
+              />
+            }
           />
           <Metric
             label="Under line"
@@ -996,9 +1003,37 @@ function MatchCard({
                     ? "before 15 min"
                     : undefined
             }
+            extra={
+              <PriceCheck
+                side="under"
+                line={match.rec_under_line ?? fairLineNumber(match.projected_total)}
+                modelOver={match.model_over}
+              />
+            }
           />
 
         </div>
+
+        {match.model_over ? (
+          <div className="min-w-0 lg:col-start-2 lg:row-start-2">
+            <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
+              model over % · compare with the price
+            </p>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px]">
+              {Object.entries(match.model_over)
+                .sort((a, b) => Number(a[0]) - Number(b[0]))
+                .filter(([line]) => Number(line) >= 5.5 && Number(line) <= 12.5)
+                .map(([line, prob]) => (
+                  <span key={line} className="text-mist-400">
+                    <span className="text-mist-500">{line}</span>{" "}
+                    <span className="text-mist-200">
+                      {Math.round(prob * 100)}%
+                    </span>
+                  </span>
+                ))}
+            </div>
+          </div>
+        ) : null}
 
         {match.home_form ||
         match.away_form ||
@@ -1182,6 +1217,7 @@ function Metric({
   value,
   note,
   small = false,
+  extra,
 }: {
   label: string;
   icon: IconDefinition;
@@ -1189,6 +1225,7 @@ function Metric({
   value: string;
   note?: string;
   small?: boolean;
+  extra?: ReactNode;
 }) {
   return (
     <div className="min-w-0 rounded-lg border border-line bg-ink-950/40 px-2 py-1.5 sm:px-2.5">
@@ -1204,6 +1241,7 @@ function Metric({
       >
         {value}
       </p>
+      {extra}
       {note ? (
         <p className="font-mono text-[9px] text-mist-500">{note}</p>
       ) : null}
@@ -1328,6 +1366,57 @@ function FilterCard({
 // hang at even money. It is shown only to explain why no line qualified.
 function fairLine(projected: number): string {
   return (Math.round(projected * 2) / 2).toFixed(1);
+}
+
+function fairLineNumber(projected: number | null): number | null {
+  if (projected === null) return null;
+  return Math.round(projected * 2) / 2;
+}
+
+// PriceCheck puts the market next to the model. It does not call a bet: it shows
+// what the price implies and what the model says, so the gap is visible.
+function PriceCheck({
+  side,
+  line,
+  modelOver,
+}: {
+  side: "over" | "under";
+  line: number | null;
+  modelOver?: Record<string, number>;
+}) {
+  const [price, setPrice] = useState("");
+  if (line === null) return null;
+  const over = modelOver?.[line.toFixed(1)];
+  if (over === undefined) return null;
+  const model = side === "over" ? over : 1 - over;
+  const odds = Number(price);
+  const implied = odds > 1 ? 100 / odds : null;
+  const gap = implied === null ? null : Math.round(implied - model * 100);
+
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[9px]">
+      <input
+        inputMode="decimal"
+        value={price}
+        onChange={(event) => setPrice(event.target.value)}
+        placeholder="price"
+        aria-label={`Price for ${side} ${line}`}
+        className="w-14 rounded border border-line bg-ink-900 px-1 py-0.5 text-[10px] text-mist-100 outline-none focus:border-turf-400/50"
+      />
+      {implied !== null ? (
+        <span
+          className={
+            gap !== null && gap > 0 ? "text-flag-400" : "text-turf-300"
+          }
+          title="Implied is what the price asks for. Model is this app's projection, a straight rate extrapolation, not a proven probability."
+        >
+          {implied.toFixed(0)}% implied vs {Math.round(model * 100)}% model
+        </span>
+      ) : (
+        <span className="text-mist-500">model {Math.round(model * 100)}%</span>
+      )}
+    </span>
+  );
 }
 
 // cornerEdge marks the side that wins more corners per game, but only when both

@@ -57,6 +57,10 @@ type liveCornerMatch struct {
 	FirstHalfCorners  *int             `json:"first_half_corners"`
 	SecondHalfCorners *int             `json:"second_half_corners"`
 	PaperPicks        []paperPickBadge `json:"paper_picks,omitempty"`
+	// ModelOver is the chance the match finishes above each standard half line,
+	// from the same Poisson assumption the range uses, so a price can be judged
+	// against the model instead of read on its own.
+	ModelOver map[string]float64 `json:"model_over,omitempty"`
 }
 
 // paperPickBadge marks a live row that already has a paper pick recorded, so the
@@ -280,6 +284,27 @@ const cornerMatchSelect = `
 		LEFT JOIN team_match_stats as_ ON as_.event_id = e.id AND as_.team_id = ap.team_id
 		`
 
+// poissonAtLeast returns P(X >= k) for X ~ Poisson(lambda).
+func poissonAtLeast(lambda float64, k int) float64 {
+	if k <= 0 {
+		return 1
+	}
+	if lambda <= 0 {
+		return 0
+	}
+	cdf := 0.0
+	term := math.Exp(-lambda)
+	cdf += term
+	for i := 1; i < k; i++ {
+		term *= lambda / float64(i)
+		cdf += term
+	}
+	if cdf >= 1 {
+		return 0
+	}
+	return 1 - cdf
+}
+
 // queryCornerMatches runs one corner query and derives the metrics for each
 // row. Callers pass the WHERE/ORDER tail and the line.
 func (s *Server) queryCornerMatches(ctx context.Context, sql string, line float64, args ...any) ([]liveCornerMatch, error) {
@@ -393,6 +418,17 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 	high := float64(total) + lambdaRemaining + spread
 	m.ProjectionLow = ptrFloat(round2(low))
 	m.ProjectionHigh = ptrFloat(round2(high))
+
+	// P(final total above line) for the half lines a book actually hangs. The
+	// remaining corners are Poisson(lambda), so over the line means at least
+	// floor(line - total) + 1 more.
+	probs := make(map[string]float64, 16)
+	for line := 5.5; line <= 15.5; line += 1 {
+		need := int(math.Floor(line-float64(total))) + 1
+		prob := poissonAtLeast(lambdaRemaining, need)
+		probs[strconv.FormatFloat(line, 'f', 1, 64)] = round2(prob)
+	}
+	m.ModelOver = probs
 
 	// Both sides, computed from the same band, so a card never has to hide one
 	// of them behind a single selected line.
