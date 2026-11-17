@@ -24,6 +24,7 @@ import {
   faStar,
   faXmark,
   faTriangleExclamation,
+  faUser,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -1584,8 +1585,9 @@ function PlayedPanel({
                     {leg.status}
                   </span>
                   <span
-                    className={`ml-auto shrink-0 rounded border px-1 py-0.5 text-[8px] tracking-wider uppercase ${source.cls}`}
+                    className={`ml-auto inline-flex shrink-0 items-center gap-1 rounded border px-1 py-0.5 text-[8px] tracking-wider uppercase ${source.cls}`}
                   >
+                    <FontAwesomeIcon icon={faUser} className="size-2 shrink-0" />
                     {source.label}
                   </span>
                   <span className="shrink-0 text-mist-500">
