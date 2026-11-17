@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import {
   faArrowDownWideShort,
   faArrowDown,
@@ -57,10 +58,39 @@ const LINE_OPTIONS: { value: number; hint: string }[] = [
 ];
 
 export default function CornersPage() {
-  const [line, setLine] = useState(9.5);
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<CornerSort>("remaining");
-  const [then, setThen] = useState<CornerSort | "">("");
+  // useSearchParams needs a boundary in a static export.
+  return (
+    <Suspense
+      fallback={
+        <>
+          <SiteHeader />
+          <main className="w-full px-4 py-8 sm:px-6 lg:px-8">
+            <LoadingNote label="Reading live matches…" />
+          </main>
+        </>
+      }
+    >
+      <CornersView />
+    </Suspense>
+  );
+}
+
+function CornersView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [line, setLine] = useState(() => {
+    const value = Number(searchParams.get("line"));
+    return Number.isFinite(value) && value > 0 && value <= 40 ? value : 9.5;
+  });
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  const [sort, setSort] = useState<CornerSort>(
+    () => (searchParams.get("sort") as CornerSort) ?? "remaining",
+  );
+  const [then, setThen] = useState<CornerSort | "">(
+    () => (searchParams.get("then") as CornerSort) ?? "",
+  );
   const sortParam = then ? `${sort},${then}` : sort;
   const { data, loading, error, reload, cachedAt } = useApiData<LiveCorners | null>(
     `live-corners:${line}:${sortParam}`,
@@ -71,16 +101,25 @@ export default function CornersPage() {
   const matches = data?.matches ?? [];
   const alerts = useCornerAlerts(matches, line);
   const favorites = useCornerFavorites(matches);
-  const [onlyFollowed, setOnlyFollowed] = useState(false);
+  const [onlyFollowed, setOnlyFollowed] = useState(
+    () => searchParams.get("followed") === "1",
+  );
   // Storage keeps a follow after the match ends, so count only the ones still
   // on the live board; the board itself no longer lists finished games.
   const liveFollowed = matches.filter((match) =>
     favorites.isFollowed(match.event_id),
   ).length;
-  const [onlyRecorded, setOnlyRecorded] = useState(false);
-  const [onlyPlayed, setOnlyPlayed] = useState(false);
+  const [onlyRecorded, setOnlyRecorded] = useState(
+    () => searchParams.get("recorded") === "1",
+  );
+  const [onlyPlayed, setOnlyPlayed] = useState(
+    () => searchParams.get("played") === "1",
+  );
   const [pickNotice, setPickNotice] = useState<string | null>(null);
-  const [onlySide, setOnlySide] = useState<"none" | "over" | "under">("none");
+  const [onlySide, setOnlySide] = useState<"none" | "over" | "under">(() => {
+    const side = searchParams.get("side");
+    return side === "over" || side === "under" ? side : "none";
+  });
   const needle = search.trim().toLowerCase();
   const searched = needle
     ? matches.filter((match) =>
@@ -120,6 +159,33 @@ export default function CornersPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState("10");
   const [recordingId, setRecordingId] = useState<number | null>(null);
+
+  // Every filter lives in the URL, so a reload or a shared link opens the same
+  // view. Defaults are omitted to keep the address short.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (line !== 9.5) params.set("line", String(line));
+    if (sort !== "remaining") params.set("sort", sort);
+    if (then) params.set("then", then);
+    if (search.trim()) params.set("q", search.trim());
+    if (onlyRecorded) params.set("recorded", "1");
+    if (onlyPlayed) params.set("played", "1");
+    if (onlySide !== "none") params.set("side", onlySide);
+    if (onlyFollowed) params.set("followed", "1");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [
+    line,
+    sort,
+    then,
+    search,
+    onlyRecorded,
+    onlyPlayed,
+    onlySide,
+    onlyFollowed,
+    pathname,
+    router,
+  ]);
 
   useEffect(() => {
     if (!pickNotice) return;
