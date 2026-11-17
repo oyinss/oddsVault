@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   faArrowDownWideShort,
+  faArrowTrendUp,
   faArrowsRotate,
   faBell,
   faBellSlash,
@@ -849,6 +850,17 @@ function MatchCard({
                 size={16}
               />
               <span>{match.home.name}</span>
+              {cornerEdge(match) === "home" ? (
+                <span
+                  className="inline-flex shrink-0"
+                  title={`Corner edge: ${match.home.name} wins ${match.home_form?.avg_for.toFixed(1)} corners a game, ${match.away.name} ${match.away_form?.avg_for.toFixed(1)}`}
+                >
+                  <FontAwesomeIcon
+                    icon={faArrowTrendUp}
+                    className="size-3 text-turf-300"
+                  />
+                </span>
+              ) : null}
               {match.home_score !== null && match.away_score !== null ? (
                 <span className="font-mono text-xs text-mist-300">
                   {match.home_score}-{match.away_score}
@@ -860,6 +872,17 @@ function MatchCard({
                 size={16}
               />
               <span>{match.away.name}</span>
+              {cornerEdge(match) === "away" ? (
+                <span
+                  className="inline-flex shrink-0"
+                  title={`Corner edge: ${match.away.name} wins ${match.away_form?.avg_for.toFixed(1)} corners a game, ${match.home.name} ${match.home_form?.avg_for.toFixed(1)}`}
+                >
+                  <FontAwesomeIcon
+                    icon={faArrowTrendUp}
+                    className="size-3 text-turf-300"
+                  />
+                </span>
+              ) : null}
             </span>
           </Link>
 
@@ -1273,6 +1296,18 @@ function FilterCard({
       </span>
     </button>
   );
+}
+
+// cornerEdge marks the side that wins more corners per game, but only when both
+// teams have a real sample and the gap is at least one corner. It is a corner
+// edge, not a claim about who wins the match.
+function cornerEdge(match: LiveCornerMatch): "home" | "away" | null {
+  const home = match.home_form;
+  const away = match.away_form;
+  if (!home || !away || home.sample < 3 || away.sample < 3) return null;
+  const gap = home.avg_for - away.avg_for;
+  if (Math.abs(gap) < 1) return null;
+  return gap > 0 ? "home" : "away";
 }
 
 function shortDay(value: string | null) {

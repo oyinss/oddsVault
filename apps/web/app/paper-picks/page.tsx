@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   faArrowsRotate,
   faFilePen,
@@ -26,16 +27,44 @@ import {
 import { useApiData } from "@/lib/use-api";
 
 export default function PaperPicksPage() {
+  // useSearchParams needs a boundary in a static export.
+  return (
+    <Suspense
+      fallback={
+        <>
+          <SiteHeader />
+          <main className="mx-auto max-w-5xl px-6 py-12">
+            <LoadingNote label="Reading paper picks..." />
+          </main>
+        </>
+      }
+    >
+      <PaperPicksView />
+    </Suspense>
+  );
+}
+
+function PaperPicksView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const { data, loading, error, reload, cachedAt } = useApiData<PaperPicks | null>(
     "paper-picks",
     () => getPaperPicks(200),
     { refreshMs: 60000 },
   );
-  const [status, setStatus] = useState<"all" | PaperPick["status"]>("all");
-  const [book, setBook] = useState("");
-  const [competition, setCompetition] = useState("");
-  const [query, setQuery] = useState("");
-  const [range, setRange] = useState<RangeKey>("all");
+  const [status, setStatus] = useState<"all" | PaperPick["status"]>(
+    () => (searchParams.get("status") as PaperPick["status"]) ?? "all",
+  );
+  const [book, setBook] = useState(() => searchParams.get("book") ?? "");
+  const [competition, setCompetition] = useState(
+    () => searchParams.get("competition") ?? "",
+  );
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  const [range, setRange] = useState<RangeKey>(
+    () => (searchParams.get("date") as RangeKey) ?? "all",
+  );
 
   const picks = data?.picks ?? [];
   const books = useMemo(
@@ -84,6 +113,19 @@ export default function PaperPicksPage() {
   });
 
   const [editing, setEditing] = useState<PaperPick | null>(null);
+
+  // Every filter is in the URL, so a link carries the exact view. Defaults are
+  // omitted to keep the address readable.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (range !== "all") params.set("date", range);
+    if (status !== "all") params.set("status", status);
+    if (book) params.set("book", book);
+    if (competition) params.set("competition", competition);
+    if (query.trim()) params.set("q", query.trim());
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [range, status, book, competition, query, pathname, router]);
 
   async function remove(id: number) {
     await deletePaperPick(id);
