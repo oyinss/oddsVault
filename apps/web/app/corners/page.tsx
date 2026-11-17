@@ -806,6 +806,9 @@ function MatchCard({
           <PaperPickForm
             eventId={match.event_id}
             defaultLine={line}
+            recOverLine={match.rec_over_line}
+            recUnderLine={match.rec_under_line}
+            projectedTotal={match.projected_total}
             editing={
               editingPick
                 ? {

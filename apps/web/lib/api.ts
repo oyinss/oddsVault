@@ -1160,6 +1160,8 @@ export type PaperPick = {
   projected_total: number | null;
   projection_low: number | null;
   projection_high: number | null;
+  rec_over_line: number | null;
+  rec_under_line: number | null;
   needed: number | null;
   needed_per_minute: number | null;
   model_risk: boolean;

@@ -72,6 +72,8 @@ type paperPickResponse struct {
 	ProjectedTotal  *float64          `json:"projected_total"`
 	ProjectionLow   *float64          `json:"projection_low"`
 	ProjectionHigh  *float64          `json:"projection_high"`
+	RecOverLine     *float64          `json:"rec_over_line"`
+	RecUnderLine    *float64          `json:"rec_under_line"`
 	Needed          *int              `json:"needed"`
 	NeededPerMinute *float64          `json:"needed_per_minute"`
 	ModelRisk       bool              `json:"model_risk"`
@@ -97,6 +99,7 @@ func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 		TotalCorners: p.TotalCorners, HomeCorners: p.HomeCorners, AwayCorners: p.AwayCorners,
 		PacePerMinute: p.PacePerMinute, ProjectedTotal: p.ProjectedTotal,
 		ProjectionLow: p.ProjectionLow, ProjectionHigh: p.ProjectionHigh,
+		RecOverLine: p.RecOverLine, RecUnderLine: p.RecUnderLine,
 		Needed: p.Needed, NeededPerMinute: p.NeededPerMinute,
 		ModelRisk: p.ModelRisk, EarlyPace: p.EarlyPace,
 		EventStatus: p.EventStatus, Status: p.Status, FinalTotal: p.FinalTotal,
@@ -198,6 +201,8 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 		ProjectedTotal:  event.ProjectedTotal,
 		ProjectionLow:   event.ProjectionLow,
 		ProjectionHigh:  event.ProjectionHigh,
+		RecOverLine:     event.RecOverLine,
+		RecUnderLine:    event.RecUnderLine,
 		Needed:          event.Needed,
 		NeededPerMinute: event.NeededPerMin,
 		ModelRisk:       event.ModelRisk,

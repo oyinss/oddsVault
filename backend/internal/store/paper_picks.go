@@ -35,6 +35,8 @@ type PaperPick struct {
 	ProjectedTotal  *float64
 	ProjectionLow   *float64
 	ProjectionHigh  *float64
+	RecOverLine     *float64
+	RecUnderLine    *float64
 	Needed          *int
 	NeededPerMinute *float64
 	ModelRisk       bool
@@ -70,6 +72,8 @@ type PaperPickInput struct {
 	ProjectedTotal  *float64
 	ProjectionLow   *float64
 	ProjectionHigh  *float64
+	RecOverLine     *float64
+	RecUnderLine    *float64
 	Needed          *int
 	NeededPerMinute *float64
 	ModelRisk       bool
@@ -88,16 +92,18 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 			minute, home_score_at_save, away_score_at_save,
 			home_corners, away_corners, total_corners,
 			pace_per_minute, projected_total, projection_low, projection_high,
+			rec_over_line, rec_under_line,
 			needed, needed_per_minute, model_risk, early_pace,
 			event_status_at_save, data_cutoff_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
 		RETURNING id, status, created_at`,
 		in.EventID, in.CompetitionID, in.HomeTeamID, in.AwayTeamID,
 		in.ProviderSlug, in.Side, in.Line, in.Odds,
 		in.Minute, in.HomeScore, in.AwayScore,
 		in.HomeCorners, in.AwayCorners, in.TotalCorners,
 		in.PacePerMinute, in.ProjectedTotal, in.ProjectionLow, in.ProjectionHigh,
+		in.RecOverLine, in.RecUnderLine,
 		in.Needed, in.NeededPerMinute, in.ModelRisk, in.EarlyPace,
 		in.EventStatus, in.DataCutoffAt).Scan(&out.ID, &out.Status, &out.CreatedAt)
 	if err != nil {
@@ -118,6 +124,8 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 	out.ProjectedTotal = in.ProjectedTotal
 	out.ProjectionLow = in.ProjectionLow
 	out.ProjectionHigh = in.ProjectionHigh
+	out.RecOverLine = in.RecOverLine
+	out.RecUnderLine = in.RecUnderLine
 	out.Needed = in.Needed
 	out.NeededPerMinute = in.NeededPerMinute
 	out.ModelRisk = in.ModelRisk
@@ -135,6 +143,7 @@ const paperPickSelect = `
 	       p.minute, p.home_score_at_save, p.away_score_at_save,
 	       p.total_corners, p.home_corners, p.away_corners,
 	       p.pace_per_minute, p.projected_total, p.projection_low, p.projection_high,
+	       p.rec_over_line, p.rec_under_line,
 	       p.needed, p.needed_per_minute, p.model_risk, p.early_pace,
 	       p.event_status_at_save, p.status, p.final_total, p.settlement_rule,
 	       p.created_at, p.settled_at, p.data_cutoff_at, p.recovered_at
@@ -169,6 +178,7 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 			&item.Minute, &item.HomeScore, &item.AwayScore,
 			&item.TotalCorners, &item.HomeCorners, &item.AwayCorners,
 			&item.PacePerMinute, &item.ProjectedTotal, &item.ProjectionLow, &item.ProjectionHigh,
+			&item.RecOverLine, &item.RecUnderLine,
 			&item.Needed, &item.NeededPerMinute, &item.ModelRisk, &item.EarlyPace,
 			&item.EventStatus, &item.Status, &item.FinalTotal, &item.SettlementRule,
 			&item.CreatedAt, &item.SettledAt, &item.DataCutoffAt, &item.RecoveredAt); err != nil {
@@ -204,12 +214,14 @@ func (im *Importer) UpdatePaperPick(ctx context.Context, id int64, providerSlug,
 		SELECT p.id, p.event_id, p.provider_slug, p.side, p.line, p.odds,
 		       p.status, p.model_risk, p.early_pace, p.event_status_at_save,
 		       p.created_at, p.data_cutoff_at, p.final_total, p.settlement_rule,
-		       p.settled_at, p.recovered_at
+		       p.settled_at, p.recovered_at, p.projection_low, p.projection_high,
+		       p.rec_over_line, p.rec_under_line
 		FROM paper_picks p WHERE p.id = $1`, id).Scan(
 		&out.ID, &out.EventID, &out.ProviderSlug, &out.Side, &out.Line, &out.Odds,
 		&out.Status, &out.ModelRisk, &out.EarlyPace, &out.EventStatus,
 		&out.CreatedAt, &out.DataCutoffAt, &out.FinalTotal, &out.SettlementRule,
-		&out.SettledAt, &out.RecoveredAt)
+		&out.SettledAt, &out.RecoveredAt, &out.ProjectionLow, &out.ProjectionHigh,
+		&out.RecOverLine, &out.RecUnderLine)
 	if err != nil {
 		return PaperPick{}, fmt.Errorf("reload paper pick: %w", err)
 	}

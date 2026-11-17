@@ -21,6 +21,11 @@ import type { IconDefinition } from "@fortawesome/free-solid-svg-icons";
 
 import { TeamCrest } from "@/components/team-crest";
 import { absoluteAsset, formatAge, type PaperPick } from "@/lib/api";
+import {
+  baseRatePercent,
+  impliedPercent,
+  priceGapPoints,
+} from "@/lib/corner-base-rates";
 
 const STATUS_STYLES: Record<PaperPick["status"], string> = {
   pending: "border-line text-mist-300",
@@ -71,6 +76,21 @@ export function PaperPickCard({
   const homeScore = current?.home_score ?? null;
   const awayScore = current?.away_score ?? null;
   const room = pick.side === "under";
+  const implied = impliedPercent(pick.odds);
+  const base = baseRatePercent(pick.side, pick.line);
+  const gap = priceGapPoints(pick.side, pick.line, pick.odds);
+  // Against the read means the pick sits on the wrong side of the projection
+  // frozen with it, not the live one: the decision is judged on what was on
+  // screen when it was taken.
+  const savedProjection = pick.projected_total;
+  const againstRead =
+    savedProjection !== null &&
+    (pick.side === "over"
+      ? savedProjection <= pick.line
+      : savedProjection >= pick.line);
+  const followedLine =
+    (pick.side === "over" && pick.rec_over_line === pick.line) ||
+    (pick.side === "under" && pick.rec_under_line === pick.line);
   const risk = pick.model_risk || (projected !== null && projected > pick.line * 1.4 && (minute ?? 99) < 30);
 
   const tone = settled
@@ -171,6 +191,33 @@ export function PaperPickCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase">
+          <span
+            className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[9px] tracking-widest text-mist-300"
+            title={
+              base === null
+                ? `The price asks for ${implied ?? "?"}% of the time. No base rate is measured at ${pick.line}.`
+                : `The price asks for ${implied}%. The neutral base at ${pick.side} ${pick.line} is ${base}%, so the live read has to find ${gap} points.`
+            }
+          >
+            price {implied !== null ? `${implied}%` : "-"}
+            {base !== null ? ` · base ${base}%` : ""}
+          </span>
+          {againstRead ? (
+            <span
+              className="inline-flex items-center gap-1 rounded border border-flag-400/40 bg-flag-400/[0.06] px-1.5 py-0.5 text-[9px] tracking-widest text-flag-400"
+              title={`The projection at save was ${savedProjection?.toFixed(1)}, on the other side of ${pick.line}.`}
+            >
+              <FontAwesomeIcon icon={faTriangleExclamation} className="size-2.5" />
+              against the read
+            </span>
+          ) : followedLine ? (
+            <span
+              className="inline-flex items-center gap-1 rounded border border-turf-400/40 px-1.5 py-0.5 text-[9px] tracking-widest text-turf-300"
+              title="This is the line the board recommended when it was recorded."
+            >
+              followed the card
+            </span>
+          ) : null}
           <span
             className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] tracking-widest ${STATUS_STYLES[pick.status]}`}
           >

@@ -5,6 +5,11 @@ import { faFloppyDisk, faSpinner, faXmark } from "@fortawesome/free-solid-svg-ic
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
+  baseRatePercent,
+  impliedPercent,
+  priceGapPoints,
+} from "@/lib/corner-base-rates";
+import {
   createPaperPick,
   getPaperPickProviders,
   updatePaperPick,
@@ -24,12 +29,20 @@ const LINE_OPTIONS = Array.from({ length: 24 }, (_, index) =>
 export function PaperPickForm({
   eventId,
   defaultLine,
+  recOverLine,
+  recUnderLine,
+  projectedTotal,
   editing,
   onSaved,
   onCancel,
 }: {
   eventId: number;
   defaultLine: number;
+  // The board's own recommendation, so the form opens on the read the card is
+  // showing instead of the generic board line.
+  recOverLine?: number | null;
+  recUnderLine?: number | null;
+  projectedTotal?: number | null;
   editing?: {
     id: number;
     provider_slug: string;
@@ -42,9 +55,17 @@ export function PaperPickForm({
 }) {
   const [providers, setProviders] = useState<BookmakerOption[]>([]);
   const [provider, setProvider] = useState(editing?.provider_slug ?? "1xbet");
-  const [side, setSide] = useState<"over" | "under">(editing?.side ?? "under");
+  const [side, setSide] = useState<"over" | "under">(
+    editing?.side ??
+      (recOverLine != null ? "over" : recUnderLine != null ? "under" : "under"),
+  );
   const [line, setLine] = useState(
-    (editing?.line ?? defaultLine).toFixed(1),
+    (
+      editing?.line ??
+      recOverLine ??
+      recUnderLine ??
+      defaultLine
+    ).toFixed(1),
   );
   const [odds, setOdds] = useState(
     editing?.odds != null ? String(editing.odds) : "",
@@ -113,6 +134,26 @@ export function PaperPickForm({
       setSaving(false);
     }
   }
+
+  const oddsValue = Number(odds);
+  const lineValue = Number(line);
+  const implied = impliedPercent(oddsValue);
+  const base = Number.isFinite(lineValue)
+    ? baseRatePercent(side, lineValue)
+    : null;
+  const gap =
+    Number.isFinite(lineValue) && Number.isFinite(oddsValue)
+      ? priceGapPoints(side, lineValue, oddsValue)
+      : null;
+  // The same test the card uses: a pick is against the read when it sits on the
+  // wrong side of the live projection.
+  const againstRead =
+    projectedTotal != null &&
+    Number.isFinite(lineValue) &&
+    (side === "over" ? projectedTotal <= lineValue : projectedTotal >= lineValue);
+  const followedLine =
+    (side === "over" && recOverLine != null && lineValue === recOverLine) ||
+    (side === "under" && recUnderLine != null && lineValue === recUnderLine);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -204,10 +245,43 @@ export function PaperPickForm({
           <FontAwesomeIcon icon={faXmark} className="size-2.5" />
         </button>
       ) : null}
-      <span className="basis-full text-[10px] text-mist-500">
-        Suggested line: over 8.5 (61% base) · under 11.5 (70% base). Line 10 is
-        the median and gives no edge.
+      <span className="basis-full text-[10px] text-mist-400">
+        {implied !== null ? (
+          <>
+            <span className="text-mist-200">price asks {implied}%</span>
+            {base !== null ? (
+              <>
+                {" "}
+                · neutral base at {side} {line} is{" "}
+                <span className="text-mist-200">{base}%</span> ·
+                {gap !== null && gap > 0 ? (
+                  <span className="text-flag-400">
+                    {" "}
+                    the read must find {gap} points
+                  </span>
+                ) : (
+                  <span className="text-turf-300"> the price is on your side</span>
+                )}
+              </>
+            ) : (
+              <span> · no base rate measured at {line}</span>
+            )}
+          </>
+        ) : (
+          <>Enter the odds you can get to see what the price asks for.</>
+        )}
       </span>
+      {againstRead ? (
+        <span className="basis-full text-[10px] text-flag-400">
+          This is against the read: the projection is {projectedTotal?.toFixed(1)}
+          , on the other side of {line}. Two of your four losses came from picks
+          like this.
+        </span>
+      ) : followedLine ? (
+        <span className="basis-full text-[10px] text-turf-300">
+          This is the line the card recommends.
+        </span>
+      ) : null}
       {message ? (
         <span
           className={`text-[10px] ${failed ? "text-flag-400" : "text-turf-300"}`}
