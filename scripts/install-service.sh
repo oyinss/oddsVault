@@ -28,6 +28,25 @@ TimeoutStopSec=20
 WantedBy=default.target
 EOF
 
+cat >"$UNIT_DIR/oddsvault-tunnel.service" <<EOF
+[Unit]
+Description=OddsVault tunnel watcher (keeps the public API origin answering)
+After=network-online.target oddsvault.service
+Wants=oddsvault.service
+
+[Service]
+Type=simple
+WorkingDirectory=$ROOT
+EnvironmentFile=-$ROOT/.env
+ExecStart=$ROOT/scripts/tunnel-watch.sh
+Restart=always
+RestartSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=default.target
+EOF
+
 cat >"$UNIT_DIR/oddsvault-model-picks.service" <<EOF
 [Unit]
 Description=OddsVault model picks run
@@ -76,6 +95,7 @@ WantedBy=timers.target
 EOF
 
 systemctl --user daemon-reload
+systemctl --user enable --now oddsvault-tunnel.service
 systemctl --user enable --now oddsvault-backup.timer
 systemctl --user enable --now oddsvault-model-picks.timer
 
@@ -85,4 +105,5 @@ fi
 
 echo "installed:"
 systemctl --user --no-pager status oddsvault.service | head -6 || true
+systemctl --user --no-pager status oddsvault-tunnel.service | head -6 || true
 systemctl --user --no-pager list-timers oddsvault-backup.timer --all | head -3 || true

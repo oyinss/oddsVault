@@ -101,7 +101,6 @@ publish_origin() {
       cd "$ROOT/apps/web" || exit 1
       unset NEXT_PUBLIC_API_BASE_URL
       npm run build >/tmp/oddsvault-watch-build.log 2>&1 || { tail -5 /tmp/oddsvault-watch-build.log >>"$LOG"; exit 1; }
-      rm -rf out.bak && cp -r out out.bak
       npx wrangler pages deploy out --project-name "$PROJECT" --branch=main --commit-dirty=true \
         >>"$LOG" 2>&1 || exit 1
     ) 9>/tmp/oddsvault-deploy.lock; then
