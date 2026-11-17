@@ -14,6 +14,7 @@ import {
   faFilePen,
   faFlag,
   faGaugeHigh,
+  faFutbol,
   faLayerGroup,
   faMagnifyingGlass,
   faRulerHorizontal,
@@ -1072,16 +1073,26 @@ function CompetitionMark({
     );
   }
   const src = flagUrl(iso);
-  if (!src) return null;
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        width={18}
+        height={12}
+        title={`${name}${iso ? ` · ${iso}` : ""}`}
+        className="h-3 w-[18px] shrink-0 rounded-[2px] object-cover ring-1 ring-white/20"
+      />
+    );
+  }
+  // No crest and no country on file: still leave a marker so a league chip can
+  // never look like plain text, and the card is scannable at a glance.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      width={16}
-      height={11}
+    <FontAwesomeIcon
+      icon={faFutbol}
       title={name}
-      className="h-[11px] w-[16px] shrink-0 rounded-[2px] object-cover"
+      className="size-3 shrink-0 text-mist-500"
     />
   );
 }
