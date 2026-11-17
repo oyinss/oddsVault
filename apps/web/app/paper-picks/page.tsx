@@ -35,6 +35,7 @@ export default function PaperPicksPage() {
   const [book, setBook] = useState("");
   const [competition, setCompetition] = useState("");
   const [query, setQuery] = useState("");
+  const [range, setRange] = useState<RangeKey>("all");
 
   const picks = data?.picks ?? [];
   const books = useMemo(
@@ -46,7 +47,23 @@ export default function PaperPicksPage() {
     [picks],
   );
   const needle = query.trim().toLowerCase();
+  const rangeStart = rangeStartFor(range);
+  // The summary tiles follow the date range but ignore the status tile itself,
+  // so the numbers do not collapse to the tile you just clicked.
+  const rangeScoped = picks.filter(
+    (pick) => !rangeStart || Date.parse(pick.created_at) >= rangeStart,
+  );
+  const summary = rangeScoped.reduce(
+    (acc, pick) => {
+      if (pick.status in acc) {
+        acc[pick.status as "pending" | "won" | "lost" | "push" | "void"] += 1;
+      }
+      return acc;
+    },
+    { pending: 0, won: 0, lost: 0, push: 0, void: 0 },
+  );
   const visible = picks.filter((pick) => {
+    if (rangeStart && Date.parse(pick.created_at) < rangeStart) return false;
     if (status !== "all" && pick.status !== status) return false;
     if (book && pick.provider !== book) return false;
     if (competition && pick.competition !== competition) return false;
@@ -116,7 +133,7 @@ export default function PaperPicksPage() {
               <Summary
                 key={item.key}
                 label={item.label}
-                value={data.summary[item.key]}
+                value={summary[item.key]}
                 tone={item.tone}
                 icon={STATUS_ICONS[item.key]}
                 active={status === item.key}
@@ -131,6 +148,35 @@ export default function PaperPicksPage() {
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div
+            className="flex overflow-hidden rounded-xl border border-line"
+            role="group"
+            aria-label="Recorded"
+          >
+            {(
+              [
+                { key: "today", label: "Today" },
+                { key: "week", label: "This week" },
+                { key: "month", label: "This month" },
+                { key: "all", label: "All" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setRange(option.key)}
+                aria-pressed={range === option.key}
+                title={`Show picks recorded ${option.label.toLowerCase()}`}
+                className={`px-2.5 py-2 font-mono text-[10px] tracking-widest uppercase transition ${
+                  range === option.key
+                    ? "bg-turf-500/15 text-turf-200"
+                    : "text-mist-400 hover:text-mist-100"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as typeof status)}
@@ -292,6 +338,25 @@ export default function PaperPicksPage() {
 
 // Summary is the status filter as well as a count: clicking one narrows the
 // list below to that status, and clicking it again clears the filter.
+// The date filters read the day the pick was recorded, not the kickoff: the
+// list answers "what did I record", so a pick on a future fixture still belongs
+// to the day it was written.
+type RangeKey = "today" | "week" | "month" | "all";
+
+function rangeStartFor(range: RangeKey): number | null {
+  if (range === "all") return null;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  if (range === "week") {
+    // Week starts Monday.
+    const offset = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - offset);
+  } else if (range === "month") {
+    start.setDate(1);
+  }
+  return start.getTime();
+}
+
 function Summary({
   label,
   value,
