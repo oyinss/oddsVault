@@ -130,9 +130,25 @@ export function PaperPickCard({
             </span>
           ) : null}
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-turf-400/40 bg-turf-500/10 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-turf-200 uppercase">
-          <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
-          {pick.side} {pick.line} @ {pick.odds.toFixed(2)} · {pick.provider}
+        <span className="flex items-center gap-1.5">
+          {pick.placed_by ? (
+            <span
+              className={`rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-widest uppercase ${
+                pick.placed_by === "oyins"
+                  ? "border-turf-400/40 text-turf-300"
+                  : pick.placed_by === "emife"
+                    ? "border-flag-400/40 text-flag-400"
+                    : "border-line text-mist-300"
+              }`}
+              title={`Played by ${pick.placed_by}`}
+            >
+              {pick.placed_by}
+            </span>
+          ) : null}
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-turf-400/40 bg-turf-500/10 px-2 py-1 font-mono text-[10px] font-bold tracking-widest text-turf-200 uppercase">
+            <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
+            {pick.side} {pick.line} @ {pick.odds.toFixed(2)} · {pick.provider}
+          </span>
         </span>
       </header>
 

@@ -42,6 +42,7 @@ type PaperPick struct {
 	ModelRisk       bool
 	EarlyPace       bool
 	EventStatus     string
+	PlacedBy        *string
 	Status          string
 	FinalTotal      *int
 	SettlementRule  *string
@@ -79,6 +80,7 @@ type PaperPickInput struct {
 	ModelRisk       bool
 	EarlyPace       bool
 	EventStatus     string
+	PlacedBy        *string
 	DataCutoffAt    time.Time
 }
 
@@ -94,9 +96,9 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 			pace_per_minute, projected_total, projection_low, projection_high,
 			rec_over_line, rec_under_line,
 			needed, needed_per_minute, model_risk, early_pace,
-			event_status_at_save, data_cutoff_at)
+			event_status_at_save, placed_by, data_cutoff_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+		        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 		RETURNING id, status, created_at`,
 		in.EventID, in.CompetitionID, in.HomeTeamID, in.AwayTeamID,
 		in.ProviderSlug, in.Side, in.Line, in.Odds,
@@ -105,7 +107,7 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 		in.PacePerMinute, in.ProjectedTotal, in.ProjectionLow, in.ProjectionHigh,
 		in.RecOverLine, in.RecUnderLine,
 		in.Needed, in.NeededPerMinute, in.ModelRisk, in.EarlyPace,
-		in.EventStatus, in.DataCutoffAt).Scan(&out.ID, &out.Status, &out.CreatedAt)
+		in.EventStatus, in.PlacedBy, in.DataCutoffAt).Scan(&out.ID, &out.Status, &out.CreatedAt)
 	if err != nil {
 		return out, fmt.Errorf("create paper pick: %w", err)
 	}
@@ -124,6 +126,7 @@ func (im *Importer) CreatePaperPick(ctx context.Context, in PaperPickInput) (Pap
 	out.ProjectedTotal = in.ProjectedTotal
 	out.ProjectionLow = in.ProjectionLow
 	out.ProjectionHigh = in.ProjectionHigh
+	out.PlacedBy = in.PlacedBy
 	out.RecOverLine = in.RecOverLine
 	out.RecUnderLine = in.RecUnderLine
 	out.Needed = in.Needed
@@ -145,7 +148,7 @@ const paperPickSelect = `
 	       p.pace_per_minute, p.projected_total, p.projection_low, p.projection_high,
 	       p.rec_over_line, p.rec_under_line,
 	       p.needed, p.needed_per_minute, p.model_risk, p.early_pace,
-	       p.event_status_at_save, p.status, p.final_total, p.settlement_rule,
+	       p.event_status_at_save, p.placed_by, p.status, p.final_total, p.settlement_rule,
 	       p.created_at, p.settled_at, p.data_cutoff_at, p.recovered_at
 	FROM paper_picks p
 	JOIN competitions c ON c.id = p.competition_id
@@ -180,7 +183,7 @@ func (im *Importer) ListPaperPicks(ctx context.Context, limit int) ([]PaperPick,
 			&item.PacePerMinute, &item.ProjectedTotal, &item.ProjectionLow, &item.ProjectionHigh,
 			&item.RecOverLine, &item.RecUnderLine,
 			&item.Needed, &item.NeededPerMinute, &item.ModelRisk, &item.EarlyPace,
-			&item.EventStatus, &item.Status, &item.FinalTotal, &item.SettlementRule,
+			&item.EventStatus, &item.PlacedBy, &item.Status, &item.FinalTotal, &item.SettlementRule,
 			&item.CreatedAt, &item.SettledAt, &item.DataCutoffAt, &item.RecoveredAt); err != nil {
 			return nil, err
 		}

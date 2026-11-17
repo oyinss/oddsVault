@@ -1146,6 +1146,7 @@ export type PaperPick = {
   away: string;
   provider: string;
   provider_slug: string;
+  placed_by: "emife" | "oyins" | "agent" | null;
   home_team_id: number;
   away_team_id: number;
   event_status: string;

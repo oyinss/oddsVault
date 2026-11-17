@@ -23,6 +23,9 @@ type paperPickRequest struct {
 	Side     string  `json:"side"`
 	Line     float64 `json:"line"`
 	Odds     float64 `json:"odds"`
+	// PlacedBy names the bettor when the pick came off a real slip. Empty for a
+	// recording made straight from the board.
+	PlacedBy string `json:"placed_by"`
 }
 
 // paperPickCurrent is the match state now, so a pending pick can be followed
@@ -79,6 +82,7 @@ type paperPickResponse struct {
 	ModelRisk       bool              `json:"model_risk"`
 	EarlyPace       bool              `json:"early_pace"`
 	EventStatus     string            `json:"event_status_at_save"`
+	PlacedBy        *string           `json:"placed_by"`
 	Status          string            `json:"status"`
 	FinalTotal      *int              `json:"final_total"`
 	SettlementRule  *string           `json:"settlement_rule"`
@@ -102,7 +106,7 @@ func toPaperPickResponse(p store.PaperPick) paperPickResponse {
 		RecOverLine: p.RecOverLine, RecUnderLine: p.RecUnderLine,
 		Needed: p.Needed, NeededPerMinute: p.NeededPerMinute,
 		ModelRisk: p.ModelRisk, EarlyPace: p.EarlyPace,
-		EventStatus: p.EventStatus, Status: p.Status, FinalTotal: p.FinalTotal,
+		EventStatus: p.EventStatus, PlacedBy: p.PlacedBy, Status: p.Status, FinalTotal: p.FinalTotal,
 		SettlementRule: p.SettlementRule,
 		CreatedAt:      p.CreatedAt.UTC().Format(time.RFC3339),
 		DataCutoffAt:   p.DataCutoffAt.UTC().Format(time.RFC3339),
@@ -162,6 +166,10 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "invalid_odds", "odds must be greater than 1")
 		return
 	}
+	if body.PlacedBy != "" && body.PlacedBy != "emife" && body.PlacedBy != "oyins" && body.PlacedBy != "agent" {
+		writeError(w, r, http.StatusBadRequest, "invalid_bettor", "placed_by must be emife, oyins or agent")
+		return
+	}
 
 	event, err := s.cornerMatch(r.Context(), body.EventID, body.Line)
 	if err != nil {
@@ -209,6 +217,7 @@ func (s *Server) handleCreatePaperPick(w http.ResponseWriter, r *http.Request) {
 		EarlyPace:       event.EarlyPace,
 		EventStatus:     eventStatus,
 		DataCutoffAt:    time.Now().UTC(),
+		PlacedBy:        placedByOrNil(body.PlacedBy),
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "create paper pick", "error", err.Error())
@@ -519,4 +528,13 @@ func (s *Server) attachPaperPickCurrent(ctx context.Context, picks []paperPickRe
 		}
 		pick.Current = current
 	}
+}
+
+// placedByOrNil keeps an unattributed recording as NULL rather than an empty
+// string, so the column means exactly one thing.
+func placedByOrNil(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
 }
