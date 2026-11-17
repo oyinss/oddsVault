@@ -956,27 +956,45 @@ function MatchCard({
           <Metric
             label="Over line"
             icon={faFlag}
-            hint="Highest over line that still sits below the low end of the likely range. If it shows a dash, the range does not clear a standard line."
+            hint="Highest over line that still sits below the low end of the likely range, so the whole range clears it. When the range still spans a line there is no edge and it reads pass, with the fair line shown underneath."
             value={
-              match.rec_over_line !== null ? match.rec_over_line.toFixed(1) : "-"
+              match.rec_over_line !== null
+                ? match.rec_over_line.toFixed(1)
+                : match.projected_total !== null
+                  ? "pass"
+                  : "-"
             }
+            small={match.rec_over_line === null && match.projected_total !== null}
             note={
               match.rec_over_line !== null && match.total_corners !== null
                 ? `${Math.max(0, Math.ceil(match.rec_over_line) - match.total_corners)} needed`
-                : undefined
+                : match.rec_over_line === null && match.projected_total !== null
+                  ? `fair ${fairLine(match.projected_total)} · no edge`
+                  : match.projected_total === null
+                    ? "before 15 min"
+                    : undefined
             }
           />
           <Metric
             label="Under line"
             icon={faFlag}
-            hint="Lowest under line that still sits above the high end of the likely range. If it shows a dash, the range does not clear a standard line."
+            hint="Lowest under line that still sits above the high end of the likely range, so the whole range stays under it. When the range still spans a line there is no edge and it reads pass, with the fair line shown underneath."
             value={
-              match.rec_under_line !== null ? match.rec_under_line.toFixed(1) : "-"
+              match.rec_under_line !== null
+                ? match.rec_under_line.toFixed(1)
+                : match.projected_total !== null
+                  ? "pass"
+                  : "-"
             }
+            small={match.rec_under_line === null && match.projected_total !== null}
             note={
               match.rec_under_line !== null && match.total_corners !== null
                 ? `${Math.max(0, Math.floor(match.rec_under_line) - match.total_corners)} room`
-                : undefined
+                : match.rec_under_line === null && match.projected_total !== null
+                  ? `fair ${fairLine(match.projected_total)} · no edge`
+                  : match.projected_total === null
+                    ? "before 15 min"
+                    : undefined
             }
           />
 
@@ -1163,12 +1181,14 @@ function Metric({
   hint,
   value,
   note,
+  small = false,
 }: {
   label: string;
   icon: IconDefinition;
   hint: string;
   value: string;
   note?: string;
+  small?: boolean;
 }) {
   return (
     <div className="min-w-0 rounded-lg border border-line bg-ink-950/40 px-2 py-1.5 sm:px-2.5">
@@ -1177,7 +1197,13 @@ function Metric({
         <span className="truncate">{label}</span>
         <Hint text={hint} />
       </p>
-      <p className="font-mono text-sm tabular-nums text-mist-100">{value}</p>
+      <p
+        className={`font-mono tabular-nums ${
+          small ? "text-xs text-mist-300" : "text-sm text-mist-100"
+        }`}
+      >
+        {value}
+      </p>
       {note ? (
         <p className="font-mono text-[9px] text-mist-500">{note}</p>
       ) : null}
@@ -1296,6 +1322,12 @@ function FilterCard({
       </span>
     </button>
   );
+}
+
+// fairLine is the standard line nearest the projection, the one a book would
+// hang at even money. It is shown only to explain why no line qualified.
+function fairLine(projected: number): string {
+  return (Math.round(projected * 2) / 2).toFixed(1);
 }
 
 // cornerEdge marks the side that wins more corners per game, but only when both
