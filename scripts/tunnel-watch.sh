@@ -80,57 +80,14 @@ start_tunnel() {
 }
 
 publish_origin() {
-  local url token
+  local url
   url="$(cat "$ORIGIN_FILE")"
-  token="$(grep -E '^JOURNAL_TOKEN=' .env 2>/dev/null | cut -d= -f2- || true)"
-
-  printf '%s\n' "$url" | (cd apps/web && npx wrangler pages secret put API_ORIGIN --project-name "$PROJECT" >/dev/null 2>&1) \
-    || log "secret API_ORIGIN failed"
-  if [ -n "$token" ]; then
-    printf '%s\n' "$token" | (cd apps/web && npx wrangler pages secret put JOURNAL_TOKEN --project-name "$PROJECT" >/dev/null 2>&1) \
-      || log "secret JOURNAL_TOKEN failed"
-  fi
-
-  # A build that collides with another build in the same directory fails fast,
-  # and a failed deploy leaves Pages pointing at the dead origin. Serialise on
-  # one lock, record the reason, and try the whole thing twice.
-  local attempt ok=0
-  for attempt in 1 2; do
-    if (
-      flock -w 600 9 || exit 90
-      cd "$ROOT/apps/web" || exit 1
-      unset NEXT_PUBLIC_API_BASE_URL
-      npm run build >/tmp/oddsvault-watch-build.log 2>&1 || { tail -5 /tmp/oddsvault-watch-build.log >>"$LOG"; exit 1; }
-      npx wrangler pages deploy out --project-name "$PROJECT" --branch=main --commit-dirty=true \
-        >>"$LOG" 2>&1 || exit 1
-    ) 9>/tmp/oddsvault-deploy.lock; then
-      ok=1
-      break
-    fi
-    log "pages deploy attempt $attempt failed"
-    sleep 5
-  done
-  if [ "$ok" != "1" ]; then
-    log "pages deploy failed for $url; site will keep the old origin until it succeeds"
-    return 1
-  fi
-
-  local code="" wait
-  for wait in $(seq 1 15); do
-    code="$(curl -sS -m 8 -o /dev/null -w '%{http_code}' "https://$PROJECT.pages.dev/svc/healthz" 2>/dev/null || true)"
-    [ "$code" = "200" ] && break
-    sleep 4
-  done
-  if [ "$code" != "200" ]; then
-    log "deployed but https://$PROJECT.pages.dev/svc/healthz answered $code"
-  else
+  if "$ROOT/scripts/publish-pages.sh" "$url"; then
     log "pages deployed for $url and verified"
+    return 0
   fi
-
-  # Restore the local export so localhost:3000 keeps talking to localhost:8080.
-  (cd apps/web && NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 npm run build \
-    >/tmp/oddsvault-watch-local.log 2>&1) || log "local rebuild failed"
-  log "local export rebuilt"
+  log "pages publish failed for $url; see .local/logs/publish-pages.log"
+  return 1
 }
 
 log "watcher started (pid $$)"
