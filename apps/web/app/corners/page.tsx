@@ -1075,7 +1075,7 @@ function MatchCard({
               proj {match.projected_total?.toFixed(1) ?? "-"} · lines the read
               backs, with that side's model chance
             </p>
-            <div className="mt-1 space-y-1 font-mono text-[10px]">
+            <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[10px]">
               {(
                 [
                   { side: "over" as const, label: "OVER", tone: "text-turf-300" },
@@ -1092,27 +1092,30 @@ function MatchCard({
                         ? (match.projected_total ?? 0) > Number(line)
                         : (match.projected_total ?? 0) < Number(line)),
                   );
-                if (lines.length === 0) return null;
                 return (
-                  <div key={row.side} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                    <span className={`w-10 shrink-0 font-bold ${row.tone}`}>
-                      {row.label}
-                    </span>
-                    {lines.map(([line, prob]) => {
-                      const value = row.side === "over" ? prob : 1 - prob;
-                      return (
-                        <span
-                          key={line}
-                          className="text-mist-400"
-                          title={`At ${line} the projection is ${match.projected_total?.toFixed(1) ?? "unknown"}, so ${row.side} ${line} is backed and the model gives it ${Math.round(value * 100)}%.`}
-                        >
-                          <span className="text-mist-500">{line}</span>{" "}
-                          <span className="text-mist-200">
-                            {Math.round(value * 100)}%
-                          </span>
-                        </span>
-                      );
-                    })}
+                  <div key={row.side} className="min-w-0">
+                    <p className={`font-bold ${row.tone}`}>{row.label}</p>
+                    {lines.length === 0 ? (
+                      <p className="text-mist-500">none</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5">
+                        {lines.map(([line, prob]) => {
+                          const value = row.side === "over" ? prob : 1 - prob;
+                          return (
+                            <span
+                              key={line}
+                              className="text-mist-400"
+                              title={`At ${line} the projection is ${match.projected_total?.toFixed(1) ?? "unknown"}, so ${row.side} ${line} is backed and the model gives it ${Math.round(value * 100)}%.`}
+                            >
+                              <span className="text-mist-500">{line}</span>{" "}
+                              <span className="text-mist-200">
+                                {Math.round(value * 100)}%
+                              </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
