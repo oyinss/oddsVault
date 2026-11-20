@@ -1072,38 +1072,50 @@ function MatchCard({
         {match.model_over ? (
           <div className="min-w-0">
             <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-              proj {match.projected_total?.toFixed(1) ?? "-"} · line · model
-              over % · side it backs
+              proj {match.projected_total?.toFixed(1) ?? "-"} · lines the read
+              backs, with that side's model chance
             </p>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px]">
-              {Object.entries(match.model_over)
-                .sort((a, b) => Number(a[0]) - Number(b[0]))
-                .filter(([line]) => Number(line) >= 5.5 && Number(line) <= 12.5)
-                .map(([line, prob]) => {
-                  // Which side the projection backs at this line, so a pick can
-                  // be checked before it is recorded rather than after.
-                  const supportsOver =
-                    match.projected_total !== null &&
-                    match.projected_total > Number(line);
-                  return (
-                    <span
-                      key={line}
-                      className="inline-flex items-center gap-1 text-mist-400"
-                      title={`At ${line} the projection is ${match.projected_total?.toFixed(1) ?? "unknown"}, so the read backs ${supportsOver ? "over" : "under"}.`}
-                    >
-                      <span className="text-mist-500">{line}</span>
-                      <span className="text-mist-200">
-                        {Math.round(prob * 100)}%
-                      </span>
-                      <FontAwesomeIcon
-                        icon={supportsOver ? faArrowUp : faArrowDown}
-                        className={`size-2.5 ${
-                          supportsOver ? "text-turf-300" : "text-flag-400"
-                        }`}
-                      />
-                    </span>
+            <div className="mt-1 space-y-1 font-mono text-[10px]">
+              {(
+                [
+                  { side: "over" as const, label: "OVER", tone: "text-turf-300" },
+                  { side: "under" as const, label: "UNDER", tone: "text-flag-400" },
+                ]
+              ).map((row) => {
+                const lines = Object.entries(match.model_over ?? {})
+                  .sort((a, b) => Number(a[0]) - Number(b[0]))
+                  .filter(
+                    ([line]) =>
+                      Number(line) >= 5.5 &&
+                      Number(line) <= 12.5 &&
+                      (row.side === "over"
+                        ? (match.projected_total ?? 0) > Number(line)
+                        : (match.projected_total ?? 0) < Number(line)),
                   );
-                })}
+                if (lines.length === 0) return null;
+                return (
+                  <div key={row.side} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                    <span className={`w-10 shrink-0 font-bold ${row.tone}`}>
+                      {row.label}
+                    </span>
+                    {lines.map(([line, prob]) => {
+                      const value = row.side === "over" ? prob : 1 - prob;
+                      return (
+                        <span
+                          key={line}
+                          className="text-mist-400"
+                          title={`At ${line} the projection is ${match.projected_total?.toFixed(1) ?? "unknown"}, so ${row.side} ${line} is backed and the model gives it ${Math.round(value * 100)}%.`}
+                        >
+                          <span className="text-mist-500">{line}</span>{" "}
+                          <span className="text-mist-200">
+                            {Math.round(value * 100)}%
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}
