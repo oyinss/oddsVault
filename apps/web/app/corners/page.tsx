@@ -987,9 +987,8 @@ function MatchCard({
               1H {match.first_half_corners} · 2H {match.second_half_corners}
             </p>
           ) : null}
-        </div>
 
-        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
+          <div className="mt-2 grid min-w-0 grid-cols-2 gap-1.5 sm:gap-2">
           <Metric
             label="Pace"
             icon={faGaugeHigh}
@@ -1067,10 +1066,11 @@ function MatchCard({
             }
           />
 
+          </div>
         </div>
 
         {match.model_over ? (
-          <div className="min-w-0 lg:col-start-2 lg:row-start-2">
+          <div className="min-w-0">
             <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
               proj {match.projected_total?.toFixed(1) ?? "-"} · line · model
               over % · side it backs
