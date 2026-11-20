@@ -422,8 +422,9 @@ func applyCornerMetrics(m *liveCornerMatch, line float64) {
 	// P(final total above line) for the half lines a book actually hangs. The
 	// remaining corners are Poisson(lambda), so over the line means at least
 	// floor(line - total) + 1 more.
-	probs := make(map[string]float64, 16)
-	for line := 5.5; line <= 15.5; line += 1 {
+	// Half-step grid, the way a book hangs totals: 4.5, 5, 5.5 and so on.
+	probs := make(map[string]float64, 32)
+	for line := 4.5; line <= 15.5; line += 0.5 {
 		need := int(math.Floor(line-float64(total))) + 1
 		prob := poissonAtLeast(lambdaRemaining, need)
 		probs[strconv.FormatFloat(line, 'f', 1, 64)] = round2(prob)

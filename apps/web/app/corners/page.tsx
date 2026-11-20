@@ -989,9 +989,13 @@ function MatchCard({
                 aria-pressed={editingPickId === pick.id}
                 title={`${pick.provider} ${pick.side} ${pick.line} at ${pick.odds}. Click to edit this recording.`}
                 className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest uppercase transition ${
-                  editingPickId === pick.id
-                    ? "border-turf-400/70 bg-turf-500/20 text-turf-100"
-                    : "border-turf-400/40 bg-turf-500/10 text-turf-200 hover:border-turf-400/70"
+                  pick.side === "under"
+                    ? editingPickId === pick.id
+                      ? "border-flag-400/70 bg-flag-400/15 text-flag-400"
+                      : "border-flag-400/40 bg-flag-400/10 text-flag-400 hover:border-flag-400/70"
+                    : editingPickId === pick.id
+                      ? "border-turf-400/70 bg-turf-500/20 text-turf-100"
+                      : "border-turf-400/40 bg-turf-500/10 text-turf-200 hover:border-turf-400/70"
                 }`}
               >
                 <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
@@ -1112,7 +1116,7 @@ function MatchCard({
                   .sort((a, b) => Number(a[0]) - Number(b[0]))
                   .filter(
                     ([line]) =>
-                      Number(line) >= 5.5 &&
+                      Number(line) >= 4.5 &&
                       Number(line) <= 12.5 &&
                       (row.side === "over"
                         ? (match.projected_total ?? 0) > Number(line)
