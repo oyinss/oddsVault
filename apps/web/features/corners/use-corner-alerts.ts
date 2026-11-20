@@ -47,7 +47,47 @@ function storeWatches(watches: CornerWatch[]) {
  * The check runs against data this page already polls, so an alert fires while
  * the board is open. There is no push server: closing the tab stops alerts.
  */
-export function useCornerAlerts(matches: LiveCornerMatch[], line: number) {
+const LAST_CORNER_KEY = "oddsvault-corner-last";
+
+function loadLastCorners(): Map<number, number> {
+  try {
+    const raw = window.localStorage.getItem(LAST_CORNER_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as Record<string, number>;
+    return new Map(
+      Object.entries(parsed).map(([id, total]) => [Number(id), Number(total)]),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+function storeLastCorners(map: Map<number, number>) {
+  try {
+    window.localStorage.setItem(
+      LAST_CORNER_KEY,
+      JSON.stringify(Object.fromEntries(map)),
+    );
+  } catch {
+    // Storage may be refused; the in-memory map still tracks this session.
+  }
+}
+
+/**
+ * Per-match corner alerts.
+ *
+ * The check runs against data this page already polls, so an alert fires while
+ * the board is open. There is no push server: closing the tab stops alerts.
+ *
+ * `everyCornerIds` are matches the user has already recorded a pick on. Those
+ * alert on each new corner rather than at a single threshold, because the pick
+ * is live and the count is what matters.
+ */
+export function useCornerAlerts(
+  matches: LiveCornerMatch[],
+  line: number,
+  everyCornerIds: number[] = [],
+) {
   const [watches, setWatches] = useState<CornerWatch[]>([]);
   const [permission, setPermission] = useState<
     NotificationPermission | "unsupported"
@@ -55,8 +95,12 @@ export function useCornerAlerts(matches: LiveCornerMatch[], line: number) {
   const [notice, setNotice] = useState<string | null>(null);
   const watchesRef = useRef<CornerWatch[]>([]);
   watchesRef.current = watches;
+  const lastCornerRef = useRef<Map<number, number>>(new Map());
+  const everyCornerRef = useRef<Set<number>>(new Set());
+  everyCornerRef.current = new Set(everyCornerIds);
 
   useEffect(() => {
+    lastCornerRef.current = loadLastCorners();
     setWatches(loadWatches());
     if (typeof Notification === "undefined") {
       setPermission("unsupported");
@@ -132,6 +176,56 @@ export function useCornerAlerts(matches: LiveCornerMatch[], line: number) {
     },
     [line, persist, requestPermission],
   );
+
+  // Recorded matches alert on every new corner. The first sighting only sets
+  // the baseline, so opening the page does not fire a burst of alerts.
+  const everyCornerKey = everyCornerIds.join(",");
+  useEffect(() => {
+    if (matches.length === 0 || everyCornerKey === "") return;
+    let changed = false;
+    for (const eventId of everyCornerRef.current) {
+      const match = matches.find((item) => item.event_id === eventId);
+      const total = match?.total_corners;
+      if (!match || total === null || total === undefined) continue;
+      const previous = lastCornerRef.current.get(eventId);
+      if (previous === undefined) {
+        lastCornerRef.current.set(eventId, total);
+        changed = true;
+        continue;
+      }
+      if (total <= previous) continue;
+
+      const gained = total - previous;
+      lastCornerRef.current.set(eventId, total);
+      changed = true;
+
+      const minute = match.minute !== null ? `${match.minute}'` : "now";
+      const body =
+        gained > 1
+          ? `${match.home.name} v ${match.away.name}: ${gained} corners, now ${total} at ${minute}`
+          : `Corner! ${match.home.name} v ${match.away.name}: ${total} at ${minute}`;
+      pushAlert({
+        eventId,
+        home: match.home.name,
+        away: match.away.name,
+        corners: total,
+        threshold: previous,
+      });
+      if (permission === "granted" && typeof Notification !== "undefined") {
+        try {
+          new Notification("Corner", {
+            body,
+            tag: `corner-${eventId}-${total}`,
+          });
+        } catch {
+          setNotice(body);
+        }
+      } else {
+        setNotice(body);
+      }
+    }
+    if (changed) storeLastCorners(lastCornerRef.current);
+  }, [matches, everyCornerKey, permission]);
 
   // Compare watched matches with the latest poll.
   useEffect(() => {

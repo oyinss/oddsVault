@@ -99,7 +99,11 @@ function CornersView() {
   );
 
   const matches = data?.matches ?? [];
-  const alerts = useCornerAlerts(matches, line);
+  // Recorded matches that are still live alert on every corner.
+  const recordedIds = matches
+    .filter((match) => (match.paper_picks?.length ?? 0) > 0)
+    .map((match) => match.event_id);
+  const alerts = useCornerAlerts(matches, line, recordedIds);
   const favorites = useCornerFavorites(matches);
   const [onlyFollowed, setOnlyFollowed] = useState(
     () => searchParams.get("followed") === "1",
