@@ -976,6 +976,28 @@ function MatchCard({
               value={match.total_corners}
               strong
             />
+            {match.paper_picks?.map((pick) => (
+              <button
+                key={pick.id}
+                type="button"
+                onClick={() => {
+                  onCloseRecord();
+                  setEditingPickId((current) =>
+                    current === pick.id ? null : pick.id,
+                  );
+                }}
+                aria-pressed={editingPickId === pick.id}
+                title={`${pick.provider} ${pick.side} ${pick.line} at ${pick.odds}. Click to edit this recording.`}
+                className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest uppercase transition ${
+                  editingPickId === pick.id
+                    ? "border-turf-400/70 bg-turf-500/20 text-turf-100"
+                    : "border-turf-400/40 bg-turf-500/10 text-turf-200 hover:border-turf-400/70"
+                }`}
+              >
+                <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
+                {pick.side === "under" ? "U" : "O"} {pick.line}
+              </button>
+            ))}
           </div>
 
           {match.minute !== null &&
@@ -1160,28 +1182,6 @@ function MatchCard({
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2">
         <span className="flex flex-wrap items-center gap-2">
-          {match.paper_picks?.map((pick) => (
-            <button
-              key={pick.id}
-              type="button"
-              onClick={() => {
-                onCloseRecord();
-                setEditingPickId((current) =>
-                  current === pick.id ? null : pick.id,
-                );
-              }}
-              aria-pressed={editingPickId === pick.id}
-              title={`${pick.provider} ${pick.side} ${pick.line} at ${pick.odds}. Click to edit this recording.`}
-              className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-widest uppercase transition ${
-                editingPickId === pick.id
-                  ? "border-turf-400/70 bg-turf-500/20 text-turf-100"
-                  : "border-turf-400/40 bg-turf-500/10 text-turf-200 hover:border-turf-400/70"
-              }`}
-            >
-              <FontAwesomeIcon icon={faFilePen} className="size-2.5" />
-              {pick.side === "under" ? "U" : "O"} {pick.line}
-            </button>
-          ))}
           {match.bet_history ? (
             <Link
               href={`/corners/detail?id=${match.event_id}&line=${line}`}
