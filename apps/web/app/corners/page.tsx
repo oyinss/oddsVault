@@ -1072,20 +1072,38 @@ function MatchCard({
         {match.model_over ? (
           <div className="min-w-0 lg:col-start-2 lg:row-start-2">
             <p className="font-mono text-[9px] tracking-widest text-mist-500 uppercase">
-              model over % · compare with the price
+              proj {match.projected_total?.toFixed(1) ?? "-"} · line · model
+              over % · side it backs
             </p>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[10px]">
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px]">
               {Object.entries(match.model_over)
                 .sort((a, b) => Number(a[0]) - Number(b[0]))
                 .filter(([line]) => Number(line) >= 5.5 && Number(line) <= 12.5)
-                .map(([line, prob]) => (
-                  <span key={line} className="text-mist-400">
-                    <span className="text-mist-500">{line}</span>{" "}
-                    <span className="text-mist-200">
-                      {Math.round(prob * 100)}%
+                .map(([line, prob]) => {
+                  // Which side the projection backs at this line, so a pick can
+                  // be checked before it is recorded rather than after.
+                  const supportsOver =
+                    match.projected_total !== null &&
+                    match.projected_total > Number(line);
+                  return (
+                    <span
+                      key={line}
+                      className="inline-flex items-center gap-1 text-mist-400"
+                      title={`At ${line} the projection is ${match.projected_total?.toFixed(1) ?? "unknown"}, so the read backs ${supportsOver ? "over" : "under"}.`}
+                    >
+                      <span className="text-mist-500">{line}</span>
+                      <span className="text-mist-200">
+                        {Math.round(prob * 100)}%
+                      </span>
+                      <FontAwesomeIcon
+                        icon={supportsOver ? faArrowUp : faArrowDown}
+                        className={`size-2.5 ${
+                          supportsOver ? "text-turf-300" : "text-flag-400"
+                        }`}
+                      />
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
             </div>
           </div>
         ) : null}
