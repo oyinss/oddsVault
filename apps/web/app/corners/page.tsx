@@ -1094,27 +1094,37 @@ function MatchCard({
                   );
                 return (
                   <div key={row.side} className="min-w-0">
-                    <p className={`font-bold ${row.tone}`}>{row.label}</p>
+                    <p
+                      className={`flex items-center gap-1 font-bold ${row.tone}`}
+                    >
+                      <FontAwesomeIcon
+                        icon={row.side === "over" ? faArrowUp : faArrowDown}
+                        className="size-2.5 shrink-0"
+                      />
+                      {row.label}
+                    </p>
                     {lines.length === 0 ? (
                       <p className="text-mist-500">none</p>
                     ) : (
-                      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5">
+                      <ul className="mt-0.5 space-y-0.5">
                         {lines.map(([line, prob]) => {
                           const value = row.side === "over" ? prob : 1 - prob;
                           return (
-                            <span
+                            <li
                               key={line}
-                              className="text-mist-400"
+                              className="flex items-baseline gap-1.5 text-mist-400"
                               title={`At ${line} the projection is ${match.projected_total?.toFixed(1) ?? "unknown"}, so ${row.side} ${line} is backed and the model gives it ${Math.round(value * 100)}%.`}
                             >
-                              <span className="text-mist-500">{line}</span>{" "}
+                              <span className="w-8 shrink-0 text-mist-500">
+                                {line}
+                              </span>
                               <span className="text-mist-200">
                                 {Math.round(value * 100)}%
                               </span>
-                            </span>
+                            </li>
                           );
                         })}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 );
